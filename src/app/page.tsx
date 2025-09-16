@@ -24,20 +24,14 @@ export default function Home() {
   });
 
   return (
-    <main className="min-h-screen bg-background text-foreground">
-      <div className="container mx-auto px-4 py-8">
-        <header className="text-center mb-12">
-          <h1 className="text-5xl font-bold font-headline text-primary">CardCrafter</h1>
-          <p className="text-muted-foreground mt-2 text-lg">Bring your card game ideas to life with the power of AI</p>
-        </header>
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 xl:gap-12">
-          <div className="lg:col-span-2">
-            <CardEditor cardData={cardData} setCardData={setCardData} />
-          </div>
-          <div className="lg:col-span-3 flex items-start justify-center">
-             <div className="sticky top-8 w-full max-w-md">
-              <CardPreview {...cardData} />
-            </div>
+    <main>
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 xl:gap-12">
+        <div className="lg:col-span-2">
+          <CardEditor cardData={cardData} setCardData={setCardData} />
+        </div>
+        <div className="lg:col-span-3 flex items-start justify-center">
+            <div className="sticky top-8 w-full max-w-md">
+            <CardPreview {...cardData} />
           </div>
         </div>
       </div>
