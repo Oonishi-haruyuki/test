@@ -85,7 +85,7 @@ export const CardPreview = React.forwardRef<HTMLDivElement, CardData>(({
         <div className="relative aspect-[4/3] w-full bg-gray-400">
           <Image src={imageUrl} alt={imageHint} fill style={{objectFit: 'cover'}} data-ai-hint={imageHint} 
             className={cn({'sepia-[25%]': theme === 'fantasy'})}
-            unoptimized // Necessary for html-to-image to capture external images
+            unoptimized
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent"></div>
         </div>

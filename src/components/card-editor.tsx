@@ -10,7 +10,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Download, Loader2, Save, Wand2 } from 'lucide-react';
+import { Download, Loader2, Save, Wand2, Upload } from 'lucide-react';
 import type React from 'react';
 import { useState, useTransition, useCallback } from 'react';
 import { toPng } from 'html-to-image';
@@ -59,6 +59,33 @@ export function CardEditor({ cardData, setCardData, cardPreviewRef }: CardEditor
 
   const handleThemeChange = (value: string) => {
     setCardData(prev => ({ ...prev, theme: value as Theme }));
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+        if (!file.type.startsWith('image/')) {
+            toast({
+                variant: 'destructive',
+                title: '無効なファイルタイプ',
+                description: '画像ファイル（JPEG, PNG, GIFなど）を選択してください。',
+            });
+            return;
+        }
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const imageUrl = event.target?.result as string;
+            setCardData(prev => ({
+                ...prev,
+                imageUrl: imageUrl,
+                imageHint: file.name, // Use file name as a hint
+            }));
+            toast({
+                title: '画像がアップロードされました',
+            });
+        };
+        reader.readAsDataURL(file);
+    }
   };
 
   const handleGenerate = async () => {
@@ -230,17 +257,29 @@ export function CardEditor({ cardData, setCardData, cardPreviewRef }: CardEditor
               <Textarea id="flavorText" name="flavorText" value={cardData.flavorText} onChange={handleInputChange} rows={2} />
             </div>
           </CardContent>
-          <CardFooter>
-            <Button onClick={handleSaveToCollection} className="w-full">
-                <Save className="mr-2" />
-                コレクションに追加
-            </Button>
-          </CardFooter>
+        </Card>
+
+        <Card>
+            <CardHeader>
+                <CardTitle>3. 画像をアップロード</CardTitle>
+                <CardDescription>カードアートワーク用の画像をアップロードします。</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <Label htmlFor="image-upload" className="w-full">
+                    <Button asChild className="w-full cursor-pointer">
+                        <div>
+                            <Upload className="mr-2" />
+                            画像をアップロード
+                        </div>
+                    </Button>
+                    <Input id="image-upload" type="file" className="sr-only" accept="image/*" onChange={handleImageUpload} />
+                </Label>
+            </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle>3. ビジュアルテーマ</CardTitle>
+            <CardTitle>4. ビジュアルテーマ</CardTitle>
             <CardDescription>カードのビジュアルスタイルを選択します。</CardDescription>
           </CardHeader>
           <CardContent>
@@ -269,10 +308,14 @@ export function CardEditor({ cardData, setCardData, cardPreviewRef }: CardEditor
 
         <Card>
           <CardHeader>
-            <CardTitle>4. エクスポート</CardTitle>
-            <CardDescription>完成したカードデザインをダウンロードします。</CardDescription>
+            <CardTitle>5. 保存とエクスポート</CardTitle>
+            <CardDescription>完成したカードを保存またはダウンロードします。</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
+             <Button onClick={handleSaveToCollection} className="w-full">
+                <Save className="mr-2" />
+                コレクションに追加
+            </Button>
             <Button onClick={handleExport} variant="outline" className="w-full" disabled={isExporting}>
                 {isExporting ? <Loader2 className="animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
                 PNGとしてダウンロード
@@ -282,3 +325,5 @@ export function CardEditor({ cardData, setCardData, cardPreviewRef }: CardEditor
       </div>
   );
 }
+
+    
