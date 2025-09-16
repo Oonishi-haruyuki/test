@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { PlusCircle, MinusCircle, Save } from 'lucide-react';
 
-const DECK_SIZE = 30;
+const DECK_SIZE = 20;
 
 export default function DeckBuilderPage() {
   const [collection, setCollection] = useState<CardData[]>([]);

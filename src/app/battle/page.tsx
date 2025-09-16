@@ -11,9 +11,9 @@ import { useToast } from '@/hooks/use-toast';
 import { generateDeck } from '@/ai/flows/generate-deck';
 
 const HAND_LIMIT = 5;
-const DECK_SIZE = 30;
+const DECK_SIZE = 20;
 
-const starterDeck: CardData[] = Array.from({ length: 6 }).flatMap(() => [
+const starterDeck: CardData[] = Array.from({ length: 4 }).flatMap(() => [
     { id: 'starter-1', theme: 'fantasy', name: '見習い騎士', manaCost: 1, attack: 1, defense: 2, cardType: 'creature', rarity: 'common', abilities: '', flavorText: '訓練は始まったばかりだ。', imageUrl: 'https://picsum.photos/seed/s1/400/300', imageHint: 'apprentice knight' },
     { id: 'starter-2', theme: 'fantasy', name: 'ゴブリンの斥候', manaCost: 1, attack: 2, defense: 1, cardType: 'creature', rarity: 'common', abilities: '', flavorText: '素早いが、脆い。', imageUrl: 'https://picsum.photos/seed/s2/400/300', imageHint: 'goblin scout' },
     { id: 'starter-3', theme: 'fantasy', name: '小回復のポーション', manaCost: 1, attack: 0, defense: 0, cardType: 'spell', rarity: 'common', abilities: 'ライフを3回復する。', flavorText: '傷を癒す一滴。', imageUrl: 'https://picsum.photos/seed/s3/400/300', imageHint: 'healing potion' },
@@ -171,6 +171,20 @@ export default function BattlePage() {
     };
 
     const aiTurn = () => {
+        let newOpponentDeck = [...opponentDeck];
+        const drawnOpponentCard = newOpponentDeck.shift();
+        if (drawnOpponentCard) {
+            if (opponentHand.length < HAND_LIMIT) {
+                setOpponentHand(prev => [...prev, drawnOpponentCard]);
+                addToLog('相手はカードを1枚引いた。');
+            } else {
+                addToLog('相手の手札がいっぱいで、引いたカードを破棄した。');
+            }
+            setOpponentDeck(newOpponentDeck);
+        } else {
+            addToLog('相手の山札はもうない！');
+        }
+
         addToLog('相手のターン。');
         let currentOpponentMana = opponentMana;
         
@@ -227,32 +241,18 @@ export default function BattlePage() {
         setPlayerMana(nextTurn);
         setOpponentMana(nextTurn);
         
-        // Player draws a card if hand is not full
-        if (playerHand.length < HAND_LIMIT) {
-            const newPlayerDeck = [...playerDeck];
-            const drawnCard = newPlayerDeck.shift();
-            if (drawnCard) {
+        let newPlayerDeck = [...playerDeck];
+        const drawnCard = newPlayerDeck.shift();
+        if (drawnCard) {
+            if (playerHand.length < HAND_LIMIT) {
                 setPlayerHand(prev => [...prev, drawnCard]);
-                setPlayerDeck(newPlayerDeck);
                 addToLog('プレイヤーはカードを1枚引いた。');
             } else {
-                addToLog('プレイヤーの山札はもうない！');
+                addToLog('プレイヤーの手札がいっぱいで、引いたカードを破棄した。');
             }
+            setPlayerDeck(newPlayerDeck);
         } else {
-            addToLog('プレイヤーの手札がいっぱいでカードを引けない。')
-        }
-
-        // Opponent draws a card if hand is not full
-        if (opponentHand.length < HAND_LIMIT) {
-            const newOpponentDeck = [...opponentDeck];
-            const drawnOpponentCard = newOpponentDeck.shift();
-            if(drawnOpponentCard) {
-                setOpponentHand(prev => [...prev, drawnOpponentCard]);
-                setOpponentDeck(newOpponentDeck);
-                addToLog('相手はカードを1枚引いた。')
-            } else {
-                addToLog('相手の山札はもうない！')
-            }
+            addToLog('プレイヤーの山札はもうない！');
         }
         
         setIsPlayerTurn(true);
