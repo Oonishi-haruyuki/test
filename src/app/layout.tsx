@@ -33,7 +33,7 @@ export default function RootLayout({
           <div className="container mx-auto px-4 py-8">
             <header className="text-center mb-12">
               <h1 className="text-5xl font-bold font-headline text-primary">
-                <Link href="/">カードクラフter</Link>
+                <Link href="/">カードクラフター</Link>
               </h1>
               <p className="text-muted-foreground mt-2 text-lg">
                 AIの力で、あなたのカードゲームのアイデアを形に
@@ -41,6 +41,9 @@ export default function RootLayout({
               <nav className="mt-4">
                 <Button variant="outline" asChild>
                   <Link href="/">作成</Link>
+                </Button>
+                <Button variant="outline" asChild className="ml-4">
+                  <Link href="/collection">マイカード</Link>
                 </Button>
                 <Button variant="outline" asChild className="ml-4">
                   <Link href="/battle">対戦</Link>

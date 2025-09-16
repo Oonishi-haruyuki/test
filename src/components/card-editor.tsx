@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
-import { Download, Loader2, Wand2 } from 'lucide-react';
+import { Download, Loader2, Save, Wand2 } from 'lucide-react';
 import type React from 'react';
 import { useState, useTransition } from 'react';
 
@@ -21,6 +21,7 @@ export type CardType = 'creature' | 'spell' | 'artifact' | 'land';
 export type Rarity = 'common' | 'uncommon' | 'rare' | 'mythic';
 
 export interface CardData {
+  id?: string; // Add optional id for collection management
   theme: Theme;
   name: string;
   manaCost: number;
@@ -89,6 +90,27 @@ export function CardEditor({ cardData, setCardData }: CardEditorProps) {
       }
     });
   };
+
+  const handleSaveToCollection = () => {
+    try {
+      const collection = JSON.parse(localStorage.getItem('cardCollection') || '[]');
+      const newCard = { ...cardData, id: self.crypto.randomUUID() };
+      const newCollection = [...collection, newCard];
+      localStorage.setItem('cardCollection', JSON.stringify(newCollection));
+      toast({
+        title: 'コレクションに保存しました',
+        description: `「${newCard.name}」をマイカードに追加しました。`,
+      });
+    } catch (error) {
+      console.error(error);
+      toast({
+        variant: 'destructive',
+        title: '保存に失敗しました',
+        description: 'カードをコレクションに保存できませんでした。',
+      });
+    }
+  };
+
 
   return (
     <TooltipProvider>
@@ -176,6 +198,12 @@ export function CardEditor({ cardData, setCardData }: CardEditorProps) {
               <Textarea id="flavorText" name="flavorText" value={cardData.flavorText} onChange={handleInputChange} rows={2} />
             </div>
           </CardContent>
+          <CardFooter>
+            <Button onClick={handleSaveToCollection} className="w-full">
+                <Save className="mr-2" />
+                コレクションに追加
+            </Button>
+          </CardFooter>
         </Card>
 
         <Card>
