@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import type { CardData } from "@/components/card-editor";
 import { CardEditor } from "@/components/card-editor";
 import { CardPreview } from "@/components/card-preview";
@@ -22,16 +22,17 @@ export default function Home() {
     imageUrl: defaultImage?.imageUrl || "https://picsum.photos/seed/cardcraft/400/300",
     imageHint: defaultImage?.imageHint || "fantasy landscape",
   });
+  const cardPreviewRef = useRef<HTMLDivElement>(null);
 
   return (
     <main>
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 xl:gap-12">
         <div className="lg:col-span-2">
-          <CardEditor cardData={cardData} setCardData={setCardData} />
+          <CardEditor cardData={cardData} setCardData={setCardData} cardPreviewRef={cardPreviewRef} />
         </div>
         <div className="lg:col-span-3 flex items-start justify-center">
             <div className="sticky top-8 w-full max-w-md">
-            <CardPreview {...cardData} />
+            <CardPreview {...cardData} ref={cardPreviewRef} />
           </div>
         </div>
       </div>

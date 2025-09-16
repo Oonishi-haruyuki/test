@@ -15,7 +15,7 @@ import {z} from 'genkit';
 import type { CardData, CardType, Rarity, Theme } from '@/components/card-editor';
 
 
-export const CardSchemaForGeneration = z.object({
+const CardSchemaForGeneration = z.object({
     name: z.string().describe('カードの名前。'),
     manaCost: z.number().describe('マナコスト。1から5の範囲。'),
     attack: z.number().describe('クリーチャーの攻撃力。呪文の場合は0。'),

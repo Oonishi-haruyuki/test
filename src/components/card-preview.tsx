@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils';
 import { Gem, Shield, Sparkles, Swords } from 'lucide-react';
 import Image from 'next/image';
 import type { CardData, Rarity, CardType } from './card-editor';
+import React from 'react';
 
 const rarityColorVar: Record<Rarity, string> = {
   common: 'hsl(0 0% 63%)', // --muted-foreground
@@ -27,7 +28,7 @@ const cardTypeJapanese: Record<CardType, string> = {
     land: '土地',
 };
 
-export function CardPreview({
+export const CardPreview = React.forwardRef<HTMLDivElement, CardData>(({
   theme,
   name,
   manaCost,
@@ -39,11 +40,12 @@ export function CardPreview({
   flavorText,
   imageUrl,
   imageHint,
-}: CardData) {
+}, ref) => {
   const showStats = cardType === 'creature';
 
   return (
     <Card
+      ref={ref}
       className={cn(
         'w-full max-w-md mx-auto rounded-2xl overflow-hidden shadow-2xl transition-all duration-300',
         'border-8',
@@ -83,6 +85,7 @@ export function CardPreview({
         <div className="relative aspect-[4/3] w-full bg-gray-400">
           <Image src={imageUrl} alt={imageHint} fill style={{objectFit: 'cover'}} data-ai-hint={imageHint} 
             className={cn({'sepia-[25%]': theme === 'fantasy'})}
+            unoptimized // Necessary for html-to-image to capture external images
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent"></div>
         </div>
@@ -160,4 +163,6 @@ export function CardPreview({
       )}
     </Card>
   );
-}
+});
+
+CardPreview.displayName = "CardPreview";

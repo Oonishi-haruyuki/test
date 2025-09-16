@@ -9,11 +9,12 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
 import { Download, Loader2, Save, Wand2 } from 'lucide-react';
 import type React from 'react';
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useCallback } from 'react';
+import { toPng } from 'html-to-image';
+
 
 // Type definitions
 export type Theme = 'fantasy' | 'sci-fi' | 'modern';
@@ -38,10 +39,12 @@ export interface CardData {
 interface CardEditorProps {
   cardData: CardData;
   setCardData: React.Dispatch<React.SetStateAction<CardData>>;
+  cardPreviewRef: React.RefObject<HTMLDivElement>;
 }
 
-export function CardEditor({ cardData, setCardData }: CardEditorProps) {
+export function CardEditor({ cardData, setCardData, cardPreviewRef }: CardEditorProps) {
   const [isPending, startTransition] = useTransition();
+  const [isExporting, setIsExporting] = useState(false);
   const [aiTheme, setAiTheme] = useState('パワフルな神秘のドラゴン');
   const { toast } = useToast();
 
@@ -111,9 +114,38 @@ export function CardEditor({ cardData, setCardData }: CardEditorProps) {
     }
   };
 
+  const handleExport = useCallback(() => {
+    if (cardPreviewRef.current === null) {
+      return;
+    }
+    setIsExporting(true);
+
+    toPng(cardPreviewRef.current, { cacheBust: true })
+      .then((dataUrl) => {
+        const link = document.createElement('a');
+        link.download = `${cardData.name.replace(/\s+/g, '_').toLowerCase()}.png`;
+        link.href = dataUrl;
+        link.click();
+        toast({
+            title: 'ダウンロードを開始しました',
+            description: 'カード画像をPNGとして保存します。',
+          });
+      })
+      .catch((err) => {
+        console.error(err);
+        toast({
+            variant: 'destructive',
+            title: 'エクスポートに失敗しました',
+            description: '画像の生成中にエラーが発生しました。',
+        });
+      })
+      .finally(() => {
+        setIsExporting(false);
+      });
+  }, [cardPreviewRef, cardData.name, toast]);
+
 
   return (
-    <TooltipProvider>
       <div className="space-y-6">
         <Card>
           <CardHeader>
@@ -241,20 +273,12 @@ export function CardEditor({ cardData, setCardData }: CardEditorProps) {
             <CardDescription>完成したカードデザインをダウンロードします。</CardDescription>
           </CardHeader>
           <CardContent>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="outline" className="w-full" disabled>
-                  <Download className="mr-2 h-4 w-4" />
-                  PNGとしてダウンロード
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>エクスポート機能は近日公開予定です！</p>
-              </TooltipContent>
-            </Tooltip>
+            <Button onClick={handleExport} variant="outline" className="w-full" disabled={isExporting}>
+                {isExporting ? <Loader2 className="animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+                PNGとしてダウンロード
+            </Button>
           </CardContent>
         </Card>
       </div>
-    </TooltipProvider>
   );
 }
