@@ -4,13 +4,27 @@ import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { Gem, Shield, Sparkles, Swords } from 'lucide-react';
 import Image from 'next/image';
-import type { CardData, Rarity } from './card-editor';
+import type { CardData, Rarity, CardType } from './card-editor';
 
 const rarityColorVar: Record<Rarity, string> = {
   common: 'hsl(0 0% 63%)', // --muted-foreground
   uncommon: 'hsl(142 71% 45%)', // A nice green
   rare: 'hsl(217 91% 60%)', // A nice blue
   mythic: 'hsl(25 95% 53%)', // A nice orange
+};
+
+const rarityJapanese: Record<Rarity, string> = {
+  common: 'コモン',
+  uncommon: 'アンコモン',
+  rare: 'レア',
+  mythic: '神話レア',
+};
+
+const cardTypeJapanese: Record<CardType, string> = {
+    creature: 'クリーチャー',
+    spell: '呪文',
+    artifact: 'アーティファクト',
+    land: '土地',
 };
 
 export function CardPreview({
@@ -82,9 +96,9 @@ export function CardPreview({
               'bg-slate-100': theme === 'modern',
             }
           )}>
-            <p className="font-semibold capitalize">{cardType}</p>
+            <p className="font-semibold capitalize">{cardTypeJapanese[cardType]}</p>
             <div className="flex items-center gap-1.5">
-              <span className="text-xs font-bold uppercase">{rarity}</span>
+              <span className="text-xs font-bold uppercase">{rarityJapanese[rarity]}</span>
               <Gem className="h-3 w-3" style={{ color: rarityColorVar[rarity] }} />
             </div>
           </div>

@@ -1,3 +1,4 @@
+
 'use server';
 
 /**
@@ -17,14 +18,14 @@ import {z} from 'genkit';
 const GenerateCardIdeasInputSchema = z.object({
   theme: z
     .string()
-    .describe('A theme or prompt to generate card ideas from.'),
+    .describe('カードのアイデアを生成するためのテーマやプロンプト。'),
 });
 export type GenerateCardIdeasInput = z.infer<typeof GenerateCardIdeasInputSchema>;
 
 const GenerateCardIdeasOutputSchema = z.object({
-  cardName: z.string().describe('The name of the card.'),
-  abilities: z.string().describe('The abilities of the card.'),
-  flavorText: z.string().describe('Flavor text for the card.'),
+  cardName: z.string().describe('カードの名前。'),
+  abilities: z.string().describe('カードの能力。'),
+  flavorText: z.string().describe('カードのフレーバーテキスト。'),
 });
 export type GenerateCardIdeasOutput = z.infer<typeof GenerateCardIdeasOutputSchema>;
 
@@ -36,20 +37,20 @@ const generateCardIdeasPrompt = ai.definePrompt({
   name: 'generateCardIdeasPrompt',
   input: {schema: GenerateCardIdeasInputSchema},
   output: {schema: GenerateCardIdeasOutputSchema},
-  prompt: `You are a creative card game designer. Generate a unique card idea based on the given theme or prompt.
+  prompt: `あなたは創造的なカードゲームデザイナーです。与えられたテーマやプロンプトに基づいて、ユニークなカードのアイデアを生成してください。すべて日本語で回答してください。
 
-Theme/Prompt: {{{theme}}}
+テーマ/プロンプト: {{{theme}}}
 
-Consider the following:
-- The card name should be evocative and relevant to the theme.
-- The abilities should be interesting and balanced.
-- The flavor text should add character and depth to the card.
+以下の点を考慮してください:
+- カード名はテーマに関連し、喚情的であるべきです。
+- 能力は面白く、バランスが取れているべきです。
+- フレーバーテキストはカードに個性と深みを与えるべきです。
 
-Output the card idea in the following format:
+カードのアイデアを以下の形式で出力してください:
 {
-  "cardName": "[Card Name]",
-  "abilities": "[Card Abilities]",
-  "flavorText": "[Card Flavor Text]"
+  "cardName": "[カード名]",
+  "abilities": "[カードの能力]",
+  "flavorText": "[フレーバーテキスト]"
 }
 `,
 });

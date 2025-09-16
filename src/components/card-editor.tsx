@@ -41,7 +41,7 @@ interface CardEditorProps {
 
 export function CardEditor({ cardData, setCardData }: CardEditorProps) {
   const [isPending, startTransition] = useTransition();
-  const [aiTheme, setAiTheme] = useState('a powerful mystic dragon');
+  const [aiTheme, setAiTheme] = useState('パワフルな神秘のドラゴン');
   const { toast } = useToast();
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -61,8 +61,8 @@ export function CardEditor({ cardData, setCardData }: CardEditorProps) {
     if (!aiTheme.trim()) {
         toast({
             variant: 'destructive',
-            title: 'Theme is empty',
-            description: 'Please enter a theme or prompt to generate a card.',
+            title: 'テーマが空です',
+            description: 'カードを生成するためのテーマやプロンプトを入力してください。',
         });
         return;
     }
@@ -76,15 +76,15 @@ export function CardEditor({ cardData, setCardData }: CardEditorProps) {
           flavorText: result.flavorText,
         }));
         toast({
-          title: 'Card Idea Generated!',
-          description: `Created "${result.cardName}".`,
+          title: 'カードのアイデアが生成されました！',
+          description: `「${result.cardName}」が作成されました。`,
         });
       } catch (error) {
         console.error(error);
         toast({
           variant: 'destructive',
-          title: 'Generation Failed',
-          description: 'Could not generate card ideas. Please try again.',
+          title: '生成に失敗しました',
+          description: 'カードのアイデアを生成できませんでした。もう一度お試しください。',
         });
       }
     });
@@ -95,15 +95,15 @@ export function CardEditor({ cardData, setCardData }: CardEditorProps) {
       <div className="space-y-6">
         <Card>
           <CardHeader>
-            <CardTitle>1. Generate with AI</CardTitle>
-            <CardDescription>Describe a theme and let AI create a card for you.</CardDescription>
+            <CardTitle>1. AIで生成</CardTitle>
+            <CardDescription>テーマを説明して、AIにカードを作成させましょう。</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              <Label htmlFor="ai-theme">Theme or Prompt</Label>
+              <Label htmlFor="ai-theme">テーマまたはプロンプト</Label>
               <Input
                 id="ai-theme"
-                placeholder="e.g., a futuristic cyborg ninja"
+                placeholder="例：未来のサイボーグ忍者"
                 value={aiTheme}
                 onChange={e => setAiTheme(e.target.value)}
               />
@@ -112,67 +112,67 @@ export function CardEditor({ cardData, setCardData }: CardEditorProps) {
           <CardFooter>
             <Button onClick={handleGenerate} disabled={isPending} className="w-full">
               {isPending ? <Loader2 className="animate-spin" /> : <Wand2 />}
-              Generate Idea
+              アイデアを生成
             </Button>
           </CardFooter>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle>2. Customize Card</CardTitle>
-            <CardDescription>Fine-tune every detail of your card.</CardDescription>
+            <CardTitle>2. カードをカスタマイズ</CardTitle>
+            <CardDescription>カードの細部を調整します。</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="name">Card Name</Label>
+              <Label htmlFor="name">カード名</Label>
               <Input id="name" name="name" value={cardData.name} onChange={handleInputChange} />
             </div>
             <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="manaCost">Mana</Label>
+                <Label htmlFor="manaCost">マナ</Label>
                 <Input id="manaCost" name="manaCost" type="number" value={cardData.manaCost} onChange={handleInputChange} min="0" />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="attack">Attack</Label>
+                <Label htmlFor="attack">攻撃力</Label>
                 <Input id="attack" name="attack" type="number" value={cardData.attack} onChange={handleInputChange} min="0" />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="defense">Defense</Label>
+                <Label htmlFor="defense">防御力</Label>
                 <Input id="defense" name="defense" type="number" value={cardData.defense} onChange={handleInputChange} min="0" />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Card Type</Label>
+                <Label>カードタイプ</Label>
                 <Select name="cardType" value={cardData.cardType} onValueChange={handleSelectChange('cardType')}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="creature">Creature</SelectItem>
-                    <SelectItem value="spell">Spell</SelectItem>
-                    <SelectItem value="artifact">Artifact</SelectItem>
-                    <SelectItem value="land">Land</SelectItem>
+                    <SelectItem value="creature">クリーチャー</SelectItem>
+                    <SelectItem value="spell">呪文</SelectItem>
+                    <SelectItem value="artifact">アーティファクト</SelectItem>
+                    <SelectItem value="land">土地</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Rarity</Label>
+                <Label>レアリティ</Label>
                 <Select name="rarity" value={cardData.rarity} onValueChange={handleSelectChange('rarity')}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="common">Common</SelectItem>
-                    <SelectItem value="uncommon">Uncommon</SelectItem>
-                    <SelectItem value="rare">Rare</SelectItem>
-                    <SelectItem value="mythic">Mythic</SelectItem>
+                    <SelectItem value="common">コモン</SelectItem>
+                    <SelectItem value="uncommon">アンコモン</SelectItem>
+                    <SelectItem value="rare">レア</SelectItem>
+                    <SelectItem value="mythic">神話レア</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="abilities">Abilities</Label>
+              <Label htmlFor="abilities">能力</Label>
               <Textarea id="abilities" name="abilities" value={cardData.abilities} onChange={handleInputChange} rows={4} />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="flavorText">Flavor Text</Label>
+              <Label htmlFor="flavorText">フレーバーテキスト</Label>
               <Textarea id="flavorText" name="flavorText" value={cardData.flavorText} onChange={handleInputChange} rows={2} />
             </div>
           </CardContent>
@@ -180,27 +180,27 @@ export function CardEditor({ cardData, setCardData }: CardEditorProps) {
 
         <Card>
           <CardHeader>
-            <CardTitle>3. Visual Theme</CardTitle>
-            <CardDescription>Select a visual style for your card.</CardDescription>
+            <CardTitle>3. ビジュアルテーマ</CardTitle>
+            <CardDescription>カードのビジュアルスタイルを選択します。</CardDescription>
           </CardHeader>
           <CardContent>
             <RadioGroup value={cardData.theme} onValueChange={handleThemeChange} className="grid grid-cols-3 gap-4">
               <div>
                 <RadioGroupItem value="fantasy" id="fantasy" className="peer sr-only" />
                 <Label htmlFor="fantasy" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary">
-                  Fantasy
+                  ファンタジー
                 </Label>
               </div>
               <div>
                 <RadioGroupItem value="sci-fi" id="sci-fi" className="peer sr-only" />
                 <Label htmlFor="sci-fi" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary">
-                  Sci-Fi
+                  SF
                 </Label>
               </div>
               <div>
                 <RadioGroupItem value="modern" id="modern" className="peer sr-only" />
                 <Label htmlFor="modern" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary">
-                  Modern
+                  モダン
                 </Label>
               </div>
             </RadioGroup>
@@ -209,19 +209,19 @@ export function CardEditor({ cardData, setCardData }: CardEditorProps) {
 
         <Card>
           <CardHeader>
-            <CardTitle>4. Export</CardTitle>
-            <CardDescription>Download your finished card design.</CardDescription>
+            <CardTitle>4. エクスポート</CardTitle>
+            <CardDescription>完成したカードデザインをダウンロードします。</CardDescription>
           </CardHeader>
           <CardContent>
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button variant="outline" className="w-full" disabled>
                   <Download className="mr-2 h-4 w-4" />
-                  Download as PNG
+                  PNGとしてダウンロード
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                <p>Export functionality coming soon!</p>
+                <p>エクスポート機能は近日公開予定です！</p>
               </TooltipContent>
             </Tooltip>
           </CardContent>
