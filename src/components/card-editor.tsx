@@ -2,6 +2,7 @@
 'use client';
 
 import { generateCardIdeas, type GenerateCardIdeasOutput } from '@/ai/flows/generate-card-ideas';
+import { generateImage } from '@/ai/flows/generate-image';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -10,7 +11,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Download, Loader2, Save, Wand2, Upload } from 'lucide-react';
+import { Download, Loader2, Save, Wand2, Upload, Sparkles } from 'lucide-react';
 import type React from 'react';
 import { useState, useTransition, useCallback } from 'react';
 import { toPng } from 'html-to-image';
@@ -43,7 +44,8 @@ interface CardEditorProps {
 }
 
 export function CardEditor({ cardData, setCardData, cardPreviewRef }: CardEditorProps) {
-  const [isPending, startTransition] = useTransition();
+  const [isIdeaPending, startIdeaTransition] = useTransition();
+  const [isImagePending, startImageTransition] = useTransition();
   const [isExporting, setIsExporting] = useState(false);
   const [aiTheme, setAiTheme] = useState('パワフルな神秘のドラゴン');
   const { toast } = useToast();
@@ -87,8 +89,38 @@ export function CardEditor({ cardData, setCardData, cardPreviewRef }: CardEditor
         reader.readAsDataURL(file);
     }
   };
+  
+  const handleGenerateImage = () => {
+    if (!cardData.imageHint) {
+        toast({
+            variant: 'destructive',
+            title: '画像ヒントがありません',
+            description: '画像のヒントを入力してください。',
+        });
+        return;
+    }
+    startImageTransition(async () => {
+        try {
+            const result = await generateImage({ prompt: cardData.imageHint });
+            setCardData(prev => ({
+                ...prev,
+                imageUrl: result.imageUrl,
+            }));
+            toast({
+                title: '画像が生成されました！',
+            });
+        } catch (error) {
+            console.error(error);
+            toast({
+                variant: 'destructive',
+                title: '画像の生成に失敗しました',
+                description: '時間をおいて再度お試しください。',
+            });
+        }
+    });
+  };
 
-  const handleGenerate = async () => {
+  const handleGenerateIdeas = async () => {
     if (!aiTheme.trim()) {
         toast({
             variant: 'destructive',
@@ -97,7 +129,7 @@ export function CardEditor({ cardData, setCardData, cardPreviewRef }: CardEditor
         });
         return;
     }
-    startTransition(async () => {
+    startIdeaTransition(async () => {
       try {
         const result: GenerateCardIdeasOutput = await generateCardIdeas({ theme: aiTheme });
         setCardData(prev => ({
@@ -176,8 +208,8 @@ export function CardEditor({ cardData, setCardData, cardPreviewRef }: CardEditor
       <div className="space-y-6">
         <Card>
           <CardHeader>
-            <CardTitle>1. AIで生成</CardTitle>
-            <CardDescription>テーマを説明して、AIにカードを作成させましょう。</CardDescription>
+            <CardTitle>1. AIでアイデアを作成</CardTitle>
+            <CardDescription>テーマやプロンプトを基に、カードのテキストを生成します。</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
@@ -191,9 +223,9 @@ export function CardEditor({ cardData, setCardData, cardPreviewRef }: CardEditor
             </div>
           </CardContent>
           <CardFooter>
-            <Button onClick={handleGenerate} disabled={isPending} className="w-full">
-              {isPending ? <Loader2 className="animate-spin" /> : <Wand2 />}
-              アイデアを生成
+            <Button onClick={handleGenerateIdeas} disabled={isIdeaPending} className="w-full">
+              {isIdeaPending ? <Loader2 className="animate-spin" /> : <Wand2 />}
+              テキストを生成
             </Button>
           </CardFooter>
         </Card>
@@ -201,7 +233,7 @@ export function CardEditor({ cardData, setCardData, cardPreviewRef }: CardEditor
         <Card>
           <CardHeader>
             <CardTitle>2. カードをカスタマイズ</CardTitle>
-            <CardDescription>カードの細部を調整します。</CardDescription>
+            <CardDescription>AIが生成した、またはあなた自身で考えたカードの細部を調整します。</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
@@ -250,7 +282,7 @@ export function CardEditor({ cardData, setCardData, cardPreviewRef }: CardEditor
             </div>
             <div className="space-y-2">
               <Label htmlFor="abilities">能力</Label>
-              <Textarea id="abilities" name="abilities" value={cardData.abilities} onChange={handleInputChange} rows={4} />
+              <Textarea id="abilities" name="abilities" value={cardData.abilities} onChange={handleInputChange} rows={3} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="flavorText">フレーバーテキスト</Label>
@@ -258,15 +290,31 @@ export function CardEditor({ cardData, setCardData, cardPreviewRef }: CardEditor
             </div>
           </CardContent>
         </Card>
-
+        
         <Card>
             <CardHeader>
-                <CardTitle>3. 画像をアップロード</CardTitle>
-                <CardDescription>カードアートワーク用の画像をアップロードします。</CardDescription>
+                <CardTitle>3. 画像を用意</CardTitle>
+                <CardDescription>AIで生成するか、手持ちの画像をアップロードします。</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
+                <div className="space-y-2">
+                    <Label htmlFor="imageHint">画像生成のヒント (英語)</Label>
+                    <Input id="imageHint" name="imageHint" value={cardData.imageHint} onChange={handleInputChange} placeholder="例: epic dragon, magic forest" />
+                </div>
+                <Button onClick={handleGenerateImage} disabled={isImagePending} className="w-full">
+                    {isImagePending ? <Loader2 className="animate-spin" /> : <Sparkles />}
+                    AIで画像を生成
+                </Button>
+                <div className="relative">
+                    <div className="absolute inset-0 flex items-center">
+                        <span className="w-full border-t" />
+                    </div>
+                    <div className="relative flex justify-center text-xs uppercase">
+                        <span className="bg-card px-2 text-muted-foreground">または</span>
+                    </div>
+                </div>
                 <Label htmlFor="image-upload" className="w-full">
-                    <Button asChild className="w-full cursor-pointer">
+                    <Button asChild variant="outline" className="w-full cursor-pointer">
                         <div>
                             <Upload className="mr-2" />
                             画像をアップロード
@@ -325,5 +373,3 @@ export function CardEditor({ cardData, setCardData, cardPreviewRef }: CardEditor
       </div>
   );
 }
-
-    
