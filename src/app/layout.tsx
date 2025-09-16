@@ -46,6 +46,9 @@ export default function RootLayout({
                   <Link href="/collection">マイカード</Link>
                 </Button>
                 <Button variant="outline" asChild className="ml-4">
+                  <Link href="/deck-builder">デッキ構築</Link>
+                </Button>
+                <Button variant="outline" asChild className="ml-4">
                   <Link href="/battle">対戦</Link>
                 </Button>
               </nav>
