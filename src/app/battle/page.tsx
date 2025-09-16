@@ -6,10 +6,12 @@ import type { CardData } from '@/components/card-editor';
 import { CardPreview } from '@/components/card-preview';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Swords, Heart, Shield, Dices, RotateCcw } from 'lucide-react';
+import { Swords, Heart, Shield, Dices, RotateCcw, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { generateDeck } from '@/ai/flows/generate-deck';
 
 const HAND_LIMIT = 5;
+const DECK_SIZE = 30;
 
 const starterDeck: CardData[] = Array.from({ length: 6 }).flatMap(() => [
     { id: 'starter-1', theme: 'fantasy', name: '見習い騎士', manaCost: 1, attack: 1, defense: 2, cardType: 'creature', rarity: 'common', abilities: '', flavorText: '訓練は始まったばかりだ。', imageUrl: 'https://picsum.photos/seed/s1/400/300', imageHint: 'apprentice knight' },
@@ -19,19 +21,12 @@ const starterDeck: CardData[] = Array.from({ length: 6 }).flatMap(() => [
     { id: 'starter-5', theme: 'fantasy', name: 'ファイアボール', manaCost: 2, attack: 0, defense: 0, cardType: 'spell', rarity: 'common', abilities: '相手に3ダメージ。', flavorText: '燃え上がれ！', imageUrl: 'https://picsum.photos/seed/s5/400/300', imageHint: 'fireball magic' },
 ]);
 
-const aiDeck: CardData[] = Array.from({ length: 6 }).flatMap(() => [
-    { id: 'ai-1', theme: 'sci-fi', name: '偵察ドローン', manaCost: 1, attack: 1, defense: 1, cardType: 'creature', rarity: 'common', abilities: '速攻', flavorText: '空からの目。', imageUrl: 'https://picsum.photos/seed/ai1/400/300', imageHint: 'scout drone' },
-    { id: 'ai-2', theme: 'sci-fi', name: '凶暴なエイリアン', manaCost: 2, attack: 3, defense: 2, cardType: 'creature', rarity: 'common', abilities: '', flavorText: '未知の脅威。', imageUrl: 'https://picsum.photos/seed/ai2/400/300', imageHint: 'furious alien' },
-    { id: 'ai-3', theme: 'sci-fi', name: 'エネルギーシールド', manaCost: 1, attack: 0, defense: 0, cardType: 'spell', rarity: 'common', abilities: '次の相手ターン、ダメージを2軽減。', flavorText: '防御は最大の攻撃なり。', imageUrl: 'https://picsum.photos/seed/ai3/400/300', imageHint: 'energy shield' },
-    { id: 'ai-4', theme: 'sci-fi', name: 'サイバネティック兵', manaCost: 3, attack: 4, defense: 3, cardType: 'creature', rarity: 'uncommon', abilities: '', flavorText: '機械と一体化した戦士。', imageUrl: 'https://picsum.photos/seed/ai4/400/300', imageHint: 'cybernetic soldier' },
-    { id: 'ai-5', theme: 'sci-fi', name: 'プラズマブラスト', manaCost: 2, attack: 0, defense: 0, cardType: 'spell', rarity: 'uncommon', abilities: '相手に3ダメージ。', flavorText: '全てを溶かす一撃。', imageUrl: 'https://picsum.photos/seed/ai5/400/300', imageHint: 'plasma blast' },
-]);
-
 const shuffleDeck = (deck: CardData[]) => [...deck].sort(() => Math.random() - 0.5);
 
 export default function BattlePage() {
     const [isClient, setIsClient] = useState(false);
     const { toast } = useToast();
+    const [isGeneratingDeck, setIsGeneratingDeck] = useState(true);
 
     // Game State
     const [playerDeck, setPlayerDeck] = useState<CardData[]>([]);
@@ -49,9 +44,7 @@ export default function BattlePage() {
     const [gameLog, setGameLog] = useState<string[]>([]);
     const [gameOver, setGameOver] = useState('');
 
-    // Initialize Game
-    useEffect(() => {
-        setIsClient(true);
+    const loadPlayerDeck = () => {
         try {
             const savedDeck = JSON.parse(localStorage.getItem('deck') || '[]');
             if (savedDeck.length > 0) {
@@ -61,20 +54,49 @@ export default function BattlePage() {
                 setPlayerDeck(shuffleDeck(starterDeck));
                 toast({ title: 'スターターデッキで開始します。', description: '「デッキ構築」で自分のデッキを作成できます。' });
             }
-            setOpponentDeck(shuffleDeck(aiDeck));
         } catch (error) {
-            console.error("Failed to load deck", error);
+            console.error("Failed to load player deck", error);
             setPlayerDeck(shuffleDeck(starterDeck));
-            setOpponentDeck(shuffleDeck(aiDeck));
+            toast({ variant: 'destructive', title: 'デッキの読み込みに失敗しました。'});
         }
+    };
+    
+    const createAiDeck = async () => {
+        setIsGeneratingDeck(true);
+        addToLog('AIが対戦の準備をしています...');
+        try {
+            const result = await generateDeck({ theme: 'SF', cardCount: DECK_SIZE });
+            const aiGeneratedDeck: CardData[] = result.deck.map((card, index) => ({
+                ...card,
+                id: `ai-${index}`,
+                theme: 'sci-fi',
+                imageUrl: `https://picsum.photos/seed/ai${index}/${400}/${300}`,
+            }));
+            setOpponentDeck(shuffleDeck(aiGeneratedDeck));
+            addToLog('AIのデッキが完成しました！');
+        } catch (error) {
+            console.error("Failed to generate AI deck", error);
+            toast({ variant: 'destructive', title: 'AIデッキの生成に失敗しました。'});
+            // Fallback to a default deck if generation fails
+            setOpponentDeck(shuffleDeck(starterDeck));
+        } finally {
+            setIsGeneratingDeck(false);
+        }
+    };
+
+    // Initialize Game
+    useEffect(() => {
+        setIsClient(true);
+        loadPlayerDeck();
+        createAiDeck();
     }, []);
 
     const startGame = () => {
         const newPlayerDeck = [...playerDeck];
         const newOpponentDeck = [...opponentDeck];
 
-        const initialPlayerHand = newPlayerDeck.splice(0, 5);
-        const initialOpponentHand = newOpponentDeck.splice(0, 5);
+        const initialPlayerHand = newPlayerDeck.splice(0, HAND_LIMIT);
+        const initialOpponentHand = newOpponentDeck.splice(0, HAND_LIMIT);
 
         setPlayerHand(initialPlayerHand);
         setPlayerDeck(newPlayerDeck);
@@ -91,10 +113,10 @@ export default function BattlePage() {
     };
     
     useEffect(() => {
-        if (isClient && playerDeck.length > 0 && gameLog.length === 0) {
+        if (isClient && !isGeneratingDeck && playerDeck.length > 0 && opponentDeck.length > 0 && gameLog.length <= 2) {
             startGame();
         }
-    }, [isClient, playerDeck]);
+    }, [isClient, isGeneratingDeck, playerDeck, opponentDeck]);
 
     const addToLog = (message: string) => {
         setGameLog(prev => [message, ...prev]);
@@ -125,7 +147,7 @@ export default function BattlePage() {
         } else if (card.cardType === 'spell') {
             // Simplified spell effects
             if (card.abilities.includes('ダメージ')) {
-                const damage = 3; // Simplified
+                const damage = parseInt(card.abilities.match(/(\d+)ダメージ/)?.[1] || '3', 10);
                 setOpponentHealth(prev => Math.max(0, prev - damage));
                 addToLog(`相手に${damage}ダメージ！`);
                 if (opponentHealth - damage <= 0) {
@@ -133,7 +155,7 @@ export default function BattlePage() {
                     addToLog('ゲーム終了！プレイヤーが勝利しました。');
                 }
             } else if (card.abilities.includes('回復')) {
-                const heal = 3; // Simplified
+                const heal = parseInt(card.abilities.match(/(\d+)回復/)?.[1] || '3', 10);
                 setPlayerHealth(prev => prev + heal);
                 addToLog(`プレイヤーはライフを${heal}回復。`);
             }
@@ -152,10 +174,10 @@ export default function BattlePage() {
         addToLog('相手のターン。');
         let currentOpponentMana = opponentMana;
         
-        const playableCards = opponentHand.filter(c => c.manaCost <= currentOpponentMana);
+        const playableCards = opponentHand.filter(c => c.manaCost <= currentOpponentMana).sort((a,b) => b.manaCost - a.manaCost);
 
         if (playableCards.length > 0 && opponentHand.length > 0) {
-            // AI plays the first card it can afford
+            // AI plays the most expensive card it can afford
             const cardToPlay = playableCards[0];
             const cardIndex = opponentHand.findIndex(c => c.id === cardToPlay.id);
 
@@ -179,7 +201,7 @@ export default function BattlePage() {
                 }
             } else if (cardToPlay.cardType === 'spell') {
                  if (cardToPlay.abilities.includes('ダメージ')) {
-                    const damage = 3; // Simplified
+                    const damage = parseInt(cardToPlay.abilities.match(/(\d+)ダメージ/)?.[1] || '3', 10);
                     setPlayerHealth(prev => Math.max(0, prev - damage));
                     addToLog(`プレイヤーに${damage}ダメージ！`);
                     if (playerHealth - damage <= 0) {
@@ -189,7 +211,7 @@ export default function BattlePage() {
                         return;
                     }
                 } else if (cardToPlay.abilities.includes('回復')) {
-                    const heal = 3; // Simplified
+                    const heal = parseInt(cardToPlay.abilities.match(/(\d+)回復/)?.[1] || '3', 10);
                     setOpponentHealth(prev => prev + heal);
                     addToLog(`相手はライフを${heal}回復。`);
                 }
@@ -227,6 +249,9 @@ export default function BattlePage() {
             if(drawnOpponentCard) {
                 setOpponentHand(prev => [...prev, drawnOpponentCard]);
                 setOpponentDeck(newOpponentDeck);
+                addToLog('相手はカードを1枚引いた。')
+            } else {
+                addToLog('相手の山札はもうない！')
             }
         }
         
@@ -234,13 +259,17 @@ export default function BattlePage() {
     };
     
     if (!isClient) {
-        return <main className="text-center">ロード中...</main>;
+        return <main className="text-center p-10"><Loader2 className="animate-spin inline-block mr-2" />ロード中...</main>;
     }
 
-    if (gameLog.length === 0) {
+    if (isGeneratingDeck || gameLog.length === 0) {
         return (
-            <main className="text-center">
-                <Button onClick={startGame}>ゲーム開始</Button>
+            <main className="text-center p-10">
+                <div className="flex flex-col items-center justify-center gap-4">
+                    <Loader2 className="animate-spin h-10 w-10 text-primary" />
+                    <p className="text-lg text-muted-foreground">AIが対戦の準備をしています...</p>
+                    <p className="text-sm text-muted-foreground">初回は少し時間がかかる場合があります。</p>
+                </div>
             </main>
         );
     }
@@ -274,21 +303,10 @@ export default function BattlePage() {
             {gameOver ? (
                 <Card className="p-6 my-4 max-w-2xl text-center bg-yellow-200">
                     <p className="text-2xl font-semibold mb-4">{gameOver}</p>
-                    <Button onClick={() => {
-                        setGameLog([]); // This will trigger the useEffect to restart
-                        try {
-                            const savedDeck = JSON.parse(localStorage.getItem('deck') || '[]');
-                            if (savedDeck.length > 0) {
-                                setPlayerDeck(shuffleDeck(savedDeck));
-                            } else {
-                                setPlayerDeck(shuffleDeck(starterDeck));
-                            }
-                            setOpponentDeck(shuffleDeck(aiDeck));
-                        } catch (error) {
-                            console.error("Failed to load deck", error);
-                            setPlayerDeck(shuffleDeck(starterDeck));
-                            setOpponentDeck(shuffleDeck(aiDeck));
-                        }
+                    <Button onClick={async () => {
+                        setGameLog([]); 
+                        loadPlayerDeck();
+                        await createAiDeck();
                     }}>
                         <RotateCcw className="mr-2" />
                         もう一度対戦

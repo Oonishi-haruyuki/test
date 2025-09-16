@@ -1,0 +1,76 @@
+
+'use server';
+
+/**
+ * @fileOverview This file defines a Genkit flow for generating a deck of cards based on a theme.
+ *
+ * @file         src/ai/flows/generate-deck.ts
+ * @exports    generateDeck - The main function to generate a card deck.
+ * @exports    GenerateDeckInput - The input type for the generateDeck function.
+ * @exports    GenerateDeckOutput - The output type for the generateDeck function.
+ */
+
+import {ai} from '@/ai/genkit';
+import {z} from 'genkit';
+import type { CardData, CardType, Rarity, Theme } from '@/components/card-editor';
+
+
+export const CardSchemaForGeneration = z.object({
+    name: z.string().describe('カードの名前。'),
+    manaCost: z.number().describe('マナコスト。1から5の範囲。'),
+    attack: z.number().describe('クリーチャーの攻撃力。呪文の場合は0。'),
+    defense: z.number().describe('クリーチャーの防御力。呪文の場合は0。'),
+    cardType: z.enum(['creature', 'spell']).describe('カードの種類。「クリーチャー」または「呪文」のいずれか。'),
+    rarity: z.enum(['common', 'uncommon', 'rare']).describe('カードのレアリティ。「コモン」、「アンコモン」、「レア」のいずれか。'),
+    abilities: z.string().describe('カードの能力。簡潔に記述する。'),
+    flavorText: z.string().describe('カードのフレーバーテキスト。世界観を表す短いテキスト。'),
+    imageHint: z.string().describe('カードの画像生成のためのヒント（英語、最大2単語）。'),
+});
+
+const GenerateDeckInputSchema = z.object({
+  theme: z.string().describe('デッキのテーマ（例：ファンタジー、SF）。'),
+  cardCount: z.number().describe('生成するカードの枚数。'),
+});
+export type GenerateDeckInput = z.infer<typeof GenerateDeckInputSchema>;
+
+const GenerateDeckOutputSchema = z.object({
+    deck: z.array(CardSchemaForGeneration),
+});
+export type GenerateDeckOutput = z.infer<typeof GenerateDeckOutputSchema>;
+
+export async function generateDeck(input: GenerateDeckInput): Promise<GenerateDeckOutput> {
+  return generateDeckFlow(input);
+}
+
+const generateDeckPrompt = ai.definePrompt({
+  name: 'generateDeckPrompt',
+  input: {schema: GenerateDeckInputSchema},
+  output: {schema: GenerateDeckOutputSchema},
+  prompt: `あなたは創造的なカードゲームデザイナーです。指定されたテーマと枚数に基づいて、ユニークなカードデッキを生成してください。すべて日本語で回答してください。
+
+テーマ: {{{theme}}}
+枚数: {{{cardCount}}}
+
+以下のガイドラインに従って、多様なカードを生成してください:
+- クリーチャーカードと呪文カードをバランス良く含めてください。
+- マナコスト、レアリティを多様にしてください。
+- カード名はテーマに沿った、ユニークで喚情的なものにしてください。
+- 能力はテーマに合致し、面白く、バランスが取れているべきです。
+- フレーバーテキストはカードに個性と深みを与える、短い文章にしてください。
+- imageHintはカードのイラストをイメージした英語のキーワード（2単語以内）にしてください。
+
+指定された枚数のカードを持つデッキを生成してください。
+`,
+});
+
+const generateDeckFlow = ai.defineFlow(
+  {
+    name: 'generateDeckFlow',
+    inputSchema: GenerateDeckInputSchema,
+    outputSchema: GenerateDeckOutputSchema,
+  },
+  async input => {
+    const {output} = await generateDeckPrompt(input);
+    return output!;
+  }
+);
