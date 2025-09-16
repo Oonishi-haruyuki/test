@@ -9,21 +9,23 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Swords, Heart, Shield, Dices, RotateCcw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
-const starterDeck: CardData[] = [
+const HAND_LIMIT = 5;
+
+const starterDeck: CardData[] = Array.from({ length: 6 }).flatMap(() => [
     { id: 'starter-1', theme: 'fantasy', name: '見習い騎士', manaCost: 1, attack: 1, defense: 2, cardType: 'creature', rarity: 'common', abilities: '', flavorText: '訓練は始まったばかりだ。', imageUrl: 'https://picsum.photos/seed/s1/400/300', imageHint: 'apprentice knight' },
     { id: 'starter-2', theme: 'fantasy', name: 'ゴブリンの斥候', manaCost: 1, attack: 2, defense: 1, cardType: 'creature', rarity: 'common', abilities: '', flavorText: '素早いが、脆い。', imageUrl: 'https://picsum.photos/seed/s2/400/300', imageHint: 'goblin scout' },
     { id: 'starter-3', theme: 'fantasy', name: '小回復のポーション', manaCost: 1, attack: 0, defense: 0, cardType: 'spell', rarity: 'common', abilities: 'ライフを3回復する。', flavorText: '傷を癒す一滴。', imageUrl: 'https://picsum.photos/seed/s3/400/300', imageHint: 'healing potion' },
     { id: 'starter-4', theme: 'fantasy', name: 'ベテランの重装兵', manaCost: 2, attack: 2, defense: 3, cardType: 'creature', rarity: 'common', abilities: '', flavorText: '多くの戦場を生き抜いてきた。', imageUrl: 'https://picsum.photos/seed/s4/400/300', imageHint: 'veteran soldier' },
     { id: 'starter-5', theme: 'fantasy', name: 'ファイアボール', manaCost: 2, attack: 0, defense: 0, cardType: 'spell', rarity: 'common', abilities: '相手に3ダメージ。', flavorText: '燃え上がれ！', imageUrl: 'https://picsum.photos/seed/s5/400/300', imageHint: 'fireball magic' },
-];
+]);
 
-const aiDeck: CardData[] = [
+const aiDeck: CardData[] = Array.from({ length: 6 }).flatMap(() => [
     { id: 'ai-1', theme: 'sci-fi', name: '偵察ドローン', manaCost: 1, attack: 1, defense: 1, cardType: 'creature', rarity: 'common', abilities: '速攻', flavorText: '空からの目。', imageUrl: 'https://picsum.photos/seed/ai1/400/300', imageHint: 'scout drone' },
     { id: 'ai-2', theme: 'sci-fi', name: '凶暴なエイリアン', manaCost: 2, attack: 3, defense: 2, cardType: 'creature', rarity: 'common', abilities: '', flavorText: '未知の脅威。', imageUrl: 'https://picsum.photos/seed/ai2/400/300', imageHint: 'furious alien' },
     { id: 'ai-3', theme: 'sci-fi', name: 'エネルギーシールド', manaCost: 1, attack: 0, defense: 0, cardType: 'spell', rarity: 'common', abilities: '次の相手ターン、ダメージを2軽減。', flavorText: '防御は最大の攻撃なり。', imageUrl: 'https://picsum.photos/seed/ai3/400/300', imageHint: 'energy shield' },
     { id: 'ai-4', theme: 'sci-fi', name: 'サイバネティック兵', manaCost: 3, attack: 4, defense: 3, cardType: 'creature', rarity: 'uncommon', abilities: '', flavorText: '機械と一体化した戦士。', imageUrl: 'https://picsum.photos/seed/ai4/400/300', imageHint: 'cybernetic soldier' },
     { id: 'ai-5', theme: 'sci-fi', name: 'プラズマブラスト', manaCost: 2, attack: 0, defense: 0, cardType: 'spell', rarity: 'uncommon', abilities: '相手に3ダメージ。', flavorText: '全てを溶かす一撃。', imageUrl: 'https://picsum.photos/seed/ai5/400/300', imageHint: 'plasma blast' },
-];
+]);
 
 const shuffleDeck = (deck: CardData[]) => [...deck].sort(() => Math.random() - 0.5);
 
@@ -71,8 +73,8 @@ export default function BattlePage() {
         const newPlayerDeck = [...playerDeck];
         const newOpponentDeck = [...opponentDeck];
 
-        const initialPlayerHand = newPlayerDeck.splice(0, 3);
-        const initialOpponentHand = newOpponentDeck.splice(0, 3);
+        const initialPlayerHand = newPlayerDeck.splice(0, 5);
+        const initialOpponentHand = newOpponentDeck.splice(0, 5);
 
         setPlayerHand(initialPlayerHand);
         setPlayerDeck(newPlayerDeck);
@@ -89,7 +91,7 @@ export default function BattlePage() {
     };
     
     useEffect(() => {
-        if (playerDeck.length > 0) {
+        if (isClient && playerDeck.length > 0 && gameLog.length === 0) {
             startGame();
         }
     }, [isClient, playerDeck]);
@@ -152,7 +154,7 @@ export default function BattlePage() {
         
         const playableCards = opponentHand.filter(c => c.manaCost <= currentOpponentMana);
 
-        if (playableCards.length > 0) {
+        if (playableCards.length > 0 && opponentHand.length > 0) {
             // AI plays the first card it can afford
             const cardToPlay = playableCards[0];
             const cardIndex = opponentHand.findIndex(c => c.id === cardToPlay.id);
@@ -198,37 +200,49 @@ export default function BattlePage() {
 
         // End of AI turn, switch back to player
         addToLog('相手がターンを終了。');
-        setIsPlayerTurn(true);
-        setTurn(prev => prev + 1);
-        setPlayerMana(turn + 1);
-        setOpponentMana(turn + 1);
+        const nextTurn = turn + 1;
+        setTurn(nextTurn);
+        setPlayerMana(nextTurn);
+        setOpponentMana(nextTurn);
         
-        // Player draws a card
-        const newPlayerDeck = [...playerDeck];
-        const drawnCard = newPlayerDeck.shift();
-        if (drawnCard) {
-            setPlayerHand(prev => [...prev, drawnCard]);
-            setPlayerDeck(newPlayerDeck);
-            addToLog('プレイヤーはカードを1枚引いた。');
+        // Player draws a card if hand is not full
+        if (playerHand.length < HAND_LIMIT) {
+            const newPlayerDeck = [...playerDeck];
+            const drawnCard = newPlayerDeck.shift();
+            if (drawnCard) {
+                setPlayerHand(prev => [...prev, drawnCard]);
+                setPlayerDeck(newPlayerDeck);
+                addToLog('プレイヤーはカードを1枚引いた。');
+            } else {
+                addToLog('プレイヤーの山札はもうない！');
+            }
         } else {
-            addToLog('プレイヤーの山札はもうない！');
+            addToLog('プレイヤーの手札がいっぱいでカードを引けない。')
         }
 
-        // Opponent draws a card
-        const newOpponentDeck = [...opponentDeck];
-        const drawnOpponentCard = newOpponentDeck.shift();
-        if(drawnOpponentCard) {
-            setOpponentHand(prev => [...prev, drawnOpponentCard]);
-            setOpponentDeck(newOpponentDeck);
+        // Opponent draws a card if hand is not full
+        if (opponentHand.length < HAND_LIMIT) {
+            const newOpponentDeck = [...opponentDeck];
+            const drawnOpponentCard = newOpponentDeck.shift();
+            if(drawnOpponentCard) {
+                setOpponentHand(prev => [...prev, drawnOpponentCard]);
+                setOpponentDeck(newOpponentDeck);
+            }
         }
+        
+        setIsPlayerTurn(true);
     };
     
-    if (!isClient || playerDeck.length === 0) {
+    if (!isClient) {
         return <main className="text-center">ロード中...</main>;
     }
 
     if (gameLog.length === 0) {
-        return <main className="text-center"><Button onClick={startGame}>ゲーム開始</Button></main>
+        return (
+            <main className="text-center">
+                <Button onClick={startGame}>ゲーム開始</Button>
+            </main>
+        );
     }
 
     return (
@@ -261,15 +275,20 @@ export default function BattlePage() {
                 <Card className="p-6 my-4 max-w-2xl text-center bg-yellow-200">
                     <p className="text-2xl font-semibold mb-4">{gameOver}</p>
                     <Button onClick={() => {
-                        // Reset decks before starting
-                        const savedDeck = JSON.parse(localStorage.getItem('deck') || '[]');
-                        if (savedDeck.length > 0) {
-                            setPlayerDeck(shuffleDeck(savedDeck));
-                        } else {
+                        setGameLog([]); // This will trigger the useEffect to restart
+                        try {
+                            const savedDeck = JSON.parse(localStorage.getItem('deck') || '[]');
+                            if (savedDeck.length > 0) {
+                                setPlayerDeck(shuffleDeck(savedDeck));
+                            } else {
+                                setPlayerDeck(shuffleDeck(starterDeck));
+                            }
+                            setOpponentDeck(shuffleDeck(aiDeck));
+                        } catch (error) {
+                            console.error("Failed to load deck", error);
                             setPlayerDeck(shuffleDeck(starterDeck));
+                            setOpponentDeck(shuffleDeck(aiDeck));
                         }
-                        setOpponentDeck(shuffleDeck(aiDeck));
-                        // Start game will be triggered by useEffect
                     }}>
                         <RotateCcw className="mr-2" />
                         もう一度対戦
@@ -311,6 +330,3 @@ export default function BattlePage() {
     </main>
   );
 }
-
-
-    
