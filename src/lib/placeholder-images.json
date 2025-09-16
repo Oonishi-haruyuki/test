@@ -1,3 +1,10 @@
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "card-art-1",
+      "description": "Placeholder for card artwork",
+      "imageUrl": "https://picsum.photos/seed/cardcraft/400/300",
+      "imageHint": "fantasy landscape"
+    }
+  ]
 }
