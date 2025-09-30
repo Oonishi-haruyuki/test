@@ -10,18 +10,16 @@ import { useToast } from '@/hooks/use-toast';
 import { generateGachaPull } from '@/ai/flows/generate-gacha-pull';
 import { Loader2, Save, Wand2 } from 'lucide-react';
 
-const GACHA_PULL_COUNT = 10;
-
 export default function GachaPage() {
   const [isPending, setIsPending] = useState(false);
   const [pulledCards, setPulledCards] = useState<CardData[]>([]);
   const { toast } = useToast();
 
-  const handlePullGacha = async () => {
+  const handlePullGacha = async (pullCount: number) => {
     setIsPending(true);
     setPulledCards([]);
     try {
-      const result = await generateGachaPull({ count: GACHA_PULL_COUNT });
+      const result = await generateGachaPull({ count: pullCount });
       const newCards: CardData[] = result.cards.map((card, index) => ({
         ...card,
         id: self.crypto.randomUUID(),
@@ -31,7 +29,7 @@ export default function GachaPage() {
       setPulledCards(newCards);
       toast({
         title: 'ガチャを引きました！',
-        description: `${GACHA_PULL_COUNT}枚のカードを獲得しました。`,
+        description: `${pullCount}枚のカードを獲得しました。`,
       });
     } catch (error) {
       console.error('Gacha pull failed', error);
@@ -73,8 +71,12 @@ export default function GachaPage() {
           <CardTitle className="text-3xl">カードガチャ</CardTitle>
           <CardDescription>新しいカードを手に入れよう！</CardDescription>
         </CardHeader>
-        <CardContent>
-          <Button onClick={handlePullGacha} disabled={isPending} size="lg">
+        <CardContent className="flex justify-center gap-4">
+          <Button onClick={() => handlePullGacha(1)} disabled={isPending}>
+            {isPending ? <Loader2 className="animate-spin" /> : <Wand2 />}
+            1回ガチャを引く
+          </Button>
+          <Button onClick={() => handlePullGacha(10)} disabled={isPending} size="lg">
             {isPending ? <Loader2 className="animate-spin" /> : <Wand2 />}
             10連ガチャを引く
           </Button>

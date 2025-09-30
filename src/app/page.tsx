@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useRef } from "react";
@@ -11,14 +12,14 @@ const defaultImage = placeholderImages.find(p => p.id === 'card-art-1');
 export default function Home() {
   const [cardData, setCardData] = useState<CardData>({
     theme: "fantasy",
-    name: "Mystic Dragon",
+    name: "ミスティックドラゴン",
     manaCost: 5,
     attack: 4,
     defense: 4,
     cardType: "creature",
     rarity: "rare",
-    abilities: "Flying\nWhen this creature enters the battlefield, draw a card.",
-    flavorText: "Its scales shimmer with the secrets of the cosmos.",
+    abilities: "飛行\nこのクリーチャーが戦場に出たとき、カードを1枚引く。",
+    flavorText: "その鱗は宇宙の秘密を映してきらめく。",
     imageUrl: defaultImage?.imageUrl || "https://picsum.photos/seed/cardcraft/400/300",
     imageHint: defaultImage?.imageHint || "fantasy landscape",
   });
