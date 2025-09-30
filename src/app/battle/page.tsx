@@ -636,16 +636,9 @@ export default function BattlePage() {
                 </Card>
                 <div className="flex gap-2 min-h-[180px]">
                     {opponentHand.map((card, i) => (
-                        <Dialog key={card.id ? card.id + i.toString() : i}>
-                            <DialogTrigger asChild>
-                                <div className="w-24 cursor-pointer">
-                                   <Card className="h-full flex items-center justify-center text-center p-2 bg-slate-700 text-white">裏向きのカード</Card>
-                                </div>
-                            </DialogTrigger>
-                            <DialogContent className="max-w-md">
-                                <CardPreview {...card} />
-                            </DialogContent>
-                        </Dialog>
+                        <div key={card.id ? card.id + i.toString() : i} className="w-24">
+                           <Card className="h-full flex items-center justify-center text-center p-2 bg-slate-700 text-white">裏向きのカード</Card>
+                        </div>
                     ))}
                 </div>
                 <Card className="p-2 text-center w-28">
@@ -717,5 +710,7 @@ export default function BattlePage() {
     </main>
   );
 }
+
+    
 
     
