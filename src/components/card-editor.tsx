@@ -270,11 +270,11 @@ export function CardEditor({ cardData, setCardData, cardPreviewRef }: CardEditor
             <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="manaCost">マナ</Label>
-                <Input id="manaCost" name="manaCost" type="number" value={cardData.manaCost} onChange={handleInputChange} min="0" />
+                <Input id="manaCost" name="manaCost" type="number" value={cardData.manaCost} onChange={handleInputChange} min="0" max="10" />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="attack">攻撃力</Label>
-                <Input id="attack" name="attack" type="number" value={cardData.attack} onChange={handleInputChange} min="0" />
+                <Input id="attack" name="attack" type="number" value={cardData.attack} onChange={handleInputChange} min="0" max="12" />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="defense">防御力</Label>

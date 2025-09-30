@@ -12,6 +12,7 @@ import { generateDeck } from '@/ai/flows/generate-deck';
 
 const HAND_LIMIT = 5;
 const DECK_SIZE = 20;
+const MAX_MANA = 10;
 
 const starterDeck: CardData[] = Array.from({ length: 4 }).flatMap(() => [
     { id: 'starter-1', theme: 'fantasy', name: '見習い騎士', manaCost: 1, attack: 1, defense: 2, cardType: 'creature', rarity: 'common', abilities: '', flavorText: '訓練は始まったばかりだ。', imageUrl: 'https://picsum.photos/seed/s1/400/300', imageHint: 'apprentice knight' },
@@ -204,8 +205,8 @@ export default function BattlePage() {
                 effectApplied = true;
             }
             if (abilities.includes('マナ')) {
-                if (isPlayer) setPlayerMaxMana(prev => prev + 1);
-                else setOpponentMaxMana(prev => prev + 1);
+                if (isPlayer) setPlayerMaxMana(prev => Math.min(MAX_MANA, prev + 1));
+                else setOpponentMaxMana(prev => Math.min(MAX_MANA, prev + 1));
                 addToLog(`「${card.name}」の効果で${Caster}の最大マナが増えた！`);
                 effectApplied = true;
             }
@@ -301,7 +302,7 @@ export default function BattlePage() {
 
         const nextTurn = turn + 1;
         setTurn(nextTurn);
-        const newOpponentMaxMana = opponentMaxMana + 1;
+        const newOpponentMaxMana = Math.min(MAX_MANA, opponentMaxMana + 1);
         setOpponentMaxMana(newOpponentMaxMana);
         setOpponentMana(newOpponentMaxMana);
 
@@ -349,7 +350,7 @@ export default function BattlePage() {
             addToLog('相手がターンを終了。');
             
             // Start of Player's turn
-            const newPlayerMaxMana = playerMaxMana + 1;
+            const newPlayerMaxMana = Math.min(MAX_MANA, playerMaxMana + 1);
             setPlayerMaxMana(newPlayerMaxMana);
             setPlayerMana(newPlayerMaxMana);
             addToLog(`--- ターン ${nextTurn}: あなたのターン ---`);
