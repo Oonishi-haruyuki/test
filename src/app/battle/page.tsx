@@ -11,7 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { generateDeck } from '@/ai/flows/generate-deck';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { doc, onSnapshot, updateDoc, getDoc, runTransaction } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from '@/components/auth-provider';
@@ -77,6 +77,7 @@ const shuffleDeck = (deck: CardData[]) => [...deck].sort(() => Math.random() - 0
 
 export default function BattlePage() {
     const searchParams = useSearchParams();
+    const router = useRouter();
     const roomId = searchParams.get('roomId');
     const { user } = useAuth();
     const [playerNumber, setPlayerNumber] = useState<1 | 2 | null>(null);
