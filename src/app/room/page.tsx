@@ -18,7 +18,7 @@ export default function RoomPage() {
 
   const createRoom = async () => {
     if (!user) {
-      toast({ variant: "destructive", title: "ログインが必要です。" });
+      // toast({ variant: "destructive", title: "ログインが必要です。" });
       return;
     }
     try {
@@ -43,7 +43,7 @@ export default function RoomPage() {
         return;
     }
     if (!user) {
-      toast({ variant: "destructive", title: "ログインが必要です。" });
+      // toast({ variant: "destructive", title: "ログインが必要です。" });
       return;
     }
 
