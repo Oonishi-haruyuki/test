@@ -36,6 +36,7 @@ export interface CardData {
   imageUrl: string;
   imageHint: string;
   frameImageUrl?: string;
+  canAttack?: boolean;
 }
 
 interface CardEditorProps {
@@ -278,7 +279,7 @@ export function CardEditor({ cardData, setCardData, cardPreviewRef }: CardEditor
               </div>
               <div className="space-y-2">
                 <Label htmlFor="defense">防御力</Label>
-                <Input id="defense" name="defense" type="number" value={cardData.defense} onChange={handleInputChange} min="0" />
+                <Input id="defense" name="defense" type="number" value={cardData.defense} onChange={handleInputChange} min="0" max="12" />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">

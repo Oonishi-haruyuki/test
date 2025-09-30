@@ -9,10 +9,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Swords, Heart, Shield, Dices, RotateCcw, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { generateDeck } from '@/ai/flows/generate-deck';
+import { cn } from '@/lib/utils';
 
 const HAND_LIMIT = 5;
 const DECK_SIZE = 20;
 const MAX_MANA = 10;
+const BOARD_LIMIT = 5;
+
 
 const starterDeck: CardData[] = Array.from({ length: 4 }).flatMap(() => [
     { id: 'starter-1', theme: 'fantasy', name: '見習い騎士', manaCost: 1, attack: 1, defense: 2, cardType: 'creature', rarity: 'common', abilities: '', flavorText: '訓練は始まったばかりだ。', imageUrl: 'https://picsum.photos/seed/s1/400/300', imageHint: 'apprentice knight' },
@@ -32,12 +35,14 @@ export default function BattlePage() {
     // Game State
     const [playerDeck, setPlayerDeck] = useState<CardData[]>([]);
     const [playerHand, setPlayerHand] = useState<CardData[]>([]);
+    const [playerBoard, setPlayerBoard] = useState<CardData[]>([]);
     const [playerHealth, setPlayerHealth] = useState(20);
     const [playerMana, setPlayerMana] = useState(1);
     const [playerMaxMana, setPlayerMaxMana] = useState(1);
     
     const [opponentDeck, setOpponentDeck] = useState<CardData[]>([]);
     const [opponentHand, setOpponentHand] = useState<CardData[]>([]);
+    const [opponentBoard, setOpponentBoard] = useState<CardData[]>([]);
     const [opponentHealth, setOpponentHealth] = useState(20);
     const [opponentMana, setOpponentMana] = useState(1);
     const [opponentMaxMana, setOpponentMaxMana] = useState(1);
@@ -46,6 +51,7 @@ export default function BattlePage() {
     const [isPlayerTurn, setIsPlayerTurn] = useState(true);
     const [gameLog, setGameLog] = useState<string[]>([]);
     const [gameOver, setGameOver] = useState('');
+    const [gamePhase, setGamePhase] = useState<'main' | 'attack'>('main');
 
     const loadPlayerDeck = () => {
         try {
@@ -102,8 +108,12 @@ export default function BattlePage() {
 
         setPlayerHand(initialPlayerHand);
         setPlayerDeck(newPlayerDeck);
+        setPlayerBoard([]);
+
         setOpponentHand(initialOpponentHand);
         setOpponentDeck(newOpponentDeck);
+        setOpponentBoard([]);
+
         setGameLog(['ゲーム開始！']);
         setGameOver('');
         setPlayerHealth(20);
@@ -114,6 +124,7 @@ export default function BattlePage() {
         setPlayerMana(1);
         setOpponentMaxMana(1);
         setOpponentMana(1);
+        setGamePhase('main');
         addToLog(`--- ターン ${turn}: あなたのターン ---`);
     };
     
@@ -159,22 +170,10 @@ export default function BattlePage() {
         }
     }
 
-    const applyCardEffect = (card: CardData, isPlayer: boolean) => {
+    const applySpellEffect = (card: CardData, isPlayer: boolean) => {
         const Caster = isPlayer ? 'あなた' : '相手';
         const Target = isPlayer ? '相手' : 'あなた';
-
         let effectApplied = false;
-
-        if (card.cardType === 'creature' && card.attack > 0) {
-            const damage = card.attack;
-            if (isPlayer) {
-                setOpponentHealth(prev => Math.max(0, prev - damage));
-            } else {
-                setPlayerHealth(prev => Math.max(0, prev - damage));
-            }
-            addToLog(`「${card.name}」が${Target}に${damage}ダメージ！`);
-            effectApplied = true;
-        }
 
         if (card.abilities) {
             const abilities = card.abilities.toLowerCase();
@@ -211,8 +210,7 @@ export default function BattlePage() {
                 effectApplied = true;
             }
         }
-        
-        if (!effectApplied && card.cardType !== 'creature') {
+        if (!effectApplied) {
             addToLog(`「${card.name}」は何の効果ももたらさなかった。`);
         }
     };
@@ -229,72 +227,86 @@ export default function BattlePage() {
     }, [playerHealth, opponentHealth, gameOver]);
 
     const playCard = (card: CardData, cardIndex: number) => {
-        if (!isPlayerTurn || gameOver) return;
+        if (!isPlayerTurn || gameOver || gamePhase !== 'main') return;
         if (playerMana < card.manaCost) {
             toast({ variant: 'destructive', title: 'マナが足りません！'});
             return;
         }
 
-        setPlayerMana(prev => prev - card.manaCost);
         const newHand = [...playerHand];
         newHand.splice(cardIndex, 1);
+        
+        setPlayerMana(prev => prev - card.manaCost);
         setPlayerHand(newHand);
-
         addToLog(`あなたが「${card.name}」をプレイ！`);
-        applyCardEffect(card, true);
+
+        if (card.cardType === 'creature') {
+            if (playerBoard.length >= BOARD_LIMIT) {
+                toast({ variant: 'destructive', title: '場が上限に達しています。'});
+                setPlayerHand(prev => [...prev, card]); // Return card to hand
+                setPlayerMana(prev => prev + card.manaCost); // Return mana
+                return;
+            }
+            setPlayerBoard(prev => [...prev, {...card, canAttack: false}]); // Summoning sickness
+        } else { // Spell
+            applySpellEffect(card, true);
+        }
     };
+
+    const handleAttackPhase = () => {
+        if (!isPlayerTurn || gameOver || gamePhase !== 'main') return;
+        setGamePhase('attack');
+        addToLog('攻撃フェーズへ！');
+        
+        let totalDamage = 0;
+        playerBoard.forEach(c => {
+            if (c.canAttack) {
+                totalDamage += c.attack;
+                addToLog(`あなたの「${c.name}」(${c.attack}/${c.defense})が相手に攻撃！`);
+            }
+        });
+
+        if (totalDamage > 0) {
+            setOpponentHealth(prev => Math.max(0, prev - totalDamage));
+            addToLog(`相手は合計${totalDamage}のダメージを受けた！`);
+        } else {
+            addToLog('攻撃できるクリーチャーがいませんでした。');
+        }
+
+        setTimeout(endTurn, 1000);
+    }
 
     const endTurn = () => {
         if (!isPlayerTurn || gameOver) return;
         addToLog('あなたがターンを終了。');
         setIsPlayerTurn(false);
+        setGamePhase('main');
         setTimeout(aiTurn, 1000);
     };
     
-    const aiChooseCard = (hand: CardData[], mana: number, myHealth: number, playerHealth: number): CardData | null => {
+    const aiChooseCard = (hand: CardData[], mana: number, myBoard: CardData[]): CardData | null => {
         const playableCards = hand.filter(c => c.manaCost <= mana);
         if (playableCards.length === 0) return null;
 
-        let bestCard: CardData | null = null;
-        let bestScore = -1;
-
-        for (const card of playableCards) {
-            let score = 0;
-            const abilities = card.abilities.toLowerCase();
-            
-            // Calculate potential damage
-            let damage = card.cardType === 'creature' ? card.attack : 0;
-            if (abilities.includes('ダメージ')) {
-                damage += parseInt(abilities.match(/(\d+)ダメージ/)?.[1] || '0', 10);
-            }
-            if (playerHealth - damage <= 0) {
-                score += 1000; // Winning move
-            }
-            score += damage * 1.5;
-
-            // Calculate potential healing
-            if (abilities.includes('回復')) {
-                const heal = parseInt(abilities.match(/(\d+)回復/)?.[1] || '0', 10);
-                if (myHealth < 10) {
-                    score += heal * 2; // Prioritize healing when low
-                } else {
-                    score += heal;
-                }
-            }
-
-            // Card draw and mana ramp are good
-            if (abilities.includes('カードを引く')) score += 5;
-            if (abilities.includes('マナ')) score += 7;
-
-            // Factor in mana efficiency
-            score -= card.manaCost * 0.5;
-
-            if (score > bestScore) {
-                bestScore = score;
-                bestCard = card;
-            }
+        // Prioritize playing creatures if board is not full
+        const creatureCards = playableCards.filter(c => c.cardType === 'creature');
+        if (creatureCards.length > 0 && myBoard.length < BOARD_LIMIT) {
+            // Find best creature to play (e.g., highest stats for cost)
+            return creatureCards.reduce((best, current) => {
+                const bestScore = (best.attack + best.defense) / (best.manaCost + 1);
+                const currentScore = (current.attack + current.defense) / (current.manaCost + 1);
+                return currentScore > bestScore ? current : best;
+            });
         }
-        return bestCard;
+        
+        // If can't play creature, find best spell
+        const spellCards = playableCards.filter(c => c.cardType !== 'creature');
+        if (spellCards.length > 0) {
+            // Simple logic: just play the highest cost spell
+            return spellCards.reduce((a, b) => a.manaCost > b.manaCost ? a : b);
+        }
+
+        return null;
     }
 
     const aiTurn = () => {
@@ -302,45 +314,78 @@ export default function BattlePage() {
 
         const nextTurn = turn + 1;
         setTurn(nextTurn);
+        addToLog(`--- ターン ${nextTurn}: 相手のターン ---`);
+
+        // Start of AI's turn
         const newOpponentMaxMana = Math.min(MAX_MANA, opponentMaxMana + 1);
         setOpponentMaxMana(newOpponentMaxMana);
         setOpponentMana(newOpponentMaxMana);
-
-        addToLog(`--- ターン ${nextTurn}: 相手のターン ---`);
+        setOpponentBoard(prev => prev.map(c => ({ ...c, canAttack: true }))); // Creatures can now attack
+        
         drawCard(false);
 
         // AI plays cards
         let currentOpponentMana = newOpponentMaxMana;
-        let handChanged = true;
+        let playedCard = true; // Loop controller
+        const currentOpponentHand = [...opponentHand];
+        const currentOpponentBoard = [...opponentBoard];
 
-        const playLoop = () => {
-            if (!handChanged || gameOver) {
-                endAiTurn();
+        const playCardLoop = () => {
+            if (!playedCard) {
+                // Done playing cards, move to attack phase
+                setTimeout(aiAttackPhase, 1000);
                 return;
             }
-
-            handChanged = false;
-            const cardToPlay = aiChooseCard(opponentHand, currentOpponentMana, opponentHealth, playerHealth);
+            
+            playedCard = false;
+            const cardToPlay = aiChooseCard(opponentHand, currentOpponentMana, opponentBoard);
 
             if (cardToPlay) {
+                playedCard = true;
                 const cardIndex = opponentHand.findIndex(c => c.id === cardToPlay.id);
                 
                 currentOpponentMana -= cardToPlay.manaCost;
-                setOpponentMana(currentOpponentMana);
-
+                setOpponentMana(prev => prev - cardToPlay.manaCost);
+                
                 const newOpponentHand = [...opponentHand];
                 newOpponentHand.splice(cardIndex, 1);
                 setOpponentHand(newOpponentHand);
                 
                 addToLog(`相手が「${cardToPlay.name}」をプレイ！`);
-                applyCardEffect(cardToPlay, false);
 
-                handChanged = true;
-                setTimeout(playLoop, 1000); // Play next card after a delay
+                if (cardToPlay.cardType === 'creature') {
+                    setOpponentBoard(prev => [...prev, {...cardToPlay, canAttack: false}]);
+                } else {
+                    applySpellEffect(cardToPlay, false);
+                }
+                setTimeout(playCardLoop, 1000);
             } else {
-                endAiTurn();
+                 // No card to play, move to attack phase
+                 setTimeout(aiAttackPhase, 1000);
             }
         };
+        
+        const aiAttackPhase = () => {
+            if (gameOver) { setIsPlayerTurn(true); return; }
+
+            addToLog('相手の攻撃フェーズ！');
+            let totalDamage = 0;
+            opponentBoard.forEach(c => {
+                if (c.canAttack) {
+                    totalDamage += c.attack;
+                    addToLog(`相手の「${c.name}」(${c.attack}/${c.defense})があなたに攻撃！`);
+                }
+            });
+    
+            if (totalDamage > 0) {
+                setPlayerHealth(prev => Math.max(0, prev - totalDamage));
+                addToLog(`あなたは合計${totalDamage}のダメージを受けた！`);
+            } else {
+                addToLog('相手は攻撃してこなかった。');
+            }
+
+            setTimeout(endAiTurn, 1000);
+        }
 
         const endAiTurn = () => {
              if (gameOver) {
@@ -353,12 +398,15 @@ export default function BattlePage() {
             const newPlayerMaxMana = Math.min(MAX_MANA, playerMaxMana + 1);
             setPlayerMaxMana(newPlayerMaxMana);
             setPlayerMana(newPlayerMaxMana);
+            setPlayerBoard(prev => prev.map(c => ({ ...c, canAttack: true }))); // Creatures can now attack
+            setIsPlayerTurn(true);
+            setGamePhase('main');
+            
             addToLog(`--- ターン ${nextTurn}: あなたのターン ---`);
             drawCard(true);
-            setIsPlayerTurn(true);
         }
         
-        setTimeout(playLoop, 1000);
+        setTimeout(playCardLoop, 1000);
     };
     
     if (!isClient) {
@@ -378,7 +426,7 @@ export default function BattlePage() {
     }
 
     return (
-    <main className="flex flex-col gap-4">
+    <main className="flex flex-col gap-2">
         {/* Opponent's Area */}
         <div className="flex flex-col items-center gap-2">
             <div className="flex items-center gap-4">
@@ -399,10 +447,18 @@ export default function BattlePage() {
                      <p className="text-2xl">{opponentDeck.length}</p>
                 </Card>
             </div>
+            {/* Opponent's Board */}
+            <div className="flex items-center justify-center gap-2 bg-black/10 p-2 rounded-lg min-h-[160px] w-full max-w-4xl">
+                {opponentBoard.map((card, i) => (
+                    <div key={i} className="w-[110px]">
+                        <CardPreview {...card} />
+                    </div>
+                ))}
+            </div>
         </div>
 
         {/* Game Log / Result */}
-        <div className="flex justify-center">
+        <div className="flex justify-center my-2">
             {gameOver ? (
                 <Card className="p-6 my-4 max-w-2xl text-center bg-yellow-200">
                     <p className="text-2xl font-semibold mb-4">{gameOver}</p>
@@ -416,15 +472,23 @@ export default function BattlePage() {
                     </Button>
                 </Card>
             ) : (
-                <Card className="p-2 my-2 w-full max-w-lg h-24 overflow-y-auto text-sm">
+                <Card className="p-2 w-full max-w-lg h-24 overflow-y-auto text-sm">
                    {gameLog.map((log, i) => <p key={i}>{log}</p>)}
                 </Card>
             )}
         </div>
-
+        
+        {/* Player's Board */}
+         <div className="flex items-center justify-center gap-2 bg-black/10 p-2 rounded-lg min-h-[160px] w-full max-w-4xl mx-auto">
+            {playerBoard.map((card, i) => (
+                <div key={i} className={cn("w-[110px]", card.canAttack && "border-4 border-green-500 rounded-2xl")}>
+                    <CardPreview {...card} />
+                </div>
+            ))}
+        </div>
 
         {/* Player's Area */}
-        <div className="flex flex-col items-center gap-2">
+        <div className="flex flex-col items-center gap-2 mt-2">
             <div className="flex items-center gap-4">
                 <Card className="p-2 text-center w-40">
                     <p className="font-bold">あなた</p>
@@ -444,8 +508,8 @@ export default function BattlePage() {
                      <p className="text-2xl">{playerDeck.length}</p>
                 </Card>
             </div>
-            <Button onClick={endTurn} size="lg" disabled={!isPlayerTurn || !!gameOver} className="mt-4">
-                ターン終了
+            <Button onClick={handleAttackPhase} size="lg" disabled={!isPlayerTurn || !!gameOver || gamePhase !== 'main'} className="mt-4">
+                攻撃フェーズへ
             </Button>
         </div>
     </main>
