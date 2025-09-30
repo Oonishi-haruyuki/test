@@ -5,8 +5,8 @@ import { useState, useEffect } from 'react';
 import type { CardData } from '@/components/card-editor';
 import { CardPreview } from '@/components/card-preview';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Swords, Heart, Shield, Dices, RotateCcw, Loader2, BrainCircuit, Bot } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Swords, Heart, Shield, Dices, RotateCcw, Loader2, BrainCircuit, Bot, Wand2, Group, FileJson } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { generateDeck } from '@/ai/flows/generate-deck';
 import { cn } from '@/lib/utils';
@@ -17,9 +17,9 @@ const MAX_MANA = 10;
 const BOARD_LIMIT = 5;
 
 type Difficulty = 'beginner' | 'advanced';
+type DeckChoice = 'my-deck' | 'starter-goblin' | 'starter-elemental' | 'ai-fantasy' | 'ai-scifi';
 
-const starterDeck: CardData[] = [
-    // Creatures (12)
+const goblinDeck: CardData[] = [
     { id: 'starter-gob-1', theme: 'fantasy', name: 'ゴブリンの突撃兵', manaCost: 1, attack: 2, defense: 1, cardType: 'creature', rarity: 'common', abilities: '', flavorText: '考えるより先に足が動く。', imageUrl: 'https://picsum.photos/seed/sg1/400/300', imageHint: 'goblin warrior' },
     { id: 'starter-gob-1-2', theme: 'fantasy', name: 'ゴブリンの突撃兵', manaCost: 1, attack: 2, defense: 1, cardType: 'creature', rarity: 'common', abilities: '', flavorText: '考えるより先に足が動く。', imageUrl: 'https://picsum.photos/seed/sg1/400/300', imageHint: 'goblin warrior' },
     { id: 'starter-gob-1-3', theme: 'fantasy', name: 'ゴブリンの突撃兵', manaCost: 1, attack: 2, defense: 1, cardType: 'creature', rarity: 'common', abilities: '', flavorText: '考えるより先に足が動く。', imageUrl: 'https://picsum.photos/seed/sg1/400/300', imageHint: 'goblin warrior' },
@@ -32,7 +32,6 @@ const starterDeck: CardData[] = [
     { id: 'starter-ogre-1-2', theme: 'fantasy', name: '怒れるオーガ', manaCost: 5, attack: 5, defense: 5, cardType: 'creature', rarity: 'rare', abilities: '', flavorText: 'ゴブリンたちに無理やり駆り出された。機嫌が悪い。', imageUrl: 'https://picsum.photos/seed/sg5/400/300', imageHint: 'angry ogre' },
     { id: 'starter-shaman-1', theme: 'fantasy', name: 'ゴブリンの呪術師', manaCost: 2, attack: 1, defense: 1, cardType: 'creature', rarity: 'uncommon', abilities: '次の自分のターンの最大マナを+1する。', flavorText: '怪しげな儀式で、大地の力を呼び覚ます。', imageUrl: 'https://picsum.photos/seed/sg6/400/300', imageHint: 'goblin shaman' },
     { id: 'starter-shaman-1-2', theme: 'fantasy', name: 'ゴブリンの呪術師', manaCost: 2, attack: 1, defense: 1, cardType: 'creature', rarity: 'uncommon', abilities: '次の自分のターンの最大マナを+1する。', flavorText: '怪しげな儀式で、大地の力を呼び覚ます。', imageUrl: 'https://picsum.photos/seed/sg6/400/300', imageHint: 'goblin shaman' },
-    // Spells (8)
     { id: 'starter-spell-1', theme: 'fantasy', name: 'ゴブリンの応援', manaCost: 1, attack: 0, defense: 0, cardType: 'spell', rarity: 'common', abilities: 'クリーチャー1体に+2/+1の修正を与える。', flavorText: '「イケー！ヤッちまえー！」', imageUrl: 'https://picsum.photos/seed/ss1/400/300', imageHint: 'goblin cheer' },
     { id: 'starter-spell-1-2', theme: 'fantasy', name: 'ゴブリンの応援', manaCost: 1, attack: 0, defense: 0, cardType: 'spell', rarity: 'common', abilities: 'クリーチャー1体に+2/+1の修正を与える。', flavorText: '「イケー！ヤッちまえー！」', imageUrl: 'https://picsum.photos/seed/ss1/400/300', imageHint: 'goblin cheer' },
     { id: 'starter-spell-2', theme: 'fantasy', name: '捨て身の突撃', manaCost: 2, attack: 0, defense: 0, cardType: 'spell', rarity: 'common', abilities: 'クリーチャー1体に+3/+0の修正を与え、ターン終了時にそれを破壊する。', flavorText: '栄光か、死か！', imageUrl: 'https://picsum.photos/seed/ss2/400/300', imageHint: 'desperate charge' },
@@ -43,6 +42,31 @@ const starterDeck: CardData[] = [
     { id: 'starter-spell-5', theme: 'fantasy', name: '大地の怒り', manaCost: 4, attack: 0, defense: 0, cardType: 'spell', rarity: 'rare', abilities: '相手に5ダメージ。', flavorText: '大地が、怒りに震える。', imageUrl: 'https://picsum.photos/seed/ss5/400/300', imageHint: 'earth fury' },
 ];
 
+const elementalDeck: CardData[] = [
+    // Creatures (12)
+    { id: 'starter-elem-1', theme: 'fantasy', name: '炎の精霊', manaCost: 1, attack: 1, defense: 1, cardType: 'creature', rarity: 'common', abilities: '速攻', flavorText: '燃え盛る意志の現れ。', imageUrl: 'https://picsum.photos/seed/se1/400/300', imageHint: 'fire elemental' },
+    { id: 'starter-elem-1-2', theme: 'fantasy', name: '炎の精霊', manaCost: 1, attack: 1, defense: 1, cardType: 'creature', rarity: 'common', abilities: '速攻', flavorText: '燃え盛る意志の現れ。', imageUrl: 'https://picsum.photos/seed/se1/400/300', imageHint: 'fire elemental' },
+    { id: 'starter-elem-2', theme: 'fantasy', name: '水の精霊', manaCost: 2, attack: 1, defense: 3, cardType: 'creature', rarity: 'common', abilities: 'カードを1枚引く。', flavorText: '流れる知識の運び手。', imageUrl: 'https://picsum.photos/seed/se2/400/300', imageHint: 'water elemental' },
+    { id: 'starter-elem-2-2', theme: 'fantasy', name: '水の精霊', manaCost: 2, attack: 1, defense: 3, cardType: 'creature', rarity: 'common', abilities: 'カードを1枚引く。', flavorText: '流れる知識の運び手。', imageUrl: 'https://picsum.photos/seed/se2/400/300', imageHint: 'water elemental' },
+    { id: 'starter-elem-3', theme: 'fantasy', name: '風の精霊', manaCost: 3, attack: 2, defense: 2, cardType: 'creature', rarity: 'common', abilities: '飛行', flavorText: '自由な翼で空を舞う。', imageUrl: 'https://picsum.photos/seed/se3/400/300', imageHint: 'wind elemental' },
+    { id: 'starter-elem-3-2', theme: 'fantasy', name: '風の精霊', manaCost: 3, attack: 2, defense: 2, cardType: 'creature', rarity: 'common', abilities: '飛行', flavorText: '自由な翼で空を舞う。', imageUrl: 'https://picsum.photos/seed/se3/400/300', imageHint: 'wind elemental' },
+    { id: 'starter-elem-4', theme: 'fantasy', name: '大地の精霊', manaCost: 4, attack: 4, defense: 5, cardType: 'creature', rarity: 'uncommon', abilities: 'トランプル', flavorText: 'その一歩が大地を揺らす。', imageUrl: 'https://picsum.photos/seed/se4/400/300', imageHint: 'earth elemental' },
+    { id: 'starter-elem-4-2', theme: 'fantasy', name: '大地の精霊', manaCost: 4, attack: 4, defense: 5, cardType: 'creature', rarity: 'uncommon', abilities: 'トランプル', flavorText: 'その一歩が大地を揺らす。', imageUrl: 'https://picsum.photos/seed/se4/400/300', imageHint: 'earth elemental' },
+    { id: 'starter-elem-5', theme: 'fantasy', name: '雷の精霊', manaCost: 5, attack: 5, defense: 4, cardType: 'creature', rarity: 'rare', abilities: '速攻、飛行', flavorText: '空を引き裂く稲妻の化身。', imageUrl: 'https://picsum.photos/seed/se5/400/300', imageHint: 'lightning elemental' },
+    { id: 'starter-elem-6', theme: 'fantasy', name: '氷の精霊', manaCost: 3, attack: 2, defense: 4, cardType: 'creature', rarity: 'uncommon', abilities: '相手クリーチャー1体をタップする。', flavorText: '万物を凍てつかせる冷気。', imageUrl: 'https://picsum.photos/seed/se6/400/300', imageHint: 'ice elemental' },
+    { id: 'starter-elem-7', theme: 'fantasy', name: 'マグマの巨像', manaCost: 6, attack: 7, defense: 6, cardType: 'creature', rarity: 'rare', abilities: '', flavorText: '溶岩の中から生まれし巨人。', imageUrl: 'https://picsum.photos/seed/se7/400/300', imageHint: 'magma golem' },
+    { id: 'starter-elem-7-2', theme: 'fantasy', name: 'マグマの巨像', manaCost: 6, attack: 7, defense: 6, cardType: 'creature', rarity: 'rare', abilities: '', flavorText: '溶岩の中から生まれし巨人。', imageUrl: 'https://picsum.photos/seed/se7/400/300', imageHint: 'magma golem' },
+    // Spells (8)
+    { id: 'starter-espell-1', theme: 'fantasy', name: 'エレメンタル・チャージ', manaCost: 1, attack: 0, defense: 0, cardType: 'spell', rarity: 'common', abilities: 'クリーチャー1体に+1/+1の修正を与える。カードを1枚引く。', flavorText: '自然の力が、その身に宿る。', imageUrl: 'https://picsum.photos/seed/ses1/400/300', imageHint: 'elemental power' },
+    { id: 'starter-espell-1-2', theme: 'fantasy', name: 'エレメンタル・チャージ', manaCost: 1, attack: 0, defense: 0, cardType: 'spell', rarity: 'common', abilities: 'クリーチャー1体に+1/+1の修正を与える。カードを1枚引く。', flavorText: '自然の力が、その身に宿る。', imageUrl: 'https://picsum.photos/seed/ses1/400/300', imageHint: 'elemental power' },
+    { id: 'starter-espell-2', theme: 'fantasy', name: '自然の怒り', manaCost: 2, attack: 0, defense: 0, cardType: 'spell', rarity: 'common', abilities: '飛行を持たないクリーチャー1体を破壊する。', flavorText: '大地は裏切り者を許さない。', imageUrl: 'https://picsum.photos/seed/ses2/400/300', imageHint: 'nature wrath' },
+    { id: 'starter-espell-3', theme: 'fantasy', name: '召喚の儀式', manaCost: 3, attack: 0, defense: 0, cardType: 'spell', rarity: 'uncommon', abilities: 'あなたの山札からコスト3以下のクリーチャーカードを1枚探し、戦場に出す。', flavorText: '古の呼び声に応えよ。', imageUrl: 'https://picsum.photos/seed/ses3/400/300', imageHint: 'summoning ritual' },
+    { id: 'starter-espell-4', theme: 'fantasy', name: '元素融合', manaCost: 5, attack: 0, defense: 0, cardType: 'spell', rarity: 'rare', abilities: 'すべての相手クリーチャーに4ダメージを与える。', flavorText: '力が混ざり合い、爆発する。', imageUrl: 'https://picsum.photos/seed/ses4/400/300', imageHint: 'elemental fusion' },
+    { id: 'starter-espell-4-2', theme: 'fantasy', name: '元素融合', manaCost: 5, attack: 0, defense: 0, cardType: 'spell', rarity: 'rare', abilities: 'すべての相手クリーチャーに4ダメージを与える。', flavorText: '力が混ざり合い、爆発する。', imageUrl: 'https://picsum.photos/seed/ses4/400/300', imageHint: 'elemental fusion' },
+    { id: 'starter-espell-5', theme: 'fantasy', name: 'マナの奔流', manaCost: 2, attack: 0, defense: 0, cardType: 'spell', rarity: 'uncommon', abilities: '次のあなたのターンの最大マナを+2する。', flavorText: '魔力が満ちていくのがわかる。', imageUrl: 'https://picsum.photos/seed/ses5/400/300', imageHint: 'mana flow' },
+    { id: 'starter-espell-6', theme: 'fantasy', name: '知恵の泉', manaCost: 4, attack: 0, defense: 0, cardType: 'spell', rarity: 'common', abilities: 'カードを3枚引く。', flavorText: '知識は力なり。', imageUrl: 'https://picsum.photos/seed/ses6/400/300', imageHint: 'fountain wisdom' },
+];
+
 
 const shuffleDeck = (deck: CardData[]) => [...deck].sort(() => Math.random() - 0.5);
 
@@ -51,6 +75,8 @@ export default function BattlePage() {
     const { toast } = useToast();
     const [isGeneratingDeck, setIsGeneratingDeck] = useState(false);
     const [difficulty, setDifficulty] = useState<Difficulty | null>(null);
+    const [deckChoice, setDeckChoice] = useState<DeckChoice | null>(null);
+    const [hasSavedDeck, setHasSavedDeck] = useState(false);
 
     // Game State
     const [playerDeck, setPlayerDeck] = useState<CardData[]>([]);
@@ -75,100 +101,135 @@ export default function BattlePage() {
     const [gameOver, setGameOver] = useState('');
     const [gamePhase, setGamePhase] = useState<'main' | 'attack'>('main');
 
-    const loadPlayerDeck = () => {
+    const loadAndSetPlayerDeck = async (choice: DeckChoice) => {
+        setIsGeneratingDeck(true);
+        addToLog('対戦の準備をしています...');
+        let deckToLoad: CardData[] = [];
+        let toastMessage = '';
+
         try {
-            const savedDeck = JSON.parse(localStorage.getItem('deck') || '[]');
-            if (savedDeck.length > 0) {
-                setPlayerDeck(shuffleDeck(savedDeck));
-                toast({ title: '保存したデッキを読み込みました。' });
-            } else {
-                setPlayerDeck(shuffleDeck(starterDeck));
-                toast({ title: 'スターターデッキで開始します。', description: '「デッキ構築」で自分のデッキを作成できます。' });
+            if (choice === 'my-deck') {
+                const savedDeck = JSON.parse(localStorage.getItem('deck') || '[]');
+                if (savedDeck.length > 0) {
+                    deckToLoad = savedDeck;
+                    toastMessage = '保存したデッキを読み込みました。';
+                } else {
+                    // Fallback to goblin deck if no saved deck
+                    deckToLoad = goblinDeck;
+                    toastMessage = '保存されたデッキがありません。ゴブリンデッキで開始します。';
+                }
+            } else if (choice === 'starter-goblin') {
+                deckToLoad = goblinDeck;
+                toastMessage = 'スターターデッキ「ゴブリン軍団」で開始します。';
+            } else if (choice === 'starter-elemental') {
+                deckToLoad = elementalDeck;
+                toastMessage = 'スターターデッキ「エレメンタル召喚」で開始します。';
+            } else if (choice === 'ai-fantasy' || choice === 'ai-scifi') {
+                const theme = choice === 'ai-fantasy' ? 'ファンタジー' : 'SF';
+                const result = await generateDeck({ theme, cardCount: DECK_SIZE });
+                deckToLoad = result.deck.map((card, index) => ({
+                    ...card,
+                    id: `player-ai-${index}`,
+                    theme: choice === 'ai-fantasy' ? 'fantasy' : 'sci-fi',
+                    imageUrl: `https://picsum.photos/seed/p-ai${index}/${400}/${300}`,
+                }));
+                toastMessage = `AIが生成した「${theme}」デッキで開始します。`;
             }
+
+            setPlayerDeck(shuffleDeck(deckToLoad));
+            toast({ title: toastMessage });
+            await createAiDeck(); // AI deck generation depends on player's deck theme
+            startGame(shuffleDeck(deckToLoad), shuffleDeck(opponentDeck));
+
         } catch (error) {
-            console.error("Failed to load player deck", error);
-            setPlayerDeck(shuffleDeck(starterDeck));
-            toast({ variant: 'destructive', title: 'デッキの読み込みに失敗しました。'});
+            console.error("Failed to prepare player deck", error);
+            toast({ variant: 'destructive', title: 'デッキの準備に失敗しました。'});
+            setPlayerDeck(shuffleDeck(goblinDeck));
+            await createAiDeck();
+            startGame(shuffleDeck(goblinDeck), shuffleDeck(opponentDeck));
+        } finally {
+            setIsGeneratingDeck(false);
         }
     };
     
     const createAiDeck = async () => {
-        setIsGeneratingDeck(true);
-        addToLog('AIが対戦の準備をしています...');
+        addToLog('AIが対戦相手のデッキを準備しています...');
         try {
-            const result = await generateDeck({ theme: 'SF', cardCount: DECK_SIZE });
+            // AI deck theme is opposite of player's
+            const playerTheme = playerDeck[0]?.theme || 'fantasy';
+            const aiTheme = playerTheme === 'fantasy' ? 'SF' : 'ファンタジー';
+
+            const result = await generateDeck({ theme: aiTheme, cardCount: DECK_SIZE });
             const aiGeneratedDeck: CardData[] = result.deck.map((card, index) => ({
                 ...card,
                 id: `ai-${index}`,
-                theme: 'sci-fi',
+                theme: aiTheme === 'SF' ? 'sci-fi' : 'fantasy',
                 imageUrl: `https://picsum.photos/seed/ai${index}/${400}/${300}`,
             }));
-            setOpponentDeck(shuffleDeck(aiGeneratedDeck));
+            setOpponentDeck(aiGeneratedDeck);
             addToLog('AIのデッキが完成しました！');
         } catch (error) {
             console.error("Failed to generate AI deck", error);
             toast({ variant: 'destructive', title: 'AIデッキの生成に失敗しました。'});
-            setOpponentDeck(shuffleDeck(starterDeck));
-        } finally {
-            setIsGeneratingDeck(false);
+            setOpponentDeck(shuffleDeck(goblinDeck)); // Fallback
         }
     };
 
     useEffect(() => {
         setIsClient(true);
-        loadPlayerDeck();
+        try {
+            const savedDeck = JSON.parse(localStorage.getItem('deck') || '[]');
+            if (savedDeck.length > 0) {
+                setHasSavedDeck(true);
+            }
+        } catch (error) {
+            console.error("Failed to check for saved deck", error);
+        }
     }, []);
 
-    const startGame = (selectedDifficulty: Difficulty) => {
-        setDifficulty(selectedDifficulty);
-        setIsGeneratingDeck(true);
-        createAiDeck().then(() => {
-            const newPlayerDeck = [...playerDeck];
-            const newOpponentDeck = [...opponentDeck];
+    const startGame = (pDeck: CardData[], oDeck: CardData[]) => {
+        const newPlayerDeck = [...pDeck];
+        const newOpponentDeck = [...oDeck];
 
-            const initialPlayerHand = newPlayerDeck.splice(0, HAND_LIMIT);
-            const initialOpponentHand = newOpponentDeck.splice(0, HAND_LIMIT);
+        const initialPlayerHand = newPlayerDeck.splice(0, HAND_LIMIT);
+        const initialOpponentHand = newOpponentDeck.splice(0, HAND_LIMIT);
 
-            setPlayerHand(initialPlayerHand);
-            setPlayerDeck(newPlayerDeck);
-            setPlayerBoard([]);
+        setPlayerHand(initialPlayerHand);
+        setPlayerDeck(newPlayerDeck);
+        setPlayerBoard([]);
+        
+        setOpponentHand(initialOpponentHand);
+        setOpponentDeck(newOpponentDeck);
+        setOpponentBoard([]);
 
-            setOpponentHand(initialOpponentHand);
-            setOpponentDeck(newOpponentDeck);
-            setOpponentBoard([]);
-
-            setGameLog(['ゲーム開始！']);
-            setGameOver('');
-            setPlayerHealth(20);
-            setOpponentHealth(20);
-            setTurn(1);
-            setIsPlayerTurn(true);
-            setPlayerMaxMana(1);
-            setPlayerMana(1);
-            setPlayerHasPlayedNonCreature(false);
-            setOpponentMaxMana(1);
-            setOpponentMana(1);
-            setOpponentHasPlayedNonCreature(false);
-            setGamePhase('main');
-            addToLog(`--- ターン ${turn}: あなたのターン ---`);
-        });
+        setGameLog(['ゲーム開始！']);
+        setGameOver('');
+        setPlayerHealth(20);
+        setOpponentHealth(20);
+        setTurn(1);
+        setIsPlayerTurn(true);
+        setPlayerMaxMana(1);
+        setPlayerMana(1);
+        setPlayerHasPlayedNonCreature(false);
+        setOpponentMaxMana(1);
+        setOpponentMana(1);
+        setOpponentHasPlayedNonCreature(false);
+        setGamePhase('main');
+        setDeckChoice('in-game'); // Mark that game is running
+        addToLog(`--- ターン 1: あなたのターン ---`);
     };
-    
-    useEffect(() => {
-        if (!difficulty) return;
-        if (isClient && !isGeneratingDeck && playerDeck.length > 0 && opponentDeck.length > 0 && gameLog.length <= 2) {
-             const newPlayerDeck = [...playerDeck];
-            const newOpponentDeck = [...opponentDeck];
 
-            const initialPlayerHand = newPlayerDeck.splice(0, HAND_LIMIT);
-            const initialOpponentHand = newOpponentDeck.splice(0, HAND_LIMIT);
+    const handleSelectDeck = (choice: DeckChoice) => {
+        setDeckChoice(choice);
+        loadAndSetPlayerDeck(choice);
+    };
 
-            setPlayerHand(initialPlayerHand);
-            setPlayerDeck(newPlayerDeck);
-            setOpponentHand(initialOpponentHand);
-            setOpponentDeck(newOpponentDeck);
-        }
-    }, [isClient, isGeneratingDeck, playerDeck, opponentDeck, difficulty]);
+    const resetGame = () => {
+        setDifficulty(null);
+        setDeckChoice(null);
+        setGameOver('');
+        setGameLog([]);
+    }
 
     const addToLog = (message: string) => {
         setGameLog(prev => [`[T${turn}] ${message}`, ...prev]);
@@ -177,6 +238,10 @@ export default function BattlePage() {
     const drawCard = (isPlayer: boolean) => {
         if (isPlayer) {
             let deck = [...playerDeck];
+            if(deck.length === 0) {
+                addToLog('あなたの山札はもうない！');
+                return;
+            }
             const drawnCard = deck.shift();
             setPlayerDeck(deck);
             if (drawnCard) {
@@ -186,11 +251,13 @@ export default function BattlePage() {
                 } else {
                     addToLog('あなたの手札がいっぱいで、引いたカードを破棄した。');
                 }
-            } else {
-                addToLog('あなたの山札はもうない！');
             }
         } else {
             let deck = [...opponentDeck];
+             if(deck.length === 0) {
+                addToLog('相手の山札はもうない！');
+                return;
+            }
             const drawnCard = deck.shift();
             setOpponentDeck(deck);
             if (drawnCard) {
@@ -200,8 +267,6 @@ export default function BattlePage() {
                 } else {
                     addToLog('相手の手札がいっぱいで、引いたカードを破棄した。');
                 }
-            } else {
-                addToLog('相手の山札はもうない！');
             }
         }
     }
@@ -240,8 +305,9 @@ export default function BattlePage() {
                 effectApplied = true;
             }
             if (abilities.includes('マナ')) {
-                if (isPlayer) setPlayerMaxMana(prev => Math.min(MAX_MANA, prev + 1));
-                else setOpponentMaxMana(prev => Math.min(MAX_MANA, prev + 1));
+                const manaBoost = parseInt(abilities.match(/\+(\d+)/)?.[1] || '1', 10);
+                if (isPlayer) setPlayerMaxMana(prev => Math.min(MAX_MANA, prev + manaBoost));
+                else setOpponentMaxMana(prev => Math.min(MAX_MANA, prev + manaBoost));
                 addToLog(`「${card.name}」の効果で${Caster}の最大マナが増えた！`);
                 effectApplied = true;
             }
@@ -274,7 +340,11 @@ export default function BattlePage() {
                 toast({ variant: 'destructive', title: 'このターンはこれ以上、呪文やアーティファクト、土地は使えません。'});
                 return;
             }
-            setPlayerHasPlayedNonCreature(true);
+        }
+        
+        if (card.cardType === 'creature' && playerBoard.length >= BOARD_LIMIT) {
+            toast({ variant: 'destructive', title: '場が上限に達しています。'});
+            return;
         }
 
         const newHand = [...playerHand];
@@ -285,15 +355,9 @@ export default function BattlePage() {
         addToLog(`あなたが「${card.name}」をプレイ！`);
 
         if (card.cardType === 'creature') {
-            if (playerBoard.length >= BOARD_LIMIT) {
-                toast({ variant: 'destructive', title: '場が上限に達しています。'});
-                setPlayerHand(prev => [...prev, card]); // Return card to hand
-                setPlayerMana(prev => prev + card.manaCost); // Return mana
-                if (card.cardType !== 'creature') setPlayerHasPlayedNonCreature(false); // Revert rule flag
-                return;
-            }
             setPlayerBoard(prev => [...prev, {...card, canAttack: false}]); // Summoning sickness
         } else {
+            setPlayerHasPlayedNonCreature(true);
             applySpellEffect(card, true);
         }
     };
@@ -334,40 +398,43 @@ export default function BattlePage() {
         if (nonCreaturePlayed) {
             playableCards = playableCards.filter(c => c.cardType === 'creature');
         }
+        if (myBoard.length >= BOARD_LIMIT) {
+            playableCards = playableCards.filter(c => c.cardType !== 'creature');
+        }
+
         if (playableCards.length === 0) return null;
 
         if (difficulty === 'beginner') {
-            // Beginner AI: play the highest cost card they can.
-            return playableCards.reduce((a, b) => a.manaCost > b.manaCost ? a : b);
+            return playableCards.sort((a,b) => b.manaCost - a.manaCost)[0];
         }
 
         // Advanced AI
         const creatureCards = playableCards.filter(c => c.cardType === 'creature');
-        if (creatureCards.length > 0 && myBoard.length < BOARD_LIMIT) {
-             // Play creature with best score (atk+def / cost)
-             return creatureCards.reduce((best, current) => {
+        const spellCards = playableCards.filter(c => c.cardType !== 'creature');
+
+        // Play creature with best score (atk+def / cost)
+        if (creatureCards.length > 0) {
+             const bestCreature = creatureCards.reduce((best, current) => {
                 const bestScore = (best.attack + best.defense) / (best.manaCost + 1);
                 const currentScore = (current.attack + current.defense) / (current.manaCost + 1);
                 return currentScore > bestScore ? current : best;
             });
+            if (myBoard.length < BOARD_LIMIT) return bestCreature;
         }
         
-        const spellCards = playableCards.filter(c => c.cardType !== 'creature');
         if (spellCards.length > 0) {
-            // Prioritize spells that give advantage
             const damageSpells = spellCards.filter(s => s.abilities.includes('ダメージ'));
-            if (damageSpells.length > 0 && opponentHealth > playerHealth) {
-                return damageSpells.reduce((a, b) => a.manaCost > b.manaCost ? a : b);
+            if (damageSpells.length > 0 && playerHealth < opponentHealth / 2) {
+                return damageSpells.sort((a, b) => (b.abilities.match(/(\d+)ダメージ/)?.[1] || 0) - (a.abilities.match(/(\d+)ダメージ/)?.[1] || 0))[0];
             }
             const drawSpells = spellCards.filter(s => s.abilities.includes('カードを引く'));
             if (drawSpells.length > 0 && hand.length <= 2) {
                 return drawSpells[0];
             }
-            // Simple logic: just play the highest cost spell
-            return spellCards.reduce((a, b) => a.manaCost > b.manaCost ? a : b);
+            if (spellCards.length > 0) return spellCards.sort((a,b) => b.manaCost - a.manaCost)[0];
         }
 
-        return playableCards.length > 0 ? playableCards.reduce((a, b) => a.manaCost > b.manaCost ? a : b) : null;
+        return playableCards.length > 0 ? playableCards.sort((a,b) => b.manaCost - a.manaCost)[0] : null;
     }
 
     const aiTurn = () => {
@@ -377,46 +444,42 @@ export default function BattlePage() {
         setTurn(nextTurn);
         addToLog(`--- ターン ${nextTurn}: 相手のターン ---`);
 
-        // Start of AI's turn
         const newOpponentMaxMana = Math.min(MAX_MANA, opponentMaxMana + 1);
         setOpponentMaxMana(newOpponentMaxMana);
         setOpponentMana(newOpponentMaxMana);
         setOpponentHasPlayedNonCreature(false);
-        setOpponentBoard(prev => prev.map(c => ({ ...c, canAttack: true }))); // Creatures can now attack
+        setOpponentBoard(prev => prev.map(c => ({ ...c, canAttack: true })));
         
         drawCard(false);
 
-        // AI plays cards
-        let currentOpponentMana = newOpponentMaxMana;
-        let currentOpponentHand = [...opponentHand];
-        let currentOpponentBoard = [...opponentBoard];
-        let currentOpponentNonCreaturePlayed = false;
+        let tempHand = [...opponentHand];
+        let tempMana = newOpponentMaxMana;
+        let tempBoard = [...opponentBoard];
+        let tempNonCreaturePlayed = false;
 
         const playCardLoop = () => {
-            const cardToPlay = aiChooseCard(opponentHand, currentOpponentMana, opponentBoard, currentOpponentNonCreaturePlayed);
+            const cardToPlay = aiChooseCard(tempHand, tempMana, tempBoard, tempNonCreaturePlayed);
 
             if (cardToPlay) {
-                const cardIndex = opponentHand.findIndex(c => c.id === cardToPlay.id);
+                const cardIndex = tempHand.findIndex(c => c.id === cardToPlay.id);
+                tempMana -= cardToPlay.manaCost;
+                tempHand.splice(cardIndex, 1);
                 
-                currentOpponentMana -= cardToPlay.manaCost;
-                setOpponentMana(prev => prev - cardToPlay.manaCost);
-                
-                const newOpponentHand = [...opponentHand];
-                newOpponentHand.splice(cardIndex, 1);
-                setOpponentHand(newOpponentHand);
+                setOpponentHand(h => h.filter(c => c.id !== cardToPlay.id));
+                setOpponentMana(m => m - cardToPlay.manaCost);
                 
                 addToLog(`相手が「${cardToPlay.name}」をプレイ！`);
 
                 if (cardToPlay.cardType === 'creature') {
-                    setOpponentBoard(prev => [...prev, {...cardToPlay, canAttack: false}]);
+                    tempBoard.push({...cardToPlay, canAttack: false});
+                    setOpponentBoard(b => [...b, {...cardToPlay, canAttack: false}]);
                 } else {
+                    tempNonCreaturePlayed = true;
                     setOpponentHasPlayedNonCreature(true);
-                    currentOpponentNonCreaturePlayed = true;
                     applySpellEffect(cardToPlay, false);
                 }
-                setTimeout(playCardLoop, 1000);
+                setTimeout(playCardLoop, 1500);
             } else {
-                 // No card to play, move to attack phase
                  setTimeout(aiAttackPhase, 1000);
             }
         };
@@ -450,16 +513,15 @@ export default function BattlePage() {
             }
             addToLog('相手がターンを終了。');
             
-            // Start of Player's turn
             const newPlayerMaxMana = Math.min(MAX_MANA, playerMaxMana + 1);
             setPlayerMaxMana(newPlayerMaxMana);
             setPlayerMana(newPlayerMaxMana);
-            setPlayerBoard(prev => prev.map(c => ({ ...c, canAttack: true }))); // Creatures can now attack
+            setPlayerBoard(prev => prev.map(c => ({ ...c, canAttack: true })));
             setPlayerHasPlayedNonCreature(false);
             setIsPlayerTurn(true);
             setGamePhase('main');
             
-            addToLog(`--- ターン ${nextTurn + 1}: あなたのターン ---`);
+            addToLog(`--- ターン ${turn + 1}: あなたのターン ---`);
             drawCard(true);
         }
         
@@ -469,7 +531,19 @@ export default function BattlePage() {
     if (!isClient) {
         return <main className="text-center p-10"><Loader2 className="animate-spin inline-block mr-2" />ロード中...</main>;
     }
-
+    
+    if (isGeneratingDeck) {
+        return (
+            <main className="text-center p-10">
+                <div className="flex flex-col items-center justify-center gap-4">
+                    <Loader2 className="animate-spin h-10 w-10 text-primary" />
+                    <p className="text-lg text-muted-foreground">デッキを準備しています...</p>
+                    <p className="text-sm text-muted-foreground">AIデッキ生成には少し時間がかかる場合があります。</p>
+                </div>
+            </main>
+        );
+    }
+    
     if (!difficulty) {
         return (
             <main className="text-center p-10">
@@ -478,10 +552,10 @@ export default function BattlePage() {
                         <CardTitle className="text-2xl">難易度を選択してください</CardTitle>
                     </CardHeader>
                     <CardContent className="flex flex-col gap-4">
-                        <Button onClick={() => startGame('beginner')} size="lg">
+                        <Button onClick={() => setDifficulty('beginner')} size="lg">
                             <Bot className="mr-2" /> 初級
                         </Button>
-                        <Button onClick={() => startGame('advanced')} size="lg">
+                        <Button onClick={() => setDifficulty('advanced')} size="lg">
                            <BrainCircuit className="mr-2" /> 上級
                         </Button>
                     </CardContent>
@@ -490,17 +564,61 @@ export default function BattlePage() {
         )
     }
 
-    if (isGeneratingDeck) {
+    if (difficulty && !deckChoice) {
         return (
-            <main className="text-center p-10">
-                <div className="flex flex-col items-center justify-center gap-4">
-                    <Loader2 className="animate-spin h-10 w-10 text-primary" />
-                    <p className="text-lg text-muted-foreground">AIが対戦の準備をしています...</p>
-                    <p className="text-sm text-muted-foreground">初回は少し時間がかかる場合があります。</p>
-                </div>
+             <main className="text-center p-10">
+                <Card className="max-w-2xl mx-auto">
+                    <CardHeader>
+                        <CardTitle className="text-2xl">使用するデッキを選択してください</CardTitle>
+                        <CardDescription>
+                            難易度: {difficulty === 'beginner' ? '初級' : '上級'}
+                            <Button variant="link" onClick={() => setDifficulty(null)}>変更</Button>
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {hasSavedDeck && (
+                             <Button onClick={() => handleSelectDeck('my-deck')} size="lg" className="h-20">
+                                <FileJson className="mr-2" />
+                                <div>
+                                    <p>保存したデッキ</p>
+                                    <p className="text-sm font-normal">（デッキ構築で作成）</p>
+                                </div>
+                            </Button>
+                        )}
+                        <Button onClick={() => handleSelectDeck('starter-goblin')} size="lg" className="h-20">
+                            <Group className="mr-2" />
+                            <div>
+                                <p>スターター「ゴブリン軍団」</p>
+                                <p className="text-sm font-normal">（速攻タイプ）</p>
+                            </div>
+                        </Button>
+                         <Button onClick={() => handleSelectDeck('starter-elemental')} size="lg" className="h-20">
+                            <Group className="mr-2" />
+                            <div>
+                                <p>スターター「エレメンタル召喚」</p>
+                                <p className="text-sm font-normal">（コントロールタイプ）</p>
+                            </div>
+                        </Button>
+                        <Button onClick={() => handleSelectDeck('ai-fantasy')} size="lg" className="h-20">
+                           <Wand2 className="mr-2" /> 
+                           <div>
+                                <p>AI生成デッキ (ファンタジー)</p>
+                                <p className="text-sm font-normal">（毎回新しいデッキ）</p>
+                            </div>
+                        </Button>
+                        <Button onClick={() => handleSelectDeck('ai-scifi')} size="lg" className="h-20">
+                           <Wand2 className="mr-2" /> 
+                           <div>
+                                <p>AI生成デッキ (SF)</p>
+                                <p className="text-sm font-normal">（毎回新しいデッキ）</p>
+                            </div>
+                        </Button>
+                    </CardContent>
+                </Card>
             </main>
-        );
+        )
     }
+
 
     return (
     <main className="flex flex-col gap-2">
@@ -527,7 +645,7 @@ export default function BattlePage() {
             {/* Opponent's Board */}
             <div className="flex items-center justify-center gap-2 bg-black/10 p-2 rounded-lg min-h-[160px] w-full max-w-4xl">
                 {opponentBoard.map((card, i) => (
-                    <div key={i} className="w-[110px]">
+                    <div key={card.id + i.toString()} className="w-[110px]">
                         <CardPreview {...card} />
                     </div>
                 ))}
@@ -539,7 +657,7 @@ export default function BattlePage() {
             {gameOver ? (
                 <Card className="p-6 my-4 max-w-2xl text-center bg-yellow-200">
                     <p className="text-2xl font-semibold mb-4">{gameOver}</p>
-                    <Button onClick={() => setDifficulty(null)}>
+                    <Button onClick={resetGame}>
                         <RotateCcw className="mr-2" />
                         難易度選択に戻る
                     </Button>
@@ -554,7 +672,7 @@ export default function BattlePage() {
         {/* Player's Board */}
          <div className="flex items-center justify-center gap-2 bg-black/10 p-2 rounded-lg min-h-[160px] w-full max-w-4xl mx-auto">
             {playerBoard.map((card, i) => (
-                <div key={i} className={cn("w-[110px]", card.canAttack && "border-4 border-green-500 rounded-2xl")}>
+                <div key={card.id + i.toString()} className={cn("w-[110px] transform transition-transform", card.canAttack ? "border-4 border-green-500 rounded-2xl hover:scale-105" : "opacity-70")}>
                     <CardPreview {...card} />
                 </div>
             ))}
@@ -567,11 +685,11 @@ export default function BattlePage() {
                     <p className="font-bold">あなた</p>
                     <p className="flex items-center justify-center gap-2 text-red-500 font-bold text-xl"><Heart /> {playerHealth}</p>
                     <p className="flex items-center justify-center gap-2 text-blue-500 font-bold"><Dices /> {playerMana}/{playerMaxMana}</p>
-                    <p className="mt-2 text-sm">ターン: {turn}</p>
+                    <p className="mt-2 text-sm">ターン: {Math.ceil(turn/2)}</p>
                 </Card>
                 <div className="flex gap-2 min-h-[180px]">
                     {playerHand.map((card, i) => (
-                        <div key={i} className="w-[130px] cursor-pointer hover:scale-105 transition-transform" onClick={() => playCard(card, i)}>
+                        <div key={card.id + i.toString()} className="w-[130px] cursor-pointer hover:scale-105 transition-transform" onClick={() => playCard(card, i)}>
                            <CardPreview {...card} />
                         </div>
                     ))}
@@ -588,7 +706,3 @@ export default function BattlePage() {
     </main>
   );
 }
-
-    
-
-    
