@@ -6,7 +6,7 @@ import type { CardData } from '@/components/card-editor';
 import { CardPreview } from '@/components/card-preview';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Swords, Heart, Shield, Dices, RotateCcw, Loader2 } from 'lucide-react';
+import { Swords, Heart, Shield, Dices, RotateCcw, Loader2, BrainCircuit, Bot } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { generateDeck } from '@/ai/flows/generate-deck';
 import { cn } from '@/lib/utils';
@@ -16,6 +16,7 @@ const DECK_SIZE = 20;
 const MAX_MANA = 10;
 const BOARD_LIMIT = 5;
 
+type Difficulty = 'beginner' | 'advanced';
 
 const starterDeck: CardData[] = Array.from({ length: 4 }).flatMap(() => [
     { id: 'starter-1', theme: 'fantasy', name: '見習い騎士', manaCost: 1, attack: 1, defense: 2, cardType: 'creature', rarity: 'common', abilities: '', flavorText: '訓練は始まったばかりだ。', imageUrl: 'https://picsum.photos/seed/s1/400/300', imageHint: 'apprentice knight' },
@@ -30,7 +31,8 @@ const shuffleDeck = (deck: CardData[]) => [...deck].sort(() => Math.random() - 0
 export default function BattlePage() {
     const [isClient, setIsClient] = useState(false);
     const { toast } = useToast();
-    const [isGeneratingDeck, setIsGeneratingDeck] = useState(true);
+    const [isGeneratingDeck, setIsGeneratingDeck] = useState(false);
+    const [difficulty, setDifficulty] = useState<Difficulty | null>(null);
 
     // Game State
     const [playerDeck, setPlayerDeck] = useState<CardData[]>([]);
@@ -94,49 +96,61 @@ export default function BattlePage() {
         }
     };
 
-    // Initialize Game
     useEffect(() => {
         setIsClient(true);
         loadPlayerDeck();
-        createAiDeck();
     }, []);
 
-    const startGame = () => {
-        const newPlayerDeck = [...playerDeck];
-        const newOpponentDeck = [...opponentDeck];
+    const startGame = (selectedDifficulty: Difficulty) => {
+        setDifficulty(selectedDifficulty);
+        setIsGeneratingDeck(true);
+        createAiDeck().then(() => {
+            const newPlayerDeck = [...playerDeck];
+            const newOpponentDeck = [...opponentDeck];
 
-        const initialPlayerHand = newPlayerDeck.splice(0, HAND_LIMIT);
-        const initialOpponentHand = newOpponentDeck.splice(0, HAND_LIMIT);
+            const initialPlayerHand = newPlayerDeck.splice(0, HAND_LIMIT);
+            const initialOpponentHand = newOpponentDeck.splice(0, HAND_LIMIT);
 
-        setPlayerHand(initialPlayerHand);
-        setPlayerDeck(newPlayerDeck);
-        setPlayerBoard([]);
+            setPlayerHand(initialPlayerHand);
+            setPlayerDeck(newPlayerDeck);
+            setPlayerBoard([]);
 
-        setOpponentHand(initialOpponentHand);
-        setOpponentDeck(newOpponentDeck);
-        setOpponentBoard([]);
+            setOpponentHand(initialOpponentHand);
+            setOpponentDeck(newOpponentDeck);
+            setOpponentBoard([]);
 
-        setGameLog(['ゲーム開始！']);
-        setGameOver('');
-        setPlayerHealth(20);
-        setOpponentHealth(20);
-        setTurn(1);
-        setIsPlayerTurn(true);
-        setPlayerMaxMana(1);
-        setPlayerMana(1);
-        setPlayerHasPlayedNonCreature(false);
-        setOpponentMaxMana(1);
-        setOpponentMana(1);
-        setOpponentHasPlayedNonCreature(false);
-        setGamePhase('main');
-        addToLog(`--- ターン ${turn}: あなたのターン ---`);
+            setGameLog(['ゲーム開始！']);
+            setGameOver('');
+            setPlayerHealth(20);
+            setOpponentHealth(20);
+            setTurn(1);
+            setIsPlayerTurn(true);
+            setPlayerMaxMana(1);
+            setPlayerMana(1);
+            setPlayerHasPlayedNonCreature(false);
+            setOpponentMaxMana(1);
+            setOpponentMana(1);
+            setOpponentHasPlayedNonCreature(false);
+            setGamePhase('main');
+            addToLog(`--- ターン ${turn}: あなたのターン ---`);
+        });
     };
     
     useEffect(() => {
+        if (!difficulty) return;
         if (isClient && !isGeneratingDeck && playerDeck.length > 0 && opponentDeck.length > 0 && gameLog.length <= 2) {
-            startGame();
+             const newPlayerDeck = [...playerDeck];
+            const newOpponentDeck = [...opponentDeck];
+
+            const initialPlayerHand = newPlayerDeck.splice(0, HAND_LIMIT);
+            const initialOpponentHand = newOpponentDeck.splice(0, HAND_LIMIT);
+
+            setPlayerHand(initialPlayerHand);
+            setPlayerDeck(newPlayerDeck);
+            setOpponentHand(initialOpponentHand);
+            setOpponentDeck(newOpponentDeck);
         }
-    }, [isClient, isGeneratingDeck, playerDeck, opponentDeck]);
+    }, [isClient, isGeneratingDeck, playerDeck, opponentDeck, difficulty]);
 
     const addToLog = (message: string) => {
         setGameLog(prev => [`[T${turn}] ${message}`, ...prev]);
@@ -304,25 +318,38 @@ export default function BattlePage() {
         }
         if (playableCards.length === 0) return null;
 
-        // Prioritize playing creatures if board is not full
+        if (difficulty === 'beginner') {
+            // Beginner AI: play the highest cost card they can.
+            return playableCards.reduce((a, b) => a.manaCost > b.manaCost ? a : b);
+        }
+
+        // Advanced AI
         const creatureCards = playableCards.filter(c => c.cardType === 'creature');
         if (creatureCards.length > 0 && myBoard.length < BOARD_LIMIT) {
-            // Find best creature to play (e.g., highest stats for cost)
-            return creatureCards.reduce((best, current) => {
+             // Play creature with best score (atk+def / cost)
+             return creatureCards.reduce((best, current) => {
                 const bestScore = (best.attack + best.defense) / (best.manaCost + 1);
                 const currentScore = (current.attack + current.defense) / (current.manaCost + 1);
                 return currentScore > bestScore ? current : best;
             });
         }
         
-        // If can't play creature, find best spell
         const spellCards = playableCards.filter(c => c.cardType !== 'creature');
         if (spellCards.length > 0) {
+            // Prioritize spells that give advantage
+            const damageSpells = spellCards.filter(s => s.abilities.includes('ダメージ'));
+            if (damageSpells.length > 0 && opponentHealth > playerHealth) {
+                return damageSpells.reduce((a, b) => a.manaCost > b.manaCost ? a : b);
+            }
+            const drawSpells = spellCards.filter(s => s.abilities.includes('カードを引く'));
+            if (drawSpells.length > 0 && hand.length <= 2) {
+                return drawSpells[0];
+            }
             // Simple logic: just play the highest cost spell
             return spellCards.reduce((a, b) => a.manaCost > b.manaCost ? a : b);
         }
 
-        return null;
+        return playableCards.length > 0 ? playableCards.reduce((a, b) => a.manaCost > b.manaCost ? a : b) : null;
     }
 
     const aiTurn = () => {
@@ -414,7 +441,7 @@ export default function BattlePage() {
             setIsPlayerTurn(true);
             setGamePhase('main');
             
-            addToLog(`--- ターン ${nextTurn}: あなたのターン ---`);
+            addToLog(`--- ターン ${nextTurn + 1}: あなたのターン ---`);
             drawCard(true);
         }
         
@@ -425,7 +452,27 @@ export default function BattlePage() {
         return <main className="text-center p-10"><Loader2 className="animate-spin inline-block mr-2" />ロード中...</main>;
     }
 
-    if (isGeneratingDeck || gameLog.length <= 1) {
+    if (!difficulty) {
+        return (
+            <main className="text-center p-10">
+                <Card className="max-w-md mx-auto">
+                    <CardHeader>
+                        <CardTitle className="text-2xl">難易度を選択してください</CardTitle>
+                    </CardHeader>
+                    <CardContent className="flex flex-col gap-4">
+                        <Button onClick={() => startGame('beginner')} size="lg">
+                            <Bot className="mr-2" /> 初級
+                        </Button>
+                        <Button onClick={() => startGame('advanced')} size="lg">
+                           <BrainCircuit className="mr-2" /> 上級
+                        </Button>
+                    </CardContent>
+                </Card>
+            </main>
+        )
+    }
+
+    if (isGeneratingDeck) {
         return (
             <main className="text-center p-10">
                 <div className="flex flex-col items-center justify-center gap-4">
@@ -443,7 +490,7 @@ export default function BattlePage() {
         <div className="flex flex-col items-center gap-2">
             <div className="flex items-center gap-4">
                 <Card className="p-2 text-center w-40">
-                    <p className="font-bold">相手</p>
+                    <p className="font-bold">相手 ({difficulty === 'beginner' ? '初級' : '上級'})</p>
                     <p className="flex items-center justify-center gap-2 text-red-500 font-bold text-xl"><Heart /> {opponentHealth}</p>
                     <p className="flex items-center justify-center gap-2 text-blue-500 font-bold"><Dices /> {opponentMana}/{opponentMaxMana}</p>
                 </Card>
@@ -474,13 +521,9 @@ export default function BattlePage() {
             {gameOver ? (
                 <Card className="p-6 my-4 max-w-2xl text-center bg-yellow-200">
                     <p className="text-2xl font-semibold mb-4">{gameOver}</p>
-                    <Button onClick={async () => {
-                        setGameLog([]); 
-                        loadPlayerDeck();
-                        await createAiDeck();
-                    }}>
+                    <Button onClick={() => setDifficulty(null)}>
                         <RotateCcw className="mr-2" />
-                        もう一度対戦
+                        難易度選択に戻る
                     </Button>
                 </Card>
             ) : (
@@ -527,3 +570,5 @@ export default function BattlePage() {
     </main>
   );
 }
+
+    
