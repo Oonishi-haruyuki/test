@@ -35,6 +35,7 @@ export interface CardData {
   flavorText: string;
   imageUrl: string;
   imageHint: string;
+  frameImageUrl?: string;
 }
 
 interface CardEditorProps {
@@ -60,7 +61,33 @@ export function CardEditor({ cardData, setCardData, cardPreviewRef }: CardEditor
   };
 
   const handleThemeChange = (value: string) => {
-    setCardData(prev => ({ ...prev, theme: value as Theme }));
+    setCardData(prev => ({ ...prev, theme: value as Theme, frameImageUrl: undefined }));
+  };
+  
+  const handleFrameImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+        if (!file.type.startsWith('image/')) {
+            toast({
+                variant: 'destructive',
+                title: '無効なファイルタイプ',
+                description: '画像ファイル（JPEG, PNG, GIFなど）を選択してください。',
+            });
+            return;
+        }
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const frameImageUrl = event.target?.result as string;
+            setCardData(prev => ({
+                ...prev,
+                frameImageUrl: frameImageUrl,
+            }));
+            toast({
+                title: 'カードフレーム画像がアップロードされました',
+            });
+        };
+        reader.readAsDataURL(file);
+    }
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -328,10 +355,10 @@ export function CardEditor({ cardData, setCardData, cardPreviewRef }: CardEditor
         <Card>
           <CardHeader>
             <CardTitle>4. ビジュアルテーマ</CardTitle>
-            <CardDescription>カードのビジュアルスタイルを選択します。</CardDescription>
+            <CardDescription>カードのビジュアルスタイルを選択またはアップロードします。</CardDescription>
           </CardHeader>
-          <CardContent>
-            <RadioGroup value={cardData.theme} onValueChange={handleThemeChange} className="grid grid-cols-3 gap-4">
+          <CardContent className="space-y-4">
+            <RadioGroup value={cardData.frameImageUrl ? 'custom' : cardData.theme} onValueChange={handleThemeChange} className="grid grid-cols-3 gap-4">
               <div>
                 <RadioGroupItem value="fantasy" id="fantasy" className="peer sr-only" />
                 <Label htmlFor="fantasy" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary">
@@ -351,6 +378,23 @@ export function CardEditor({ cardData, setCardData, cardPreviewRef }: CardEditor
                 </Label>
               </div>
             </RadioGroup>
+            <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-card px-2 text-muted-foreground">または</span>
+                </div>
+            </div>
+             <Label htmlFor="frame-image-upload" className="w-full">
+                <Button asChild variant="outline" className="w-full cursor-pointer">
+                    <div>
+                        <Upload className="mr-2" />
+                        フレーム画像をアップロード
+                    </div>
+                </Button>
+                <Input id="frame-image-upload" type="file" className="sr-only" accept="image/*" onChange={handleFrameImageUpload} />
+            </Label>
           </CardContent>
         </Card>
 

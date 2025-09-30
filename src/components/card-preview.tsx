@@ -40,32 +40,53 @@ export const CardPreview = React.forwardRef<HTMLDivElement, CardData>(({
   flavorText,
   imageUrl,
   imageHint,
+  frameImageUrl,
 }, ref) => {
   const showStats = cardType === 'creature';
+
+  const cardStyle = frameImageUrl ? {
+    backgroundImage: `url(${frameImageUrl})`,
+    backgroundSize: 'cover',
+    backgroundPosition: 'center',
+  } : {};
 
   return (
     <Card
       ref={ref}
       className={cn(
-        'w-full max-w-md mx-auto rounded-2xl overflow-hidden shadow-2xl transition-all duration-300',
-        'border-8',
+        'w-full max-w-md mx-auto rounded-2xl overflow-hidden shadow-2xl transition-all duration-300 relative',
+        frameImageUrl ? 'border-0' : 'border-8',
         {
-          'border-amber-900/50 bg-stone-200 text-stone-800': theme === 'fantasy',
-          'border-cyan-400/50 bg-slate-900 text-slate-100 shadow-[0_0_20px_theme(colors.cyan.500/0.5)]': theme === 'sci-fi',
-          'border-slate-300 bg-white text-slate-900': theme === 'modern',
+          'border-amber-900/50 bg-stone-200 text-stone-800': theme === 'fantasy' && !frameImageUrl,
+          'border-cyan-400/50 bg-slate-900 text-slate-100 shadow-[0_0_20px_theme(colors.cyan.500/0.5)]': theme === 'sci-fi' && !frameImageUrl,
+          'border-slate-300 bg-white text-slate-900': theme === 'modern' && !frameImageUrl,
         }
       )}
+      style={cardStyle}
       data-theme={theme}
     >
+      <div className={cn(
+        'absolute inset-0 z-0',
+        {'bg-stone-200/80': theme === 'fantasy' && frameImageUrl},
+        {'bg-slate-900/80': theme === 'sci-fi' && frameImageUrl},
+        {'bg-white/80': theme === 'modern' && frameImageUrl},
+      )}></div>
+      <div className="relative z-10">
       <CardHeader className={cn(
         'flex-row items-center justify-between p-3',
         {
-          'bg-stone-300': theme === 'fantasy',
-          'bg-slate-800': theme === 'sci-fi',
-          'bg-slate-100': theme === 'modern',
-        }
+          'bg-stone-300/80': theme === 'fantasy',
+          'bg-slate-800/80': theme === 'sci-fi',
+          'bg-slate-100/80': theme === 'modern',
+        },
+        frameImageUrl && 'bg-transparent'
       )}>
-        <CardTitle className="text-lg font-bold">
+        <CardTitle className={cn(
+            "text-lg font-bold",
+            {'text-stone-800': theme === 'fantasy'},
+            {'text-slate-100': theme === 'sci-fi'},
+            {'text-slate-900': theme === 'modern'},
+        )}>
           {name}
         </CardTitle>
         <div className={cn(
@@ -82,7 +103,7 @@ export const CardPreview = React.forwardRef<HTMLDivElement, CardData>(({
       </CardHeader>
 
       <CardContent className="p-0">
-        <div className="relative aspect-[4/3] w-full bg-gray-400">
+        <div className="relative aspect-[4/3] w-full bg-gray-400 mx-auto max-w-[calc(100%-1.5rem)] rounded-md overflow-hidden border-2 border-black/50">
           <Image src={imageUrl} alt={imageHint} width={400} height={300} style={{objectFit: 'cover'}} data-ai-hint={imageHint} 
             className={cn('w-full h-auto', {'sepia-[25%]': theme === 'fantasy'})}
             unoptimized
@@ -94,11 +115,15 @@ export const CardPreview = React.forwardRef<HTMLDivElement, CardData>(({
         <div className="p-3 space-y-3 text-sm">
           <div className={cn(
             'flex justify-between items-center px-2 py-1 rounded-sm',
+            {'text-stone-800': theme === 'fantasy'},
+            {'text-slate-100': theme === 'sci-fi'},
+            {'text-slate-900': theme === 'modern'},
             {
               'bg-stone-300/80': theme === 'fantasy',
               'bg-slate-800/80': theme === 'sci-fi',
-              'bg-slate-100': theme === 'modern',
-            }
+              'bg-slate-100/80': theme === 'modern',
+            },
+            frameImageUrl && 'bg-black/20'
           )}>
             <p className="font-semibold capitalize">{cardTypeJapanese[cardType]}</p>
             <div className="flex items-center gap-1.5">
@@ -109,11 +134,15 @@ export const CardPreview = React.forwardRef<HTMLDivElement, CardData>(({
 
           <div className={cn(
             'p-3 rounded-md min-h-[70px]',
+            {'text-stone-800': theme === 'fantasy'},
+            {'text-slate-100': theme === 'sci-fi'},
+            {'text-slate-900': theme === 'modern'},
             {
               'bg-stone-100/80 border border-stone-300': theme === 'fantasy',
               'bg-slate-800/50 border border-slate-700 text-slate-200': theme === 'sci-fi',
               'bg-slate-50 border border-slate-200': theme === 'modern',
-            }
+            },
+             frameImageUrl && 'bg-black/20 border-white/20 border'
           )}>
             <p className="whitespace-pre-wrap">{abilities}</p>
           </div>
@@ -126,7 +155,8 @@ export const CardPreview = React.forwardRef<HTMLDivElement, CardData>(({
                   'bg-stone-300': theme === 'fantasy',
                   'bg-slate-700': theme === 'sci-fi',
                   'bg-slate-200': theme === 'modern',
-                }
+                },
+                 frameImageUrl && 'bg-white/30'
               )} />
               <p className={cn(
                 'italic',
@@ -134,7 +164,8 @@ export const CardPreview = React.forwardRef<HTMLDivElement, CardData>(({
                   'text-stone-600': theme === 'fantasy',
                   'text-slate-400': theme === 'sci-fi',
                   'text-slate-500': theme === 'modern',
-                }
+                },
+                frameImageUrl && 'text-white/80'
               )}>
                 {flavorText}
               </p>
@@ -147,10 +178,11 @@ export const CardPreview = React.forwardRef<HTMLDivElement, CardData>(({
         <CardFooter className={cn(
           'flex justify-end p-3 gap-3',
           {
-            'bg-stone-300': theme === 'fantasy',
-            'bg-slate-800': theme === 'sci-fi',
-            'bg-slate-100': theme === 'modern',
-          }
+            'bg-stone-300/80': theme === 'fantasy',
+            'bg-slate-800/80': theme === 'sci-fi',
+            'bg-slate-100/80': theme === 'modern',
+          },
+          frameImageUrl && 'bg-transparent'
         )}>
           <div className="flex items-center justify-center gap-1.5 font-bold text-base h-8 w-12 rounded bg-red-500 text-white">
             <span>{attack}</span>
@@ -162,6 +194,7 @@ export const CardPreview = React.forwardRef<HTMLDivElement, CardData>(({
           </div>
         </CardFooter>
       )}
+      </div>
     </Card>
   );
 });
