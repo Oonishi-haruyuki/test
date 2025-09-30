@@ -33,11 +33,13 @@ export default function BattlePage() {
     const [playerHand, setPlayerHand] = useState<CardData[]>([]);
     const [playerHealth, setPlayerHealth] = useState(20);
     const [playerMana, setPlayerMana] = useState(1);
+    const [playerMaxMana, setPlayerMaxMana] = useState(1);
     
     const [opponentDeck, setOpponentDeck] = useState<CardData[]>([]);
     const [opponentHand, setOpponentHand] = useState<CardData[]>([]);
     const [opponentHealth, setOpponentHealth] = useState(20);
     const [opponentMana, setOpponentMana] = useState(1);
+    const [opponentMaxMana, setOpponentMaxMana] = useState(1);
     
     const [turn, setTurn] = useState(1);
     const [isPlayerTurn, setIsPlayerTurn] = useState(true);
@@ -77,7 +79,6 @@ export default function BattlePage() {
         } catch (error) {
             console.error("Failed to generate AI deck", error);
             toast({ variant: 'destructive', title: 'AIデッキの生成に失敗しました。'});
-            // Fallback to a default deck if generation fails
             setOpponentDeck(shuffleDeck(starterDeck));
         } finally {
             setIsGeneratingDeck(false);
@@ -108,8 +109,11 @@ export default function BattlePage() {
         setOpponentHealth(20);
         setTurn(1);
         setIsPlayerTurn(true);
+        setPlayerMaxMana(1);
         setPlayerMana(1);
+        setOpponentMaxMana(1);
         setOpponentMana(1);
+        addToLog(`--- ターン ${turn}: あなたのターン ---`);
     };
     
     useEffect(() => {
@@ -119,8 +123,109 @@ export default function BattlePage() {
     }, [isClient, isGeneratingDeck, playerDeck, opponentDeck]);
 
     const addToLog = (message: string) => {
-        setGameLog(prev => [message, ...prev]);
+        setGameLog(prev => [`[T${turn}] ${message}`, ...prev]);
     }
+
+    const drawCard = (isPlayer: boolean) => {
+        if (isPlayer) {
+            let deck = [...playerDeck];
+            const drawnCard = deck.shift();
+            setPlayerDeck(deck);
+            if (drawnCard) {
+                if (playerHand.length < HAND_LIMIT) {
+                    setPlayerHand(prev => [...prev, drawnCard]);
+                    addToLog('あなたはカードを1枚引いた。');
+                } else {
+                    addToLog('あなたの手札がいっぱいで、引いたカードを破棄した。');
+                }
+            } else {
+                addToLog('あなたの山札はもうない！');
+            }
+        } else {
+            let deck = [...opponentDeck];
+            const drawnCard = deck.shift();
+            setOpponentDeck(deck);
+            if (drawnCard) {
+                if (opponentHand.length < HAND_LIMIT) {
+                    setOpponentHand(prev => [...prev, drawnCard]);
+                    addToLog('相手はカードを1枚引いた。');
+                } else {
+                    addToLog('相手の手札がいっぱいで、引いたカードを破棄した。');
+                }
+            } else {
+                addToLog('相手の山札はもうない！');
+            }
+        }
+    }
+
+    const applyCardEffect = (card: CardData, isPlayer: boolean) => {
+        const Caster = isPlayer ? 'あなた' : '相手';
+        const Target = isPlayer ? '相手' : 'あなた';
+
+        let effectApplied = false;
+
+        if (card.cardType === 'creature' && card.attack > 0) {
+            const damage = card.attack;
+            if (isPlayer) {
+                setOpponentHealth(prev => Math.max(0, prev - damage));
+            } else {
+                setPlayerHealth(prev => Math.max(0, prev - damage));
+            }
+            addToLog(`「${card.name}」が${Target}に${damage}ダメージ！`);
+            effectApplied = true;
+        }
+
+        if (card.abilities) {
+            const abilities = card.abilities.toLowerCase();
+            if (abilities.includes('ダメージ')) {
+                const damage = parseInt(abilities.match(/(\d+)ダメージ/)?.[1] || '0', 10);
+                if (damage > 0) {
+                    if (isPlayer) setOpponentHealth(prev => Math.max(0, prev - damage));
+                    else setPlayerHealth(prev => Math.max(0, prev - damage));
+                    addToLog(`「${card.name}」の効果で${Target}に${damage}ダメージ！`);
+                    effectApplied = true;
+                }
+            }
+            if (abilities.includes('回復')) {
+                const heal = parseInt(abilities.match(/(\d+)回復/)?.[1] || '0', 10);
+                if (heal > 0) {
+                    if (isPlayer) setPlayerHealth(prev => prev + heal);
+                    else setOpponentHealth(prev => prev + heal);
+                    addToLog(`「${card.name}」の効果で${Caster}はライフを${heal}回復。`);
+                    effectApplied = true;
+                }
+            }
+            if (abilities.includes('カードを引く')) {
+                const drawCount = parseInt(abilities.match(/(\d+)枚/)?.[1] || '1', 10);
+                addToLog(`「${card.name}」の効果で${Caster}はカードを${drawCount}枚引く。`);
+                for(let i=0; i<drawCount; i++) {
+                    drawCard(isPlayer);
+                }
+                effectApplied = true;
+            }
+            if (abilities.includes('マナ')) {
+                if (isPlayer) setPlayerMaxMana(prev => prev + 1);
+                else setOpponentMaxMana(prev => prev + 1);
+                addToLog(`「${card.name}」の効果で${Caster}の最大マナが増えた！`);
+                effectApplied = true;
+            }
+        }
+        
+        if (!effectApplied && card.cardType !== 'creature') {
+            addToLog(`「${card.name}」は何の効果ももたらさなかった。`);
+        }
+    };
+
+    useEffect(() => {
+        if (gameOver) return;
+        if (playerHealth <= 0) {
+            setGameOver('相手の勝利！');
+            addToLog('ゲーム終了！相手が勝利しました。');
+        } else if (opponentHealth <= 0) {
+            setGameOver('あなたの勝利！');
+            addToLog('ゲーム終了！あなたが勝利しました。');
+        }
+    }, [playerHealth, opponentHealth, gameOver]);
 
     const playCard = (card: CardData, cardIndex: number) => {
         if (!isPlayerTurn || gameOver) return;
@@ -134,135 +239,132 @@ export default function BattlePage() {
         newHand.splice(cardIndex, 1);
         setPlayerHand(newHand);
 
-        addToLog(`プレイヤーが「${card.name}」をプレイ！`);
-
-        if (card.cardType === 'creature') {
-            const damage = card.attack;
-            setOpponentHealth(prev => Math.max(0, prev - damage));
-            addToLog(`相手に${damage}ダメージ！`);
-             if (opponentHealth - damage <= 0) {
-                setGameOver('プレイヤーの勝利！');
-                addToLog('ゲーム終了！プレイヤーが勝利しました。');
-            }
-        } else if (card.cardType === 'spell') {
-            // Simplified spell effects
-            if (card.abilities.includes('ダメージ')) {
-                const damage = parseInt(card.abilities.match(/(\d+)ダメージ/)?.[1] || '3', 10);
-                setOpponentHealth(prev => Math.max(0, prev - damage));
-                addToLog(`相手に${damage}ダメージ！`);
-                if (opponentHealth - damage <= 0) {
-                    setGameOver('プレイヤーの勝利！');
-                    addToLog('ゲーム終了！プレイヤーが勝利しました。');
-                }
-            } else if (card.abilities.includes('回復')) {
-                const heal = parseInt(card.abilities.match(/(\d+)回復/)?.[1] || '3', 10);
-                setPlayerHealth(prev => prev + heal);
-                addToLog(`プレイヤーはライフを${heal}回復。`);
-            }
-        }
+        addToLog(`あなたが「${card.name}」をプレイ！`);
+        applyCardEffect(card, true);
     };
 
     const endTurn = () => {
         if (!isPlayerTurn || gameOver) return;
-        addToLog('プレイヤーがターンを終了。');
+        addToLog('あなたがターンを終了。');
         setIsPlayerTurn(false);
-        // AI's turn logic
         setTimeout(aiTurn, 1000);
     };
+    
+    const aiChooseCard = (hand: CardData[], mana: number, myHealth: number, playerHealth: number): CardData | null => {
+        const playableCards = hand.filter(c => c.manaCost <= mana);
+        if (playableCards.length === 0) return null;
+
+        let bestCard: CardData | null = null;
+        let bestScore = -1;
+
+        for (const card of playableCards) {
+            let score = 0;
+            const abilities = card.abilities.toLowerCase();
+            
+            // Calculate potential damage
+            let damage = card.cardType === 'creature' ? card.attack : 0;
+            if (abilities.includes('ダメージ')) {
+                damage += parseInt(abilities.match(/(\d+)ダメージ/)?.[1] || '0', 10);
+            }
+            if (playerHealth - damage <= 0) {
+                score += 1000; // Winning move
+            }
+            score += damage * 1.5;
+
+            // Calculate potential healing
+            if (abilities.includes('回復')) {
+                const heal = parseInt(abilities.match(/(\d+)回復/)?.[1] || '0', 10);
+                if (myHealth < 10) {
+                    score += heal * 2; // Prioritize healing when low
+                } else {
+                    score += heal;
+                }
+            }
+
+            // Card draw and mana ramp are good
+            if (abilities.includes('カードを引く')) score += 5;
+            if (abilities.includes('マナ')) score += 7;
+
+            // Factor in mana efficiency
+            score -= card.manaCost * 0.5;
+
+            if (score > bestScore) {
+                bestScore = score;
+                bestCard = card;
+            }
+        }
+        return bestCard;
+    }
 
     const aiTurn = () => {
-        let newOpponentDeck = [...opponentDeck];
-        const drawnOpponentCard = newOpponentDeck.shift();
-        if (drawnOpponentCard) {
-            if (opponentHand.length < HAND_LIMIT) {
-                setOpponentHand(prev => [...prev, drawnOpponentCard]);
-                addToLog('相手はカードを1枚引いた。');
-            } else {
-                addToLog('相手の手札がいっぱいで、引いたカードを破棄した。');
-            }
-            setOpponentDeck(newOpponentDeck);
-        } else {
-            addToLog('相手の山札はもうない！');
-        }
+        if (gameOver) return;
 
-        addToLog('相手のターン。');
-        let currentOpponentMana = opponentMana;
-        
-        const playableCards = opponentHand.filter(c => c.manaCost <= currentOpponentMana).sort((a,b) => b.manaCost - a.manaCost);
-
-        if (playableCards.length > 0 && opponentHand.length > 0) {
-            // AI plays the most expensive card it can afford
-            const cardToPlay = playableCards[0];
-            const cardIndex = opponentHand.findIndex(c => c.id === cardToPlay.id);
-
-            currentOpponentMana -= cardToPlay.manaCost;
-            
-            const newOpponentHand = [...opponentHand];
-            newOpponentHand.splice(cardIndex, 1);
-            setOpponentHand(newOpponentHand);
-            
-            addToLog(`相手が「${cardToPlay.name}」をプレイ！`);
-
-            if (cardToPlay.cardType === 'creature') {
-                const damage = cardToPlay.attack;
-                setPlayerHealth(prev => Math.max(0, prev - damage));
-                addToLog(`プレイヤーに${damage}ダメージ！`);
-                 if (playerHealth - damage <= 0) {
-                    setGameOver('相手の勝利！');
-                    addToLog('ゲーム終了！相手が勝利しました。');
-                    setIsPlayerTurn(true); // Allow restart
-                    return;
-                }
-            } else if (cardToPlay.cardType === 'spell') {
-                 if (cardToPlay.abilities.includes('ダメージ')) {
-                    const damage = parseInt(cardToPlay.abilities.match(/(\d+)ダメージ/)?.[1] || '3', 10);
-                    setPlayerHealth(prev => Math.max(0, prev - damage));
-                    addToLog(`プレイヤーに${damage}ダメージ！`);
-                    if (playerHealth - damage <= 0) {
-                        setGameOver('相手の勝利！');
-                        addToLog('ゲーム終了！相手が勝利しました。');
-                        setIsPlayerTurn(true); // Allow restart
-                        return;
-                    }
-                } else if (cardToPlay.abilities.includes('回復')) {
-                    const heal = parseInt(cardToPlay.abilities.match(/(\d+)回復/)?.[1] || '3', 10);
-                    setOpponentHealth(prev => prev + heal);
-                    addToLog(`相手はライフを${heal}回復。`);
-                }
-            }
-        } else {
-            addToLog('相手は何もせずターンを終了。');
-        }
-
-        // End of AI turn, switch back to player
-        addToLog('相手がターンを終了。');
         const nextTurn = turn + 1;
         setTurn(nextTurn);
-        setPlayerMana(nextTurn);
-        setOpponentMana(nextTurn);
-        
-        let newPlayerDeck = [...playerDeck];
-        const drawnCard = newPlayerDeck.shift();
-        if (drawnCard) {
-            if (playerHand.length < HAND_LIMIT) {
-                setPlayerHand(prev => [...prev, drawnCard]);
-                addToLog('プレイヤーはカードを1枚引いた。');
-            } else {
-                addToLog('プレイヤーの手札がいっぱいで、引いたカードを破棄した。');
+        const newOpponentMaxMana = opponentMaxMana + 1;
+        setOpponentMaxMana(newOpponentMaxMana);
+        setOpponentMana(newOpponentMaxMana);
+
+        addToLog(`--- ターン ${nextTurn}: 相手のターン ---`);
+        drawCard(false);
+
+        // AI plays cards
+        let currentOpponentMana = newOpponentMaxMana;
+        let handChanged = true;
+
+        const playLoop = () => {
+            if (!handChanged || gameOver) {
+                endAiTurn();
+                return;
             }
-            setPlayerDeck(newPlayerDeck);
-        } else {
-            addToLog('プレイヤーの山札はもうない！');
+
+            handChanged = false;
+            const cardToPlay = aiChooseCard(opponentHand, currentOpponentMana, opponentHealth, playerHealth);
+
+            if (cardToPlay) {
+                const cardIndex = opponentHand.findIndex(c => c.id === cardToPlay.id);
+                
+                currentOpponentMana -= cardToPlay.manaCost;
+                setOpponentMana(currentOpponentMana);
+
+                const newOpponentHand = [...opponentHand];
+                newOpponentHand.splice(cardIndex, 1);
+                setOpponentHand(newOpponentHand);
+                
+                addToLog(`相手が「${cardToPlay.name}」をプレイ！`);
+                applyCardEffect(cardToPlay, false);
+
+                handChanged = true;
+                setTimeout(playLoop, 1000); // Play next card after a delay
+            } else {
+                endAiTurn();
+            }
+        };
+
+        const endAiTurn = () => {
+             if (gameOver) {
+                setIsPlayerTurn(true);
+                return;
+            }
+            addToLog('相手がターンを終了。');
+            
+            // Start of Player's turn
+            const newPlayerMaxMana = playerMaxMana + 1;
+            setPlayerMaxMana(newPlayerMaxMana);
+            setPlayerMana(newPlayerMaxMana);
+            addToLog(`--- ターン ${nextTurn}: あなたのターン ---`);
+            drawCard(true);
+            setIsPlayerTurn(true);
         }
         
-        setIsPlayerTurn(true);
+        setTimeout(playLoop, 1000);
     };
     
     if (!isClient) {
         return <main className="text-center p-10"><Loader2 className="animate-spin inline-block mr-2" />ロード中...</main>;
     }
 
-    if (isGeneratingDeck || gameLog.length === 0) {
+    if (isGeneratingDeck || gameLog.length <= 1) {
         return (
             <main className="text-center p-10">
                 <div className="flex flex-col items-center justify-center gap-4">
@@ -282,7 +384,7 @@ export default function BattlePage() {
                 <Card className="p-2 text-center w-40">
                     <p className="font-bold">相手</p>
                     <p className="flex items-center justify-center gap-2 text-red-500 font-bold text-xl"><Heart /> {opponentHealth}</p>
-                    <p className="flex items-center justify-center gap-2 text-blue-500 font-bold"><Dices /> {opponentMana}</p>
+                    <p className="flex items-center justify-center gap-2 text-blue-500 font-bold"><Dices /> {opponentMana}/{opponentMaxMana}</p>
                 </Card>
                 <div className="flex gap-2 min-h-[180px]">
                     {opponentHand.map((card, i) => (
@@ -326,7 +428,7 @@ export default function BattlePage() {
                 <Card className="p-2 text-center w-40">
                     <p className="font-bold">あなた</p>
                     <p className="flex items-center justify-center gap-2 text-red-500 font-bold text-xl"><Heart /> {playerHealth}</p>
-                    <p className="flex items-center justify-center gap-2 text-blue-500 font-bold"><Dices /> {playerMana}</p>
+                    <p className="flex items-center justify-center gap-2 text-blue-500 font-bold"><Dices /> {playerMana}/{playerMaxMana}</p>
                     <p className="mt-2 text-sm">ターン: {turn}</p>
                 </Card>
                 <div className="flex gap-2 min-h-[180px]">
