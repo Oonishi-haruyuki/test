@@ -1,0 +1,113 @@
+
+'use client';
+
+import { useState } from 'react';
+import type { CardData } from '@/components/card-editor';
+import { CardPreview } from '@/components/card-preview';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { useToast } from '@/hooks/use-toast';
+import { generateGachaPull } from '@/ai/flows/generate-gacha-pull';
+import { Loader2, Save, Wand2 } from 'lucide-react';
+
+const GACHA_PULL_COUNT = 10;
+
+export default function GachaPage() {
+  const [isPending, setIsPending] = useState(false);
+  const [pulledCards, setPulledCards] = useState<CardData[]>([]);
+  const { toast } = useToast();
+
+  const handlePullGacha = async () => {
+    setIsPending(true);
+    setPulledCards([]);
+    try {
+      const result = await generateGachaPull({ count: GACHA_PULL_COUNT });
+      const newCards: CardData[] = result.cards.map((card, index) => ({
+        ...card,
+        id: self.crypto.randomUUID(),
+        theme: 'fantasy', // Default theme for display
+        imageUrl: `https://picsum.photos/seed/gacha${Date.now()}${index}/${400}/${300}`,
+      }));
+      setPulledCards(newCards);
+      toast({
+        title: 'ガチャを引きました！',
+        description: `${GACHA_PULL_COUNT}枚のカードを獲得しました。`,
+      });
+    } catch (error) {
+      console.error('Gacha pull failed', error);
+      toast({
+        variant: 'destructive',
+        title: 'ガチャの実行に失敗しました',
+        description: '時間をおいて再度お試しください。',
+      });
+    } finally {
+      setIsPending(false);
+    }
+  };
+
+  const handleSaveToCollection = () => {
+    if (pulledCards.length === 0) return;
+    try {
+      const collection = JSON.parse(localStorage.getItem('cardCollection') || '[]');
+      const newCollection = [...collection, ...pulledCards];
+      localStorage.setItem('cardCollection', JSON.stringify(newCollection));
+      toast({
+        title: 'コレクションに保存しました',
+        description: `${pulledCards.length}枚のカードをマイカードに追加しました。`,
+      });
+      setPulledCards([]); // Clear pulled cards after saving
+    } catch (error) {
+      console.error(error);
+      toast({
+        variant: 'destructive',
+        title: '保存に失敗しました',
+        description: 'カードをコレクションに保存できませんでした。',
+      });
+    }
+  };
+
+  return (
+    <main className="container mx-auto">
+      <Card className="max-w-xl mx-auto text-center">
+        <CardHeader>
+          <CardTitle className="text-3xl">カードガチャ</CardTitle>
+          <CardDescription>新しいカードを手に入れよう！</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button onClick={handlePullGacha} disabled={isPending} size="lg">
+            {isPending ? <Loader2 className="animate-spin" /> : <Wand2 />}
+            10連ガチャを引く
+          </Button>
+        </CardContent>
+      </Card>
+
+      {isPending && (
+         <div className="text-center p-10">
+            <div className="flex flex-col items-center justify-center gap-4">
+                <Loader2 className="animate-spin h-10 w-10 text-primary" />
+                <p className="text-lg text-muted-foreground">カードを生成中...</p>
+            </div>
+        </div>
+      )}
+
+      {pulledCards.length > 0 && (
+        <div className="mt-12">
+            <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold">ガチャ結果</h2>
+                <Button onClick={handleSaveToCollection}>
+                    <Save className="mr-2" />
+                    すべてコレクションに保存
+                </Button>
+            </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+            {pulledCards.map(card => (
+              <div key={card.id}>
+                <CardPreview {...card} />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </main>
+  );
+}

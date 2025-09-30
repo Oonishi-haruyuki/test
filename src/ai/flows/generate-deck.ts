@@ -17,11 +17,11 @@ import type { CardData, CardType, Rarity, Theme } from '@/components/card-editor
 
 const CardSchemaForGeneration = z.object({
     name: z.string().describe('カードの名前。'),
-    manaCost: z.number().describe('マナコスト。1から5の範囲。'),
+    manaCost: z.number().describe('マナコスト。1から10の範囲。'),
     attack: z.number().describe('クリーチャーの攻撃力。呪文の場合は0。'),
     defense: z.number().describe('クリーチャーの防御力。呪文の場合は0。'),
     cardType: z.enum(['creature', 'spell']).describe('カードの種類。「クリーチャー」または「呪文」のいずれか。'),
-    rarity: z.enum(['common', 'uncommon', 'rare']).describe('カードのレアリティ。「コモン」、「アンコモン」、「レア」のいずれか。'),
+    rarity: z.enum(['common', 'uncommon', 'rare', 'mythic']).describe('カードのレアリティ。「コモン」、「アンコモン」、「レア」、「神話レア」のいずれか。'),
     abilities: z.string().describe('カードの能力。簡潔に記述する。'),
     flavorText: z.string().describe('カードのフレーバーテキスト。世界観を表す短いテキスト。'),
     imageHint: z.string().describe('カードの画像生成のためのヒント（英語、最大2単語）。'),

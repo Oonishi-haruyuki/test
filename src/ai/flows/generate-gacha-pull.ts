@@ -1,0 +1,117 @@
+
+'use server';
+
+/**
+ * @fileOverview Defines a Genkit flow for simulating a gacha pull to generate random cards.
+ *
+ * @file         src/ai/flows/generate-gacha-pull.ts
+ * @exports    generateGachaPull - The main function to perform a gacha pull.
+ * @exports    GenerateGachaPullInput - The input type for the function.
+ * @exports    GenerateGachaPullOutput - The output type for the function.
+ */
+
+import { ai } from '@/ai/genkit';
+import { z } from 'genkit';
+import type { Rarity } from '@/components/card-editor';
+
+const THEMES = ['ファンタジー', 'SF', 'モダン', 'サイバーパンク', 'スチームパンク', 'ホラー', '神話'];
+
+const CardSchemaForGacha = z.object({
+    name: z.string().describe('カードの名前。'),
+    manaCost: z.number().describe('マナコスト。レアリティに応じて1から10の範囲で。'),
+    attack: z.number().describe('クリーチャーの攻撃力。呪文の場合は0。'),
+    defense: z.number().describe('クリーチャーの防御力。呪文の場合は0。'),
+    cardType: z.enum(['creature', 'spell']).describe('カードの種類。「クリーチャー」または「呪文」のいずれか。'),
+    rarity: z.enum(['common', 'uncommon', 'rare', 'mythic']).describe('指定されたカードのレアリティ。'),
+    abilities: z.string().describe('カードの能力。簡潔かつユニークに記述する。'),
+    flavorText: z.string().describe('カードのフレーバーテキスト。世界観を表す短いテキスト。'),
+    imageHint: z.string().describe('カードの画像生成のためのヒント（英語、最大2単語）。'),
+});
+type CardForGacha = z.infer<typeof CardSchemaForGacha>;
+
+const GenerateGachaPullInputSchema = z.object({
+  count: z.number().describe('生成するカードの枚数。'),
+});
+export type GenerateGachaPullInput = z.infer<typeof GenerateGachaPullInputSchema>;
+
+const GenerateGachaPullOutputSchema = z.object({
+  cards: z.array(CardSchemaForGacha),
+});
+export type GenerateGachaPullOutput = z.infer<typeof GenerateGachaPullOutputSchema>;
+
+
+const generateCardPrompt = ai.definePrompt({
+    name: 'generateSingleCardForGachaPrompt',
+    input: {
+      schema: z.object({
+        theme: z.string(),
+        rarity: z.string(),
+      }),
+    },
+    output: { schema: CardSchemaForGacha },
+    prompt: `あなたは創造的なカードゲームデザイナーです。指定されたテーマとレアリティに基づいて、ユニークなカードを1枚生成してください。すべて日本語で回答してください。
+
+テーマ: {{{theme}}}
+レアリティ: {{{rarity}}}
+
+以下のガイドラインに従ってください:
+- レアリティが高いほど、より強力でユニークな能力を持つようにしてください。
+- カード名はテーマに沿った、ユニークで喚情的なものにしてください。
+- imageHintはカードのイラストをイメージした英語のキーワード（2単語以内）にしてください。
+- 必ずしもクリーチャーである必要はありません。呪文カードも生成してください。
+`,
+});
+
+const generateGachaPullFlow = ai.defineFlow(
+  {
+    name: 'generateGachaPullFlow',
+    inputSchema: GenerateGachaPullInputSchema,
+    outputSchema: GenerateGachaPullOutputSchema,
+  },
+  async ({ count }) => {
+    const rarityProbabilities: { [key in Rarity]: number } = {
+        common: 0.65,
+        uncommon: 0.25,
+        rare: 0.08,
+        mythic: 0.02,
+    };
+
+    const determineRarity = (): Rarity => {
+        const rand = Math.random();
+        let cumulative = 0;
+        for (const r in rarityProbabilities) {
+            const rarity = r as Rarity;
+            cumulative += rarityProbabilities[rarity];
+            if (rand < cumulative) {
+                return rarity;
+            }
+        }
+        return 'common'; // Fallback
+    };
+    
+    const cardPromises: Promise<CardForGacha>[] = [];
+
+    for (let i = 0; i < count; i++) {
+        const rarity = determineRarity();
+        const theme = THEMES[Math.floor(Math.random() * THEMES.length)];
+        
+        const cardPromise = (async () => {
+            const { output } = await generateCardPrompt({ theme, rarity });
+            if (!output) {
+                throw new Error(`Failed to generate card for theme ${theme} and rarity ${rarity}`);
+            }
+            return { ...output, rarity }; // Ensure the correct rarity is set
+        })();
+        cardPromises.push(cardPromise);
+    }
+    
+    const cards = await Promise.all(cardPromises);
+
+    return { cards };
+  }
+);
+
+
+export async function generateGachaPull(input: GenerateGachaPullInput): Promise<GenerateGachaPullOutput> {
+    return generateGachaPullFlow(input);
+}
