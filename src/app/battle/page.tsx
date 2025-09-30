@@ -137,28 +137,32 @@ export default function BattlePage() {
                 }));
                 toastMessage = `AIが生成した「${theme}」デッキで開始します。`;
             }
-
+            
+            const aiDeck = await createAiDeck(deckToLoad);
+            
             setPlayerDeck(shuffleDeck(deckToLoad));
+            setOpponentDeck(shuffleDeck(aiDeck));
             toast({ title: toastMessage });
-            await createAiDeck(); // AI deck generation depends on player's deck theme
-            startGame(shuffleDeck(deckToLoad), shuffleDeck(opponentDeck));
+
+            startGame(shuffleDeck(deckToLoad), shuffleDeck(aiDeck));
 
         } catch (error) {
             console.error("Failed to prepare player deck", error);
             toast({ variant: 'destructive', title: 'デッキの準備に失敗しました。'});
+            const fallbackAiDeck = await createAiDeck(goblinDeck);
             setPlayerDeck(shuffleDeck(goblinDeck));
-            await createAiDeck();
-            startGame(shuffleDeck(goblinDeck), shuffleDeck(opponentDeck));
+            setOpponentDeck(shuffleDeck(fallbackAiDeck));
+            startGame(shuffleDeck(goblinDeck), shuffleDeck(fallbackAiDeck));
         } finally {
             setIsGeneratingDeck(false);
         }
     };
     
-    const createAiDeck = async () => {
+    const createAiDeck = async (playerDeckData: CardData[]): Promise<CardData[]> => {
         addToLog('AIが対戦相手のデッキを準備しています...');
         try {
             // AI deck theme is opposite of player's
-            const playerTheme = playerDeck[0]?.theme || 'fantasy';
+            const playerTheme = playerDeckData[0]?.theme || 'fantasy';
             const aiTheme = playerTheme === 'fantasy' ? 'SF' : 'ファンタジー';
 
             const result = await generateDeck({ theme: aiTheme, cardCount: DECK_SIZE });
@@ -168,12 +172,12 @@ export default function BattlePage() {
                 theme: aiTheme === 'SF' ? 'sci-fi' : 'fantasy',
                 imageUrl: `https://picsum.photos/seed/ai${index}/${400}/${300}`,
             }));
-            setOpponentDeck(aiGeneratedDeck);
             addToLog('AIのデッキが完成しました！');
+            return aiGeneratedDeck;
         } catch (error) {
             console.error("Failed to generate AI deck", error);
             toast({ variant: 'destructive', title: 'AIデッキの生成に失敗しました。'});
-            setOpponentDeck(shuffleDeck(goblinDeck)); // Fallback
+            return shuffleDeck(goblinDeck); // Fallback
         }
     };
 
@@ -716,3 +720,5 @@ export default function BattlePage() {
     </main>
   );
 }
+
+    
