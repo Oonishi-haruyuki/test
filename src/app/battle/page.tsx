@@ -112,6 +112,40 @@ export default function BattlePage() {
     const [gameOver, setGameOver] = useState('');
     const [gamePhase, setGamePhase] = useState<'main' | 'attack'>('main');
 
+    const addToLog = (message: string) => {
+        setGameLog(prev => [`[T${Math.ceil(turn/2)}] ${message}`, ...prev]);
+    }
+
+    const startGame = (playerDeckData: CardData[], opponentDeckData: CardData[]) => {
+        const pDeck = [...playerDeckData];
+        const oDeck = [...opponentDeckData];
+
+        const initialPlayerHand = pDeck.splice(0, HAND_LIMIT);
+        const initialOpponentHand = oDeck.splice(0, HAND_LIMIT);
+
+        setPlayerDeck(pDeck);
+        setPlayerHand(initialPlayerHand);
+        setPlayerBoard([]);
+        setPlayerHealth(20);
+        setPlayerMana(1);
+        setPlayerMaxMana(1);
+        setPlayerHasPlayedNonCreature(false);
+
+        setOpponentDeck(oDeck);
+        setOpponentHand(initialOpponentHand);
+        setOpponentBoard([]);
+        setOpponentHealth(20);
+        setOpponentMana(1);
+        setOpponentMaxMana(1);
+        setOpponentHasPlayedNonCreature(false);
+
+        setTurn(1);
+        setIsPlayerTurn(true);
+        setGamePhase('main');
+        setGameOver('');
+        setGameLog([`--- ターン 1: あなたのターン ---`, 'ゲーム開始！']);
+    };
+    
     const loadAndSetPlayerDeck = async (choice: DeckChoice) => {
         setIsGeneratingDeck(true);
         addToLog('対戦の準備をしています...');
@@ -149,8 +183,6 @@ export default function BattlePage() {
             
             const aiDeck = await createAiDeck(deckToLoad);
             
-            setPlayerDeck(shuffleDeck(deckToLoad));
-            setOpponentDeck(shuffleDeck(aiDeck));
             toast({ title: toastMessage });
 
             startGame(shuffleDeck(deckToLoad), shuffleDeck(aiDeck));
@@ -159,8 +191,6 @@ export default function BattlePage() {
             console.error("Failed to prepare player deck", error);
             toast({ variant: 'destructive', title: 'デッキの準備に失敗しました。'});
             const fallbackAiDeck = await createAiDeck(goblinDeck);
-            setPlayerDeck(shuffleDeck(goblinDeck));
-            setOpponentDeck(shuffleDeck(fallbackAiDeck));
             startGame(shuffleDeck(goblinDeck), shuffleDeck(fallbackAiDeck));
         } finally {
             setIsGeneratingDeck(false);
@@ -329,10 +359,6 @@ export default function BattlePage() {
         setDeckChoice(null);
         setGameOver('');
         setGameLog([]);
-    }
-
-    const addToLog = (message: string) => {
-        setGameLog(prev => [`[T${Math.ceil(turn/2)}] ${message}`, ...prev]);
     }
 
     const drawCard = (isPlayer: boolean) => {
