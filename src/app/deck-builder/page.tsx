@@ -9,6 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { PlusCircle, MinusCircle, Save } from 'lucide-react';
 
 const DECK_SIZE = 20;
+const MAX_IDENTICAL_CARDS = 2;
 
 export default function DeckBuilderPage() {
   const [collection, setCollection] = useState<CardData[]>([]);
@@ -30,6 +31,11 @@ export default function DeckBuilderPage() {
     }
   }, []);
 
+  const getCardCountInDeck = (cardId?: string) => {
+    if (!cardId) return 0;
+    return deck.filter(card => card.id === cardId).length;
+  }
+
   const addToDeck = (card: CardData) => {
     if (deck.length >= DECK_SIZE) {
       toast({
@@ -39,6 +45,17 @@ export default function DeckBuilderPage() {
       });
       return;
     }
+    
+    const count = getCardCountInDeck(card.id);
+    if (count >= MAX_IDENTICAL_CARDS) {
+        toast({
+            variant: 'destructive',
+            title: 'カードの追加制限',
+            description: `同じカードは${MAX_IDENTICAL_CARDS}枚までしか追加できません。`,
+        });
+        return;
+    }
+
     setDeck(prevDeck => [...prevDeck, card]);
   };
 
@@ -57,6 +74,14 @@ export default function DeckBuilderPage() {
 
   const saveDeck = () => {
     try {
+      if (deck.length !== DECK_SIZE) {
+        toast({
+            variant: 'destructive',
+            title: 'デッキの枚数が不正です',
+            description: `デッキはちょうど${DECK_SIZE}枚で構築する必要があります。`,
+        });
+        return;
+      }
       localStorage.setItem('deck', JSON.stringify(deck));
       toast({
         title: 'デッキを保存しました',
@@ -71,11 +96,6 @@ export default function DeckBuilderPage() {
       });
     }
   };
-  
-  const getCardCountInDeck = (cardId?: string) => {
-    if (!cardId) return 0;
-    return deck.filter(card => card.id === cardId).length;
-  }
 
   const getUniqueCards = (cards: CardData[]) => {
     const unique: { [key: string]: CardData } = {};
@@ -98,7 +118,7 @@ export default function DeckBuilderPage() {
     <main>
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold">デッキ構築</h1>
-        <Button onClick={saveDeck} disabled={deck.length > DECK_SIZE}>
+        <Button onClick={saveDeck} disabled={deck.length !== DECK_SIZE}>
           <Save className="mr-2" />
           デッキを保存
         </Button>

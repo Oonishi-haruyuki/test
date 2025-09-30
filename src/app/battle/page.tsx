@@ -17,17 +17,17 @@ const MAX_MANA = 10;
 const BOARD_LIMIT = 5;
 
 type Difficulty = 'beginner' | 'advanced';
-type DeckChoice = 'my-deck' | 'starter-goblin' | 'starter-elemental' | 'ai-fantasy' | 'ai-scifi';
+type DeckChoice = 'my-deck' | 'starter-goblin' | 'starter-elemental' | 'ai-fantasy' | 'ai-scifi' | 'in-game';
 
 const goblinDeck: CardData[] = [
     { id: 'starter-gob-1', theme: 'fantasy', name: 'ゴブリンの突撃兵', manaCost: 1, attack: 2, defense: 1, cardType: 'creature', rarity: 'common', abilities: '', flavorText: '考えるより先に足が動く。', imageUrl: 'https://picsum.photos/seed/sg1/400/300', imageHint: 'goblin warrior' },
     { id: 'starter-gob-1-2', theme: 'fantasy', name: 'ゴブリンの突撃兵', manaCost: 1, attack: 2, defense: 1, cardType: 'creature', rarity: 'common', abilities: '', flavorText: '考えるより先に足が動く。', imageUrl: 'https://picsum.photos/seed/sg1/400/300', imageHint: 'goblin warrior' },
-    { id: 'starter-gob-1-3', theme: 'fantasy', name: 'ゴブリンの突撃兵', manaCost: 1, attack: 2, defense: 1, cardType: 'creature', rarity: 'common', abilities: '', flavorText: '考えるより先に足が動く。', imageUrl: 'https://picsum.photos/seed/sg1/400/300', imageHint: 'goblin warrior' },
     { id: 'starter-gob-2', theme: 'fantasy', name: 'ゴブリンの斥候', manaCost: 2, attack: 2, defense: 2, cardType: 'creature', rarity: 'common', abilities: 'カードを1枚引く。', flavorText: '危険な道も、奴らにかかれば近道だ。', imageUrl: 'https://picsum.photos/seed/sg2/400/300', imageHint: 'goblin scout' },
     { id: 'starter-gob-2-2', theme: 'fantasy', name: 'ゴブリンの斥候', manaCost: 2, attack: 2, defense: 2, cardType: 'creature', rarity: 'common', abilities: 'カードを1枚引く。', flavorText: '危険な道も、奴らにかかれば近道だ。', imageUrl: 'https://picsum.photos/seed/sg2/400/300', imageHint: 'goblin scout' },
     { id: 'starter-gob-3', theme: 'fantasy', name: 'ゴブリンの略奪隊長', manaCost: 3, attack: 3, defense: 3, cardType: 'creature', rarity: 'uncommon', abilities: '他のゴブリンは+1/+0の修正を受ける。', flavorText: '隊長の雄叫びは、略奪の合図。', imageUrl: 'https://picsum.photos/seed/sg3/400/300', imageHint: 'goblin captain' },
     { id: 'starter-gob-3-2', theme: 'fantasy', name: 'ゴブリンの略奪隊長', manaCost: 3, attack: 3, defense: 3, cardType: 'creature', rarity: 'uncommon', abilities: '他のゴブリンは+1/+0の修正を受ける。', flavorText: '隊長の雄叫びは、略奪の合図。', imageUrl: 'https://picsum.photos/seed/sg3/400/300', imageHint: 'goblin captain' },
     { id: 'starter-gob-4', theme: 'fantasy', name: 'ゴブリンの狂戦士', manaCost: 4, attack: 5, defense: 2, cardType: 'creature', rarity: 'uncommon', abilities: '', flavorText: '一度暴れだしたら、誰にも止められない。', imageUrl: 'https://picsum.photos/seed/sg4/400/300', imageHint: 'goblin berserker' },
+    { id: 'starter-gob-4-2', theme: 'fantasy', name: 'ゴブリンの狂戦士', manaCost: 4, attack: 5, defense: 2, cardType: 'creature', rarity: 'uncommon', abilities: '', flavorText: '一度暴れだしたら、誰にも止められない。', imageUrl: 'https://picsum.photos/seed/sg4/400/300', imageHint: 'goblin berserker' },
     { id: 'starter-ogre-1', theme: 'fantasy', name: '怒れるオーガ', manaCost: 5, attack: 5, defense: 5, cardType: 'creature', rarity: 'rare', abilities: '', flavorText: 'ゴブリンたちに無理やり駆り出された。機嫌が悪い。', imageUrl: 'https://picsum.photos/seed/sg5/400/300', imageHint: 'angry ogre' },
     { id: 'starter-ogre-1-2', theme: 'fantasy', name: '怒れるオーガ', manaCost: 5, attack: 5, defense: 5, cardType: 'creature', rarity: 'rare', abilities: '', flavorText: 'ゴブリンたちに無理やり駆り出された。機嫌が悪い。', imageUrl: 'https://picsum.photos/seed/sg5/400/300', imageHint: 'angry ogre' },
     { id: 'starter-shaman-1', theme: 'fantasy', name: 'ゴブリンの呪術師', manaCost: 2, attack: 1, defense: 1, cardType: 'creature', rarity: 'uncommon', abilities: '次の自分のターンの最大マナを+1する。', flavorText: '怪しげな儀式で、大地の力を呼び覚ます。', imageUrl: 'https://picsum.photos/seed/sg6/400/300', imageHint: 'goblin shaman' },
@@ -43,7 +43,6 @@ const goblinDeck: CardData[] = [
 ];
 
 const elementalDeck: CardData[] = [
-    // Creatures (12)
     { id: 'starter-elem-1', theme: 'fantasy', name: '炎の精霊', manaCost: 1, attack: 1, defense: 1, cardType: 'creature', rarity: 'common', abilities: '速攻', flavorText: '燃え盛る意志の現れ。', imageUrl: 'https://picsum.photos/seed/se1/400/300', imageHint: 'fire elemental' },
     { id: 'starter-elem-1-2', theme: 'fantasy', name: '炎の精霊', manaCost: 1, attack: 1, defense: 1, cardType: 'creature', rarity: 'common', abilities: '速攻', flavorText: '燃え盛る意志の現れ。', imageUrl: 'https://picsum.photos/seed/se1/400/300', imageHint: 'fire elemental' },
     { id: 'starter-elem-2', theme: 'fantasy', name: '水の精霊', manaCost: 2, attack: 1, defense: 3, cardType: 'creature', rarity: 'common', abilities: 'カードを1枚引く。', flavorText: '流れる知識の運び手。', imageUrl: 'https://picsum.photos/seed/se2/400/300', imageHint: 'water elemental' },
@@ -56,7 +55,6 @@ const elementalDeck: CardData[] = [
     { id: 'starter-elem-6', theme: 'fantasy', name: '氷の精霊', manaCost: 3, attack: 2, defense: 4, cardType: 'creature', rarity: 'uncommon', abilities: '相手クリーチャー1体をタップする。', flavorText: '万物を凍てつかせる冷気。', imageUrl: 'https://picsum.photos/seed/se6/400/300', imageHint: 'ice elemental' },
     { id: 'starter-elem-7', theme: 'fantasy', name: 'マグマの巨像', manaCost: 6, attack: 7, defense: 6, cardType: 'creature', rarity: 'rare', abilities: '', flavorText: '溶岩の中から生まれし巨人。', imageUrl: 'https://picsum.photos/seed/se7/400/300', imageHint: 'magma golem' },
     { id: 'starter-elem-7-2', theme: 'fantasy', name: 'マグマの巨像', manaCost: 6, attack: 7, defense: 6, cardType: 'creature', rarity: 'rare', abilities: '', flavorText: '溶岩の中から生まれし巨人。', imageUrl: 'https://picsum.photos/seed/se7/400/300', imageHint: 'magma golem' },
-    // Spells (8)
     { id: 'starter-espell-1', theme: 'fantasy', name: 'エレメンタル・チャージ', manaCost: 1, attack: 0, defense: 0, cardType: 'spell', rarity: 'common', abilities: 'クリーチャー1体に+1/+1の修正を与える。カードを1枚引く。', flavorText: '自然の力が、その身に宿る。', imageUrl: 'https://picsum.photos/seed/ses1/400/300', imageHint: 'elemental power' },
     { id: 'starter-espell-1-2', theme: 'fantasy', name: 'エレメンタル・チャージ', manaCost: 1, attack: 0, defense: 0, cardType: 'spell', rarity: 'common', abilities: 'クリーチャー1体に+1/+1の修正を与える。カードを1枚引く。', flavorText: '自然の力が、その身に宿る。', imageUrl: 'https://picsum.photos/seed/ses1/400/300', imageHint: 'elemental power' },
     { id: 'starter-espell-2', theme: 'fantasy', name: '自然の怒り', manaCost: 2, attack: 0, defense: 0, cardType: 'spell', rarity: 'common', abilities: '飛行を持たないクリーチャー1体を破壊する。', flavorText: '大地は裏切り者を許さない。', imageUrl: 'https://picsum.photos/seed/ses2/400/300', imageHint: 'nature wrath' },
@@ -232,7 +230,7 @@ export default function BattlePage() {
     }
 
     const addToLog = (message: string) => {
-        setGameLog(prev => [`[T${turn}] ${message}`, ...prev]);
+        setGameLog(prev => [`[T${Math.ceil(turn/2)}] ${message}`, ...prev]);
     }
 
     const drawCard = (isPlayer: boolean) => {
@@ -425,7 +423,7 @@ export default function BattlePage() {
         if (spellCards.length > 0) {
             const damageSpells = spellCards.filter(s => s.abilities.includes('ダメージ'));
             if (damageSpells.length > 0 && playerHealth < opponentHealth / 2) {
-                return damageSpells.sort((a, b) => (b.abilities.match(/(\d+)ダメージ/)?.[1] || 0) - (a.abilities.match(/(\d+)ダメージ/)?.[1] || 0))[0];
+                return damageSpells.sort((a, b) => (parseInt(b.abilities.match(/(\d+)ダメージ/)?.[1] || '0', 10)) - (parseInt(a.abilities.match(/(\d+)ダメージ/)?.[1] || '0', 10)))[0];
             }
             const drawSpells = spellCards.filter(s => s.abilities.includes('カードを引く'));
             if (drawSpells.length > 0 && hand.length <= 2) {
@@ -442,7 +440,7 @@ export default function BattlePage() {
 
         const nextTurn = turn + 1;
         setTurn(nextTurn);
-        addToLog(`--- ターン ${nextTurn}: 相手のターン ---`);
+        addToLog(`--- ターン ${Math.ceil(nextTurn/2)}: 相手のターン ---`);
 
         const newOpponentMaxMana = Math.min(MAX_MANA, opponentMaxMana + 1);
         setOpponentMaxMana(newOpponentMaxMana);
@@ -521,7 +519,7 @@ export default function BattlePage() {
             setIsPlayerTurn(true);
             setGamePhase('main');
             
-            addToLog(`--- ターン ${turn + 1}: あなたのターン ---`);
+            addToLog(`--- ターン ${Math.ceil(turn/2)+1}: あなたのターン ---`);
             drawCard(true);
         }
         
