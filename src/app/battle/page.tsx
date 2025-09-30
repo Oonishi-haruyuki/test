@@ -84,7 +84,7 @@ const undeadDeck: CardData[] = [
     { id: 'starter-undead-5-2', theme: 'fantasy', name: 'ネクロマンサー', manaCost: 4, attack: 3, defense: 3, cardType: 'creature', rarity: 'rare', abilities: 'あなたの墓地にあるクリーチャーカードを1枚戦場に戻す。', flavorText: '死は終わりではない。新たな始まりだ。', imageUrl: 'https://picsum.photos/seed/su5/400/300', imageHint: 'necromancer casting' },
     { id: 'starter-uspell-1', theme: 'fantasy', name: '死者蘇生', manaCost: 1, attack: 0, defense: 0, cardType: 'spell', rarity: 'uncommon', abilities: 'あなたの墓地からコスト3以下のクリーチャーを戦場に戻す。', flavorText: '魂のない肉体が、再び動き出す。', imageUrl: 'https://picsum.photos/seed/sus1/400/300', imageHint: 'dark resurrection' },
     { id: 'starter-uspell-1-2', theme: 'fantasy', name: '死者蘇生', manaCost: 1, attack: 0, defense: 0, cardType: 'spell', rarity: 'uncommon', abilities: 'あなたの墓地からコスト3以下のクリーチャーを戦場に戻す。', flavorText: '魂のない肉体が、再び動き出す。', imageUrl: 'https://picsum.photos/seed/sus1/400/300', imageHint: 'dark resurrection' },
-    { id: 'starter-uspell-2', theme: 'fantasy', name '魂の吸引', manaCost: 2, attack: 0, defense: 0, cardType: 'spell', rarity: 'common', abilities: 'クリーチャー1体に2ダメージを与え、あなたは2ライフを得る。', flavorText: 'その痛みは、我が力となる。', imageUrl: 'https://picsum.photos/seed/sus2/400/300', imageHint: 'soul drain' },
+    { id: 'starter-uspell-2', theme: 'fantasy', name: '魂の吸引', manaCost: 2, attack: 0, defense: 0, cardType: 'spell', rarity: 'common', abilities: 'クリーチャー1体に2ダメージを与え、あなたは2ライフを得る。', flavorText: 'その痛みは、我が力となる。', imageUrl: 'https://picsum.photos/seed/sus2/400/300', imageHint: 'soul drain' },
     { id: 'starter-uspell-2-2', theme: 'fantasy', name: '魂の吸引', manaCost: 2, attack: 0, defense: 0, cardType: 'spell', rarity: 'common', abilities: 'クリーチャー1体に2ダメージを与え、あなたは2ライフを得る。', flavorText: 'その痛みは、我が力となる。', imageUrl: 'https://picsum.photos/seed/sus2/400/300', imageHint: 'soul drain' },
     { id: 'starter-uspell-3', theme: 'fantasy', name: '暗黒の儀式', manaCost: 1, attack: 0, defense: 0, cardType: 'spell', rarity: 'rare', abilities: 'あなたのマナを3点増やす。', flavorText: '禁じられた力には、代償が伴う。', imageUrl: 'https://picsum.photos/seed/sus3/400/300', imageHint: 'dark ritual' },
     { id: 'starter-uspell-4', theme: 'fantasy', name: '墓所からの呼び声', manaCost: 5, attack: 0, defense: 0, cardType: 'spell', rarity: 'rare', abilities: 'あなたの墓地にあるすべてのクリーチャーカードを手札に戻す。', flavorText: '眠れる者たちよ、今こそ目覚めよ！', imageUrl: 'https://picsum.photos/seed/sus4/400/300', imageHint: 'call from grave' },
@@ -1125,5 +1125,7 @@ export default function BattlePage() {
     </main>
   );
 }
+
+    
 
     
