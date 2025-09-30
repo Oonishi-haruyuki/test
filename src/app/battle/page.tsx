@@ -18,13 +18,31 @@ const BOARD_LIMIT = 5;
 
 type Difficulty = 'beginner' | 'advanced';
 
-const starterDeck: CardData[] = Array.from({ length: 4 }).flatMap(() => [
-    { id: 'starter-1', theme: 'fantasy', name: '見習い騎士', manaCost: 1, attack: 1, defense: 2, cardType: 'creature', rarity: 'common', abilities: '', flavorText: '訓練は始まったばかりだ。', imageUrl: 'https://picsum.photos/seed/s1/400/300', imageHint: 'apprentice knight' },
-    { id: 'starter-2', theme: 'fantasy', name: 'ゴブリンの斥候', manaCost: 1, attack: 2, defense: 1, cardType: 'creature', rarity: 'common', abilities: '', flavorText: '素早いが、脆い。', imageUrl: 'https://picsum.photos/seed/s2/400/300', imageHint: 'goblin scout' },
-    { id: 'starter-3', theme: 'fantasy', name: '小回復のポーション', manaCost: 1, attack: 0, defense: 0, cardType: 'spell', rarity: 'common', abilities: 'ライフを3回復する。', flavorText: '傷を癒す一滴。', imageUrl: 'https://picsum.photos/seed/s3/400/300', imageHint: 'healing potion' },
-    { id: 'starter-4', theme: 'fantasy', name: 'ベテランの重装兵', manaCost: 2, attack: 2, defense: 3, cardType: 'creature', rarity: 'common', abilities: '', flavorText: '多くの戦場を生き抜いてきた。', imageUrl: 'https://picsum.photos/seed/s4/400/300', imageHint: 'veteran soldier' },
-    { id: 'starter-5', theme: 'fantasy', name: 'ファイアボール', manaCost: 2, attack: 0, defense: 0, cardType: 'spell', rarity: 'common', abilities: '相手に3ダメージ。', flavorText: '燃え上がれ！', imageUrl: 'https://picsum.photos/seed/s5/400/300', imageHint: 'fireball magic' },
-]);
+const starterDeck: CardData[] = [
+    // Creatures (12)
+    { id: 'starter-gob-1', theme: 'fantasy', name: 'ゴブリンの突撃兵', manaCost: 1, attack: 2, defense: 1, cardType: 'creature', rarity: 'common', abilities: '', flavorText: '考えるより先に足が動く。', imageUrl: 'https://picsum.photos/seed/sg1/400/300', imageHint: 'goblin warrior' },
+    { id: 'starter-gob-1-2', theme: 'fantasy', name: 'ゴブリンの突撃兵', manaCost: 1, attack: 2, defense: 1, cardType: 'creature', rarity: 'common', abilities: '', flavorText: '考えるより先に足が動く。', imageUrl: 'https://picsum.photos/seed/sg1/400/300', imageHint: 'goblin warrior' },
+    { id: 'starter-gob-1-3', theme: 'fantasy', name: 'ゴブリンの突撃兵', manaCost: 1, attack: 2, defense: 1, cardType: 'creature', rarity: 'common', abilities: '', flavorText: '考えるより先に足が動く。', imageUrl: 'https://picsum.photos/seed/sg1/400/300', imageHint: 'goblin warrior' },
+    { id: 'starter-gob-2', theme: 'fantasy', name: 'ゴブリンの斥候', manaCost: 2, attack: 2, defense: 2, cardType: 'creature', rarity: 'common', abilities: 'カードを1枚引く。', flavorText: '危険な道も、奴らにかかれば近道だ。', imageUrl: 'https://picsum.photos/seed/sg2/400/300', imageHint: 'goblin scout' },
+    { id: 'starter-gob-2-2', theme: 'fantasy', name: 'ゴブリンの斥候', manaCost: 2, attack: 2, defense: 2, cardType: 'creature', rarity: 'common', abilities: 'カードを1枚引く。', flavorText: '危険な道も、奴らにかかれば近道だ。', imageUrl: 'https://picsum.photos/seed/sg2/400/300', imageHint: 'goblin scout' },
+    { id: 'starter-gob-3', theme: 'fantasy', name: 'ゴブリンの略奪隊長', manaCost: 3, attack: 3, defense: 3, cardType: 'creature', rarity: 'uncommon', abilities: '他のゴブリンは+1/+0の修正を受ける。', flavorText: '隊長の雄叫びは、略奪の合図。', imageUrl: 'https://picsum.photos/seed/sg3/400/300', imageHint: 'goblin captain' },
+    { id: 'starter-gob-3-2', theme: 'fantasy', name: 'ゴブリンの略奪隊長', manaCost: 3, attack: 3, defense: 3, cardType: 'creature', rarity: 'uncommon', abilities: '他のゴブリンは+1/+0の修正を受ける。', flavorText: '隊長の雄叫びは、略奪の合図。', imageUrl: 'https://picsum.photos/seed/sg3/400/300', imageHint: 'goblin captain' },
+    { id: 'starter-gob-4', theme: 'fantasy', name: 'ゴブリンの狂戦士', manaCost: 4, attack: 5, defense: 2, cardType: 'creature', rarity: 'uncommon', abilities: '', flavorText: '一度暴れだしたら、誰にも止められない。', imageUrl: 'https://picsum.photos/seed/sg4/400/300', imageHint: 'goblin berserker' },
+    { id: 'starter-ogre-1', theme: 'fantasy', name: '怒れるオーガ', manaCost: 5, attack: 5, defense: 5, cardType: 'creature', rarity: 'rare', abilities: '', flavorText: 'ゴブリンたちに無理やり駆り出された。機嫌が悪い。', imageUrl: 'https://picsum.photos/seed/sg5/400/300', imageHint: 'angry ogre' },
+    { id: 'starter-ogre-1-2', theme: 'fantasy', name: '怒れるオーガ', manaCost: 5, attack: 5, defense: 5, cardType: 'creature', rarity: 'rare', abilities: '', flavorText: 'ゴブリンたちに無理やり駆り出された。機嫌が悪い。', imageUrl: 'https://picsum.photos/seed/sg5/400/300', imageHint: 'angry ogre' },
+    { id: 'starter-shaman-1', theme: 'fantasy', name: 'ゴブリンの呪術師', manaCost: 2, attack: 1, defense: 1, cardType: 'creature', rarity: 'uncommon', abilities: '次の自分のターンの最大マナを+1する。', flavorText: '怪しげな儀式で、大地の力を呼び覚ます。', imageUrl: 'https://picsum.photos/seed/sg6/400/300', imageHint: 'goblin shaman' },
+    { id: 'starter-shaman-1-2', theme: 'fantasy', name: 'ゴブリンの呪術師', manaCost: 2, attack: 1, defense: 1, cardType: 'creature', rarity: 'uncommon', abilities: '次の自分のターンの最大マナを+1する。', flavorText: '怪しげな儀式で、大地の力を呼び覚ます。', imageUrl: 'https://picsum.photos/seed/sg6/400/300', imageHint: 'goblin shaman' },
+    // Spells (8)
+    { id: 'starter-spell-1', theme: 'fantasy', name: 'ゴブリンの応援', manaCost: 1, attack: 0, defense: 0, cardType: 'spell', rarity: 'common', abilities: 'クリーチャー1体に+2/+1の修正を与える。', flavorText: '「イケー！ヤッちまえー！」', imageUrl: 'https://picsum.photos/seed/ss1/400/300', imageHint: 'goblin cheer' },
+    { id: 'starter-spell-1-2', theme: 'fantasy', name: 'ゴブリンの応援', manaCost: 1, attack: 0, defense: 0, cardType: 'spell', rarity: 'common', abilities: 'クリーチャー1体に+2/+1の修正を与える。', flavorText: '「イケー！ヤッちまえー！」', imageUrl: 'https://picsum.photos/seed/ss1/400/300', imageHint: 'goblin cheer' },
+    { id: 'starter-spell-2', theme: 'fantasy', name: '捨て身の突撃', manaCost: 2, attack: 0, defense: 0, cardType: 'spell', rarity: 'common', abilities: 'クリーチャー1体に+3/+0の修正を与え、ターン終了時にそれを破壊する。', flavorText: '栄光か、死か！', imageUrl: 'https://picsum.photos/seed/ss2/400/300', imageHint: 'desperate charge' },
+    { id: 'starter-spell-2-2', theme: 'fantasy', name: '捨て身の突撃', manaCost: 2, attack: 0, defense: 0, cardType: 'spell', rarity: 'common', abilities: 'クリーチャー1体に+3/+0の修正を与え、ターン終了時にそれを破壊する。', flavorText: '栄光か、死か！', imageUrl: 'https://picsum.photos/seed/ss2/400/300', imageHint: 'desperate charge' },
+    { id: 'starter-spell-3', theme: 'fantasy', name: 'ファイアボール', manaCost: 2, attack: 0, defense: 0, cardType: 'spell', rarity: 'common', abilities: '相手に3ダメージ。', flavorText: '燃え上がれ！', imageUrl: 'https://picsum.photos/seed/s5/400/300', imageHint: 'fireball magic' },
+    { id: 'starter-spell-3-2', theme: 'fantasy', name: 'ファイアボール', manaCost: 2, attack: 0, defense: 0, cardType: 'spell', rarity: 'common', abilities: '相手に3ダメージ。', flavorText: '燃え上がれ！', imageUrl: 'https://picsum.photos/seed/s5/400/300', imageHint: 'fireball magic' },
+    { id: 'starter-spell-4', theme: 'fantasy', name: 'ゴブリンの知恵', manaCost: 3, attack: 0, defense: 0, cardType: 'spell', rarity: 'uncommon', abilities: 'カードを2枚引く。', flavorText: 'たまには頭も使う。', imageUrl: 'https://picsum.photos/seed/ss4/400/300', imageHint: 'goblin wisdom' },
+    { id: 'starter-spell-5', theme: 'fantasy', name: '大地の怒り', manaCost: 4, attack: 0, defense: 0, cardType: 'spell', rarity: 'rare', abilities: '相手に5ダメージ。', flavorText: '大地が、怒りに震える。', imageUrl: 'https://picsum.photos/seed/ss5/400/300', imageHint: 'earth fury' },
+];
+
 
 const shuffleDeck = (deck: CardData[]) => [...deck].sort(() => Math.random() - 0.5);
 
@@ -570,5 +588,7 @@ export default function BattlePage() {
     </main>
   );
 }
+
+    
 
     
