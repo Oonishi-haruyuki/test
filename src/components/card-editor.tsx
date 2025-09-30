@@ -118,6 +118,38 @@ export function CardEditor({ cardData, setCardData, cardPreviewRef }: CardEditor
     }
   };
   
+  const handleCardBackUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+        if (!file.type.startsWith('image/')) {
+            toast({
+                variant: 'destructive',
+                title: '無効なファイルタイプ',
+                description: '画像ファイル（JPEG, PNG, GIFなど）を選択してください。',
+            });
+            return;
+        }
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const cardBackUrl = event.target?.result as string;
+            try {
+                localStorage.setItem('cardBackImage', cardBackUrl);
+                toast({
+                    title: 'カード裏面の画像が保存されました',
+                });
+            } catch (error) {
+                console.error(error);
+                toast({
+                    variant: 'destructive',
+                    title: '保存に失敗しました',
+                    description: 'カード裏面を保存できませんでした。',
+                });
+            }
+        };
+        reader.readAsDataURL(file);
+    }
+};
+
   const handleGenerateImage = () => {
     if (!cardData.imageHint) {
         toast({
@@ -391,10 +423,20 @@ export function CardEditor({ cardData, setCardData, cardPreviewRef }: CardEditor
                 <Button asChild variant="outline" className="w-full cursor-pointer">
                     <div>
                         <Upload className="mr-2" />
-                        フレーム画像をアップロード
+                        カード表面をアップロード
                     </div>
                 </Button>
                 <Input id="frame-image-upload" type="file" className="sr-only" accept="image/*" onChange={handleFrameImageUpload} />
+            </Label>
+            <Separator />
+            <Label htmlFor="card-back-upload" className="w-full">
+                <Button asChild variant="outline" className="w-full cursor-pointer">
+                    <div>
+                        <Upload className="mr-2" />
+                        カード裏面をアップロード
+                    </div>
+                </Button>
+                <Input id="card-back-upload" type="file" className="sr-only" accept="image/*" onChange={handleCardBackUpload} />
             </Label>
           </CardContent>
         </Card>

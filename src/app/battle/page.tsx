@@ -10,11 +10,8 @@ import { Swords, Heart, Shield, Dices, RotateCcw, Loader2, BrainCircuit, Bot, Wa
 import { useToast } from '@/hooks/use-toast';
 import { generateDeck } from '@/ai/flows/generate-deck';
 import { cn } from '@/lib/utils';
-import {
-  Dialog,
-  DialogContent,
-  DialogTrigger,
-} from "@/components/ui/dialog"
+import Image from 'next/image';
+
 
 const HAND_LIMIT = 5;
 const DECK_SIZE = 20;
@@ -81,6 +78,7 @@ export default function BattlePage() {
     const [difficulty, setDifficulty] = useState<Difficulty | null>(null);
     const [deckChoice, setDeckChoice] = useState<DeckChoice | null>(null);
     const [hasSavedDeck, setHasSavedDeck] = useState(false);
+    const [cardBackImage, setCardBackImage] = useState<string | null>(null);
 
     // Game State
     const [playerDeck, setPlayerDeck] = useState<CardData[]>([]);
@@ -186,8 +184,12 @@ export default function BattlePage() {
             if (savedDeck.length > 0) {
                 setHasSavedDeck(true);
             }
+            const savedCardBack = localStorage.getItem('cardBackImage');
+            if (savedCardBack) {
+                setCardBackImage(savedCardBack);
+            }
         } catch (error) {
-            console.error("Failed to check for saved deck", error);
+            console.error("Failed to check for saved data", error);
         }
     }, []);
 
@@ -637,7 +639,11 @@ export default function BattlePage() {
                 <div className="flex gap-2 min-h-[180px]">
                     {opponentHand.map((card, i) => (
                         <div key={card.id ? card.id + i.toString() : i} className="w-24">
-                           <Card className="h-full flex items-center justify-center text-center p-2 bg-slate-700 text-white">裏向きのカード</Card>
+                           {cardBackImage ? (
+                                <Image src={cardBackImage} alt="Card Back" width={96} height={134} className="rounded-lg shadow-md" />
+                           ) : (
+                                <Card className="h-full flex items-center justify-center text-center p-2 bg-slate-700 text-white">裏向きのカード</Card>
+                           )}
                         </div>
                     ))}
                 </div>
@@ -710,7 +716,3 @@ export default function BattlePage() {
     </main>
   );
 }
-
-    
-
-    
