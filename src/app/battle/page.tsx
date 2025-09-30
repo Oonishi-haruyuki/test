@@ -10,11 +10,17 @@ import { Swords, Heart, Shield, Dices, RotateCcw, Loader2, BrainCircuit, Bot, Wa
 import { useToast } from '@/hooks/use-toast';
 import { generateDeck } from '@/ai/flows/generate-deck';
 import { cn } from '@/lib/utils';
+import {
+  Dialog,
+  DialogContent,
+  DialogTrigger,
+} from "@/components/ui/dialog"
 
 const HAND_LIMIT = 5;
 const DECK_SIZE = 20;
 const MAX_MANA = 10;
 const BOARD_LIMIT = 5;
+const MAX_IDENTICAL_CARDS = 2;
 
 type Difficulty = 'beginner' | 'advanced';
 type DeckChoice = 'my-deck' | 'starter-goblin' | 'starter-elemental' | 'ai-fantasy' | 'ai-scifi' | 'in-game';
@@ -630,9 +636,16 @@ export default function BattlePage() {
                 </Card>
                 <div className="flex gap-2 min-h-[180px]">
                     {opponentHand.map((card, i) => (
-                        <div key={i} className="w-24">
-                           <Card className="h-full flex items-center justify-center text-center p-2 bg-slate-700 text-white">裏向きのカード</Card>
-                        </div>
+                        <Dialog key={card.id ? card.id + i.toString() : i}>
+                            <DialogTrigger asChild>
+                                <div className="w-24 cursor-pointer">
+                                   <Card className="h-full flex items-center justify-center text-center p-2 bg-slate-700 text-white">裏向きのカード</Card>
+                                </div>
+                            </DialogTrigger>
+                            <DialogContent className="max-w-md">
+                                <CardPreview {...card} />
+                            </DialogContent>
+                        </Dialog>
                     ))}
                 </div>
                 <Card className="p-2 text-center w-28">
@@ -704,3 +717,5 @@ export default function BattlePage() {
     </main>
   );
 }
+
+    
