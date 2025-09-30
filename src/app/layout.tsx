@@ -3,6 +3,7 @@ import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { AuthProvider } from "@/components/auth-provider";
 
 export const metadata: Metadata = {
   title: "カードクラフター",
@@ -29,37 +30,42 @@ export default function RootLayout({
         />
       </head>
       <body className="font-body antialiased">
-        <div className="min-h-screen bg-background text-foreground">
-          <div className="container mx-auto px-4 py-8">
-            <header className="text-center mb-12">
-              <h1 className="text-5xl font-bold font-headline text-primary">
-                <Link href="/">カードクラフター</Link>
-              </h1>
-              <p className="text-muted-foreground mt-2 text-lg">
-                AIの力で、あなたのカードゲームのアイデアを形に
-              </p>
-              <nav className="mt-4">
-                <Button variant="outline" asChild>
-                  <Link href="/">作成</Link>
-                </Button>
-                <Button variant="outline" asChild className="ml-4">
-                  <Link href="/collection">マイカード</Link>
-                </Button>
-                 <Button variant="outline" asChild className="ml-4">
-                  <Link href="/gacha">ガチャ</Link>
-                </Button>
-                <Button variant="outline" asChild className="ml-4">
-                  <Link href="/deck-builder">デッキ構築</Link>
-                </Button>
-                <Button variant="outline" asChild className="ml-4">
-                  <Link href="/battle">対戦</Link>
-                </Button>
-              </nav>
-            </header>
-            {children}
+        <AuthProvider>
+          <div className="min-h-screen bg-background text-foreground">
+            <div className="container mx-auto px-4 py-8">
+              <header className="text-center mb-12">
+                <h1 className="text-5xl font-bold font-headline text-primary">
+                  <Link href="/">カードクラフター</Link>
+                </h1>
+                <p className="text-muted-foreground mt-2 text-lg">
+                  AIの力で、あなたのカードゲームのアイデアを形に
+                </p>
+                <nav className="mt-4">
+                  <Button variant="outline" asChild>
+                    <Link href="/">作成</Link>
+                  </Button>
+                  <Button variant="outline" asChild className="ml-4">
+                    <Link href="/collection">マイカード</Link>
+                  </Button>
+                  <Button variant="outline" asChild className="ml-4">
+                    <Link href="/gacha">ガチャ</Link>
+                  </Button>
+                  <Button variant="outline" asChild className="ml-4">
+                    <Link href="/deck-builder">デッキ構築</Link>
+                  </Button>
+                  <Button variant="outline" asChild className="ml-4">
+                    <Link href="/battle">対戦</Link>
+                  </Button>
+                  <Button variant="outline" asChild className="ml-4">
+                    <Link href="/room">ルーム対戦</Link>
+                  </Button>
+                </nav>
+              </header>
+              {children}
+            </div>
           </div>
-        </div>
-        <Toaster />
+          <Toaster />
+        </AuthProvider>
       </body>
     </html>
   );
