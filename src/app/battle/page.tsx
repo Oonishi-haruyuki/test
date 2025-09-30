@@ -39,6 +39,7 @@ export default function BattlePage() {
     const [playerHealth, setPlayerHealth] = useState(20);
     const [playerMana, setPlayerMana] = useState(1);
     const [playerMaxMana, setPlayerMaxMana] = useState(1);
+    const [playerHasPlayedNonCreature, setPlayerHasPlayedNonCreature] = useState(false);
     
     const [opponentDeck, setOpponentDeck] = useState<CardData[]>([]);
     const [opponentHand, setOpponentHand] = useState<CardData[]>([]);
@@ -46,6 +47,7 @@ export default function BattlePage() {
     const [opponentHealth, setOpponentHealth] = useState(20);
     const [opponentMana, setOpponentMana] = useState(1);
     const [opponentMaxMana, setOpponentMaxMana] = useState(1);
+    const [opponentHasPlayedNonCreature, setOpponentHasPlayedNonCreature] = useState(false);
     
     const [turn, setTurn] = useState(1);
     const [isPlayerTurn, setIsPlayerTurn] = useState(true);
@@ -122,8 +124,10 @@ export default function BattlePage() {
         setIsPlayerTurn(true);
         setPlayerMaxMana(1);
         setPlayerMana(1);
+        setPlayerHasPlayedNonCreature(false);
         setOpponentMaxMana(1);
         setOpponentMana(1);
+        setOpponentHasPlayedNonCreature(false);
         setGamePhase('main');
         addToLog(`--- ターン ${turn}: あなたのターン ---`);
     };
@@ -233,6 +237,14 @@ export default function BattlePage() {
             return;
         }
 
+        if (card.cardType !== 'creature') {
+            if (playerHasPlayedNonCreature) {
+                toast({ variant: 'destructive', title: 'このターンはこれ以上、呪文やアーティファクト、土地は使えません。'});
+                return;
+            }
+            setPlayerHasPlayedNonCreature(true);
+        }
+
         const newHand = [...playerHand];
         newHand.splice(cardIndex, 1);
         
@@ -245,10 +257,11 @@ export default function BattlePage() {
                 toast({ variant: 'destructive', title: '場が上限に達しています。'});
                 setPlayerHand(prev => [...prev, card]); // Return card to hand
                 setPlayerMana(prev => prev + card.manaCost); // Return mana
+                if (card.cardType !== 'creature') setPlayerHasPlayedNonCreature(false); // Revert rule flag
                 return;
             }
             setPlayerBoard(prev => [...prev, {...card, canAttack: false}]); // Summoning sickness
-        } else { // Spell
+        } else {
             applySpellEffect(card, true);
         }
     };
@@ -284,8 +297,11 @@ export default function BattlePage() {
         setTimeout(aiTurn, 1000);
     };
     
-    const aiChooseCard = (hand: CardData[], mana: number, myBoard: CardData[]): CardData | null => {
-        const playableCards = hand.filter(c => c.manaCost <= mana);
+    const aiChooseCard = (hand: CardData[], mana: number, myBoard: CardData[], nonCreaturePlayed: boolean): CardData | null => {
+        let playableCards = hand.filter(c => c.manaCost <= mana);
+        if (nonCreaturePlayed) {
+            playableCards = playableCards.filter(c => c.cardType === 'creature');
+        }
         if (playableCards.length === 0) return null;
 
         // Prioritize playing creatures if board is not full
@@ -320,28 +336,21 @@ export default function BattlePage() {
         const newOpponentMaxMana = Math.min(MAX_MANA, opponentMaxMana + 1);
         setOpponentMaxMana(newOpponentMaxMana);
         setOpponentMana(newOpponentMaxMana);
+        setOpponentHasPlayedNonCreature(false);
         setOpponentBoard(prev => prev.map(c => ({ ...c, canAttack: true }))); // Creatures can now attack
         
         drawCard(false);
 
         // AI plays cards
         let currentOpponentMana = newOpponentMaxMana;
-        let playedCard = true; // Loop controller
-        const currentOpponentHand = [...opponentHand];
-        const currentOpponentBoard = [...opponentBoard];
+        let currentOpponentHand = [...opponentHand];
+        let currentOpponentBoard = [...opponentBoard];
+        let currentOpponentNonCreaturePlayed = false;
 
         const playCardLoop = () => {
-            if (!playedCard) {
-                // Done playing cards, move to attack phase
-                setTimeout(aiAttackPhase, 1000);
-                return;
-            }
-            
-            playedCard = false;
-            const cardToPlay = aiChooseCard(opponentHand, currentOpponentMana, opponentBoard);
+            const cardToPlay = aiChooseCard(opponentHand, currentOpponentMana, opponentBoard, currentOpponentNonCreaturePlayed);
 
             if (cardToPlay) {
-                playedCard = true;
                 const cardIndex = opponentHand.findIndex(c => c.id === cardToPlay.id);
                 
                 currentOpponentMana -= cardToPlay.manaCost;
@@ -356,6 +365,8 @@ export default function BattlePage() {
                 if (cardToPlay.cardType === 'creature') {
                     setOpponentBoard(prev => [...prev, {...cardToPlay, canAttack: false}]);
                 } else {
+                    setOpponentHasPlayedNonCreature(true);
+                    currentOpponentNonCreaturePlayed = true;
                     applySpellEffect(cardToPlay, false);
                 }
                 setTimeout(playCardLoop, 1000);
@@ -399,6 +410,7 @@ export default function BattlePage() {
             setPlayerMaxMana(newPlayerMaxMana);
             setPlayerMana(newPlayerMaxMana);
             setPlayerBoard(prev => prev.map(c => ({ ...c, canAttack: true }))); // Creatures can now attack
+            setPlayerHasPlayedNonCreature(false);
             setIsPlayerTurn(true);
             setGamePhase('main');
             
