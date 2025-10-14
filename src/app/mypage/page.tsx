@@ -50,12 +50,36 @@ export default function MyPage() {
       localStorage.setItem('selectedTitle', title);
   }
 
-  const handleClaimRewards = (reward: number) => {
+ const handleClaimRewards = (reward: number) => {
     if (reward <= 0) return;
     addCurrency(reward);
-    
-    // This logic feels a bit disconnected, let's refactor achievement checking to be self-contained in the component.
-    const achievementsToClaim = achievementsList.filter(ach => {
+
+    // This logic now happens inside the AchievementsUI component, we just need to update our state here.
+    const newClaimedRewards = [
+        ...claimedRewards,
+        ...achievements.filter(ach => ach.unlocked && !ach.claimed).map(ach => ach.id)
+    ];
+
+    setClaimedRewards(newClaimedRewards);
+    localStorage.setItem('claimedRewards', JSON.stringify(newClaimedRewards));
+
+    toast({
+        title: "報酬を受け取りました！",
+        description: `${reward}Gを獲得しました。`,
+    });
+  }
+
+  const achievementsList: Omit<Achievement, 'unlocked' | 'claimed'>[] = [
+    { id: 'wins-1', name: '初勝利', description: '初めてAIに勝利する', reward: 100 },
+    { id: 'wins-10', name: 'ベテラン', description: 'AIに10回勝利する', reward: 500 },
+    { id: 'wins-50', name: 'エキスパート', description: 'AIに50回勝利する', reward: 1000 },
+    { id: 'wins-100', name: 'マスター', description: 'AIに100回勝利する', reward: 5000 },
+    { id: 'collection-10', name: 'コレクター', description: '10種類のカードを集める', reward: 200 },
+    { id: 'collection-50', name: 'マスターコレクター', description: '50種類のカードを集める', reward: 1000 },
+    { id: 'collection-100', name: 'コンプリート', description: '100種類のカードを集める', reward: 10000 },
+];
+
+  const achievements: Achievement[] = achievementsList.map(ach => {
         let unlocked = false;
         if (ach.id.startsWith('wins-')) {
             const requiredWins = parseInt(ach.id.split('-')[1]);
@@ -64,18 +88,10 @@ export default function MyPage() {
             const requiredCount = parseInt(ach.id.split('-')[1]);
             unlocked = uniqueCardCount >= requiredCount;
         }
-        return unlocked && !claimedRewards.includes(ach.id);
+        const claimed = claimedRewards.includes(ach.id);
+        return { ...ach, unlocked, claimed };
     });
 
-    const newClaimedRewards = [...claimedRewards, ...achievementsToClaim.map(ach => ach.id)];
-    setClaimedRewards(newClaimedRewards);
-    localStorage.setItem('claimedRewards', JSON.stringify(newClaimedRewards));
-    toast({
-        title: "報酬を受け取りました！",
-        description: `${reward}Gを獲得しました。`,
-    });
-  }
-  
   const StatCard = ({ title, value, icon, description, loading }: { title: string, value: string | number, icon: React.ReactNode, description: string, loading?: boolean }) => {
     return (
         <Card>
@@ -176,13 +192,3 @@ export default function MyPage() {
     </main>
   );
 }
-
-const achievementsList: Omit<Achievement, 'unlocked' | 'claimed'>[] = [
-    { id: 'wins-1', name: '初勝利', description: '初めてAIに勝利する', reward: 100 },
-    { id: 'wins-10', name: 'ベテラン', description: 'AIに10回勝利する', reward: 500 },
-    { id: 'wins-50', name: 'エキスパート', description: 'AIに50回勝利する', reward: 1000 },
-    { id: 'wins-100', name: 'マスター', description: 'AIに100回勝利する', reward: 5000 },
-    { id: 'collection-10', name: 'コレクター', description: '10種類のカードを集める', reward: 200 },
-    { id: 'collection-50', name: 'マスターコレクター', description: '50種類のカードを集める', reward: 1000 },
-    { id: 'collection-100', name: 'コンプリート', description: '100種類のカードを集める', reward: 10000 },
-];
