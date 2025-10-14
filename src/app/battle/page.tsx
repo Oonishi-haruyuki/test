@@ -144,9 +144,6 @@ export const ninjaDeck: CardData[] = [
 ];
 
 
-const shuffleDeck = (deck: CardData[]) => [...deck].sort(() => Math.random() - 0.5);
-
-
 export default function BattlePage() {
     const { toast } = useToast();
     const { addCurrency, spendCurrency } = useCurrency();
@@ -179,13 +176,18 @@ export default function BattlePage() {
     const [gameOver, setGameOver] = useState('');
     const [gamePhase, setGamePhase] = useState<'main' | 'attack'>('main');
 
+    const shuffleDeck = (deck: CardData[]) => {
+        if (!isClient) return deck;
+        return [...deck].sort(() => Math.random() - 0.5);
+    }
+
     const addToLog = (message: string) => {
         setGameLog(prev => [`[T${Math.ceil(turn/2)}] ${message}`, ...prev]);
     }
 
     const startGame = (playerDeckData: CardData[], opponentDeckData: CardData[]) => {
-        const pDeck = [...playerDeckData];
-        const oDeck = [...opponentDeckData];
+        const pDeck = shuffleDeck([...playerDeckData]);
+        const oDeck = shuffleDeck([...opponentDeckData]);
 
         const initialPlayerHand = pDeck.splice(0, HAND_LIMIT);
         const initialOpponentHand = oDeck.splice(0, HAND_LIMIT);
@@ -260,13 +262,13 @@ export default function BattlePage() {
             const aiDeck = await createAiDeck(deckToLoad);
             
             toast({ title: toastMessage });
-            startGame(shuffleDeck(deckToLoad), shuffleDeck(aiDeck));
+            startGame(deckToLoad, aiDeck);
 
         } catch (error) {
             console.error("Failed to prepare player deck", error);
             toast({ variant: 'destructive', title: 'デッキの準備に失敗しました。'});
             const fallbackAiDeck = await createAiDeck(goblinDeck);
-            startGame(shuffleDeck(goblinDeck), shuffleDeck(fallbackAiDeck));
+            startGame(goblinDeck, fallbackAiDeck);
         } finally {
             setIsGeneratingDeck(false);
         }
@@ -290,7 +292,7 @@ export default function BattlePage() {
         } catch (error) {
             console.error("Failed to generate AI deck", error);
             toast({ variant: 'destructive', title: 'AIデッキの生成に失敗しました。'});
-            return shuffleDeck(elementalDeck); // Fallback
+            return elementalDeck; // Fallback
         }
     };
 
@@ -845,7 +847,3 @@ export default function BattlePage() {
     </main>
   );
 }
-
-    
-
-    

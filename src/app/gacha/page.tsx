@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { CardData } from '@/components/card-editor';
 import { CardPreview } from '@/components/card-preview';
 import { Button } from '@/components/ui/button';
@@ -20,6 +20,11 @@ export default function GachaPage() {
   const [pulledCards, setPulledCards] = useState<CardData[]>([]);
   const { toast } = useToast();
   const { currency, spendCurrency } = useCurrency();
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   const handlePullGacha = async (pullCount: number) => {
     const cost = pullCount === 1 ? GACHA_COST_SINGLE : GACHA_COST_MULTI;
@@ -91,6 +96,10 @@ export default function GachaPage() {
     }
   };
 
+  if (!isClient) {
+    return null;
+  }
+
   return (
     <main className="container mx-auto">
       <Card className="max-w-2xl mx-auto text-center">
@@ -152,4 +161,3 @@ export default function GachaPage() {
     </main>
   );
 }
-

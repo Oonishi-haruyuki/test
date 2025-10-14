@@ -52,10 +52,6 @@ function StatsQuizGame() {
     const [attempts, setAttempts] = useState(MAX_ATTEMPTS_STATS_QUIZ);
     const [showAnswer, setShowAnswer] = useState(false);
 
-    useEffect(() => {
-        startNewGame();
-    }, []);
-
     const startNewGame = () => {
         const randomCard = uniqueStarterCards[Math.floor(Math.random() * uniqueStarterCards.length)];
         const possibleTargets: QuizTarget[] = ['manaCost'];
@@ -71,6 +67,10 @@ function StatsQuizGame() {
         setAttempts(MAX_ATTEMPTS_STATS_QUIZ);
         setShowAnswer(false);
     };
+
+    useEffect(() => {
+        startNewGame();
+    }, []);
 
     const handleGuess = () => {
         if (!currentCard || !quizTarget) return;
@@ -109,6 +109,8 @@ function StatsQuizGame() {
         };
         return <CardPreview {...cardToShow as any} />;
     }
+
+    if (!currentCard) return null;
 
     return (
         <div className="grid md:grid-cols-2 gap-8 items-center">
@@ -414,6 +416,8 @@ function HigherLowerGame() {
             </div>
         )
     }
+
+    if (!currentCard || !nextCard) return null;
 
     return (
         <div className="grid md:grid-cols-2 gap-8 items-center">
