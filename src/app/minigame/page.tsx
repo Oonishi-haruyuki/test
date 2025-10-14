@@ -10,7 +10,7 @@ import { useCurrency } from '@/hooks/use-currency';
 import { useToast } from '@/hooks/use-toast';
 import type { CardData } from '@/components/card-editor';
 import { CardPreview } from '@/components/card-preview';
-import { Coins, HelpCircle, Shuffle, ArrowDown, ArrowUp, Brain, Repeat } from 'lucide-react';
+import { Coins, HelpCircle, Shuffle, ArrowDown, ArrowUp, Brain, Repeat, Lightbulb } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from '@/lib/utils';
 
@@ -37,7 +37,9 @@ const DECK_THEMES = {
 type DeckThemeKey = keyof typeof DECK_THEMES;
 
 const REWARD_AMOUNT = 10;
-const MAX_ATTEMPTS = 5;
+const MAX_ATTEMPTS_STATS_QUIZ = 5;
+const MAX_ATTEMPTS_THEME_QUIZ = 10;
+const HINT_COST = 5;
 
 // --- Stats Quiz Game ---
 function StatsQuizGame() {
@@ -47,7 +49,7 @@ function StatsQuizGame() {
     const [quizTarget, setQuizTarget] = useState<QuizTarget | null>(null);
     const [guess, setGuess] = useState('');
     const [result, setResult] = useState<'correct' | 'incorrect' | null>(null);
-    const [attempts, setAttempts] = useState(MAX_ATTEMPTS);
+    const [attempts, setAttempts] = useState(MAX_ATTEMPTS_STATS_QUIZ);
     const [showAnswer, setShowAnswer] = useState(false);
 
     useEffect(() => {
@@ -66,7 +68,7 @@ function StatsQuizGame() {
         setQuizTarget(randomTarget);
         setGuess('');
         setResult(null);
-        setAttempts(MAX_ATTEMPTS);
+        setAttempts(MAX_ATTEMPTS_STATS_QUIZ);
         setShowAnswer(false);
     };
 
@@ -152,11 +154,14 @@ function StatsQuizGame() {
 
 // --- Theme Quiz Game ---
 function ThemeQuizGame() {
-    const { addCurrency } = useCurrency();
+    const { spendCurrency, addCurrency } = useCurrency();
     const { toast } = useToast();
     const [currentCard, setCurrentCard] = useState<CardData | null>(null);
     const [correctTheme, setCorrectTheme] = useState<DeckThemeKey | null>(null);
     const [showAnswer, setShowAnswer] = useState(false);
+    const [attempts, setAttempts] = useState(MAX_ATTEMPTS_THEME_QUIZ);
+    const [hint, setHint] = useState<string | null>(null);
+    const [hintUsed, setHintUsed] = useState(false);
 
     const getThemeFromCardId = (cardId: string): DeckThemeKey | null => {
         for (const key in DECK_THEMES) {
@@ -175,8 +180,10 @@ function ThemeQuizGame() {
             setCurrentCard(randomCard);
             setCorrectTheme(theme);
             setShowAnswer(false);
+            setAttempts(MAX_ATTEMPTS_THEME_QUIZ);
+            setHint(null);
+            setHintUsed(false);
         } else {
-            // If for some reason a card without a valid theme ID is found, retry
             startNewGame();
         }
     };
@@ -191,38 +198,79 @@ function ThemeQuizGame() {
         if (guess === correctTheme) {
             addCurrency(REWARD_AMOUNT);
             toast({ title: '正解！', description: <div className="flex items-center gap-2"><Coins className="h-5 w-5 text-yellow-500" /><span>{REWARD_AMOUNT}G を獲得！</span></div> });
+            setShowAnswer(true);
         } else {
-            toast({ variant: 'destructive', title: '残念！', description: `正解は「${correctTheme ? DECK_THEMES[correctTheme] : ''}」でした。` });
+            setAttempts(prev => prev - 1);
+            if (attempts - 1 <= 0) {
+                 toast({ variant: 'destructive', title: '残念！', description: `正解は「${correctTheme ? DECK_THEMES[correctTheme] : ''}」でした。` });
+                 setShowAnswer(true);
+            } else {
+                 toast({ variant: 'destructive', title: '不正解！', description: `残り挑戦回数: ${attempts - 1}回` });
+            }
         }
-        setShowAnswer(true);
     };
+
+    const showHint = () => {
+        if (hintUsed || !currentCard) return;
+        if (spendCurrency(HINT_COST)) {
+            setHint(currentCard.flavorText);
+            setHintUsed(true);
+            toast({ title: 'ヒントを表示しました', description: `${HINT_COST}G を消費しました。`})
+        } else {
+            toast({ variant: 'destructive', title: 'Gコインが足りません！'})
+        }
+    };
+    
+    const ObscuredCardPreview = () => {
+        if (!currentCard) return null;
+        const cardToShow = {
+            ...currentCard,
+            name: '？？？',
+            abilities: '？？？',
+        };
+        return <CardPreview {...cardToShow} />;
+    }
+
+    if (!currentCard) return null;
 
     return (
         <div className="grid md:grid-cols-2 gap-8 items-center">
             <div className="flex flex-col gap-6">
                 <Card>
-                    <CardHeader><CardTitle className="flex items-center gap-2"><Brain className="text-primary" /> 問題</CardTitle></CardHeader>
+                    <CardHeader>
+                        <CardTitle className="flex items-center justify-between">
+                            <div className="flex items-center gap-2"><Brain className="text-primary" /> 問題</div>
+                            <span className="text-sm font-normal text-muted-foreground">残り: {attempts}回</span>
+                        </CardTitle>
+                    </CardHeader>
                     <CardContent>
                         <p className="text-lg">このカードが属しているスターターデッキのテーマは何？</p>
+                        {hint && <p className="mt-4 text-sm bg-secondary p-3 rounded-md">ヒント:『 {hint} 』</p>}
                     </CardContent>
                 </Card>
                 <div className="grid grid-cols-2 gap-3">
                     {(Object.keys(DECK_THEMES) as DeckThemeKey[]).map(themeKey => (
-                         <Button key={themeKey} onClick={() => handleGuess(themeKey)} size="lg" variant="outline" disabled={showAnswer} className="h-16 text-base">
+                         <Button key={themeKey} onClick={() => handleGuess(themeKey)} size="lg" variant="outline" disabled={showAnswer || attempts <= 0} className="h-16 text-base">
                             {DECK_THEMES[themeKey]}
                         </Button>
                     ))}
                 </div>
+                 {!showAnswer && (
+                    <Button onClick={showHint} disabled={hintUsed || attempts <= 0}>
+                        <Lightbulb className="mr-2" />ヒントを見る ({HINT_COST}G)
+                    </Button>
+                 )}
                 {showAnswer && (
                     <Button onClick={startNewGame} size="lg">次の問題へ</Button>
                 )}
             </div>
             <div>
-                {currentCard && <CardPreview {...currentCard} />}
+               {showAnswer ? <CardPreview {...currentCard} /> : <ObscuredCardPreview />}
             </div>
         </div>
     );
 }
+
 
 // --- Higher or Lower Game ---
 const MAX_ROUNDS = 20;
@@ -241,7 +289,7 @@ function HigherLowerGame() {
     const [gameOver, setGameOver] = useState(false);
 
 
-    const startNewGame = () => {
+    const startNewRound = () => {
         const card1 = uniqueStarterCards[Math.floor(Math.random() * uniqueStarterCards.length)];
         let card2 = uniqueStarterCards[Math.floor(Math.random() * uniqueStarterCards.length)];
         while (card1.id === card2.id) {
@@ -251,13 +299,17 @@ function HigherLowerGame() {
         setNextCard(card2);
         setShowNextCard(false);
         setGameInProgress(false);
+    };
+
+    const resetGame = () => {
+        startNewRound();
         setStreak(0);
         setRound(1);
         setGameOver(false);
-    };
+    }
 
     useEffect(() => {
-        startNewGame();
+        resetGame();
     }, []);
 
     const handleGuess = (guess: 'higher' | 'lower') => {
@@ -289,7 +341,7 @@ function HigherLowerGame() {
         setShowNextCard(true);
 
         setTimeout(() => {
-            const nextRound = round + 1;
+            const nextRoundNumber = round + 1;
             
             if (result === 'win') {
                 const newStreak = streak + 1;
@@ -304,13 +356,13 @@ function HigherLowerGame() {
                     description: `賭け金${reward}G + ${newStreak}連続正解ボーナス${bonus}G`
                 });
 
-                if (nextRound > MAX_ROUNDS) {
+                if (nextRoundNumber > MAX_ROUNDS) {
                     setGameOver(true);
                     toast({ title: 'ゲームクリア！', description: '20ラウンド達成しました。おめでとうございます！' });
                     return;
                 }
 
-                setRound(nextRound);
+                setRound(nextRoundNumber);
                 setCurrentCard(nextCard);
                 let newNextCard = uniqueStarterCards[Math.floor(Math.random() * uniqueStarterCards.length)];
                  while (nextCard.id === newNextCard.id) {
@@ -323,13 +375,13 @@ function HigherLowerGame() {
                 addCurrency(betAmount); // Refund
                 toast({ title: '引き分け', description: `賭け金 ${betAmount}G が返金されました。` });
                 
-                if (nextRound > MAX_ROUNDS) {
+                if (nextRoundNumber > MAX_ROUNDS) {
                     setGameOver(true);
                     toast({ title: 'ゲーム終了', description: '20ラウンド経過しました。' });
                     return;
                 }
-                setRound(nextRound);
-                startNewRound(); // For draw, we could also just get a new next card. Let's restart for simplicity.
+                setRound(nextRoundNumber);
+                startNewRound();
 
             } else { // loss
                 toast({ variant: 'destructive', title: '敗北…', description: `賭け金 ${betAmount}G を失いました。連続正解記録: ${streak}` });
@@ -355,7 +407,7 @@ function HigherLowerGame() {
             <div className="flex flex-col items-center justify-center gap-4 text-center">
                  <h3 className="text-2xl font-bold">ゲーム終了</h3>
                  <p className="text-muted-foreground">最終記録: {streak} 連続正解</p>
-                <Button onClick={startNewGame} size="lg">
+                <Button onClick={resetGame} size="lg">
                     <Repeat className="mr-2" />
                     もう一度プレイする
                 </Button>
@@ -443,7 +495,7 @@ export default function MiniGamePage() {
                         </TabsContent>
                         <TabsContent value="theme-quiz" className="pt-6">
                             <ThemeQuizGame />
-                        </TabsContent>
+                        </Tabs.Content>
                         <TabsContent value="higher-lower" className="pt-6">
                             <HigherLowerGame />
                         </TabsContent>
@@ -453,5 +505,3 @@ export default function MiniGamePage() {
         </main>
     );
 }
-
-    
