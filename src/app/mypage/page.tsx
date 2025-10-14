@@ -102,10 +102,10 @@ export default function MyPage() {
             </CardHeader>
             <CardContent>
                 <ul className="list-disc pl-5 space-y-2 text-sm text-muted-foreground">
-                    <li>対戦の勝率の表示</li>
-                    <li>お気に入りのカードやデッキの登録機能</li>
+                    <li>AI対戦内容の改善</li>
+                    <li>デッキ登録数を30個までにすること</li>
                     <li>獲得した称号や実績の表示</li>
-                    <li>カード収集率に基づいた報酬の受け取り</li>
+                    <li>カード収集率に基づいた報酬の受け取りや称号に応じた報酬受け取り</li>
                 </ul>
             </CardContent>
         </Card>
