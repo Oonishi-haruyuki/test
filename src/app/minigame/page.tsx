@@ -495,7 +495,7 @@ export default function MiniGamePage() {
                         </TabsContent>
                         <TabsContent value="theme-quiz" className="pt-6">
                             <ThemeQuizGame />
-                        </Tabs.Content>
+                        </TabsContent>
                         <TabsContent value="higher-lower" className="pt-6">
                             <HigherLowerGame />
                         </TabsContent>
