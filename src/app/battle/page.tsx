@@ -6,16 +6,20 @@ import type { CardData } from '@/components/card-editor';
 import { CardPreview } from '@/components/card-preview';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Swords, Heart, Shield, Dices, RotateCcw, Loader2, BrainCircuit, Bot, Wand2, Group, FileJson } from 'lucide-react';
+import { Swords, Heart, Shield, Dices, RotateCcw, Loader2, BrainCircuit, Bot, Wand2, Group, FileJson, Coins } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { generateDeck } from '@/ai/flows/generate-deck';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
+import { useCurrency } from '@/hooks/use-currency';
 
 const HAND_LIMIT = 5;
 const DECK_SIZE = 20;
 const MAX_MANA = 10;
 const BOARD_LIMIT = 5;
+const WIN_REWARD = 50;
+const LOSE_PENALTY = 10;
+
 
 type Difficulty = 'beginner' | 'advanced';
 type DeckChoice = 'my-deck' | 'starter-goblin' | 'starter-elemental' | 'starter-undead' | 'starter-dragon' | 'starter-ninja' | 'ai-fantasy' | 'ai-scifi';
@@ -134,6 +138,7 @@ const shuffleDeck = (deck: CardData[]) => [...deck].sort(() => Math.random() - 0
 
 export default function BattlePage() {
     const { toast } = useToast();
+    const { addCurrency, spendCurrency } = useCurrency();
     const [isClient, setIsClient] = useState(false);
     const [isGeneratingDeck, setIsGeneratingDeck] = useState(false);
     const [difficulty, setDifficulty] = useState<Difficulty | null>(null);
@@ -381,14 +386,26 @@ export default function BattlePage() {
 
     useEffect(() => {
         if (gameOver) return;
+
         if (playerHealth <= 0) {
             setGameOver('相手の勝利！');
             addToLog('ゲーム終了！相手が勝利しました。');
+            spendCurrency(LOSE_PENALTY);
+            toast({
+                title: '敗北...',
+                description: `${LOSE_PENALTY}G失いました。`,
+                variant: 'destructive'
+            });
         } else if (opponentHealth <= 0) {
             setGameOver('あなたの勝利！');
             addToLog('ゲーム終了！あなたが勝利しました。');
+            addCurrency(WIN_REWARD);
+            toast({
+                title: '勝利！',
+                description: `${WIN_REWARD}G獲得しました！`,
+            });
         }
-    }, [playerHealth, opponentHealth, gameOver, addToLog]);
+    }, [playerHealth, opponentHealth, gameOver, addToLog, addCurrency, spendCurrency, toast]);
 
     const playCard = (card: CardData, cardIndex: number) => {
         if (!isPlayerTurn || gameOver || gamePhase !== 'main') return;
@@ -595,10 +612,10 @@ export default function BattlePage() {
                     </CardHeader>
                     <CardContent className="flex flex-col gap-4">
                         <Button onClick={() => setDifficulty('beginner')} size="lg">
-                            <Bot className="mr-2" /> 初級
+                            <Bot className="mr-2" /> 初級 (+10G / -5G)
                         </Button>
                         <Button onClick={() => setDifficulty('advanced')} size="lg">
-                           <BrainCircuit className="mr-2" /> 上級
+                           <BrainCircuit className="mr-2" /> 上級 (+50G / -10G)
                         </Button>
                     </CardContent>
                 </Card>
@@ -727,8 +744,17 @@ export default function BattlePage() {
         {/* Game Log / Result */}
         <div className="flex justify-center my-2">
             {gameOver ? (
-                <Card className="p-6 my-4 max-w-2xl text-center bg-yellow-200/90 text-slate-800">
-                    <p className="text-2xl font-semibold mb-4">{gameOver}</p>
+                 <Card className="p-6 my-4 max-w-2xl text-center bg-yellow-200/90 text-slate-800">
+                    <p className="text-2xl font-semibold mb-2">{gameOver}</p>
+                    {gameOver === 'あなたの勝利！' ? (
+                        <p className="flex items-center justify-center gap-2 text-lg font-medium text-yellow-700 mb-4">
+                            <Coins className="h-6 w-6" /> +{WIN_REWARD}G
+                        </p>
+                    ) : (
+                        <p className="flex items-center justify-center gap-2 text-lg font-medium text-red-600 mb-4">
+                            <Coins className="h-6 w-6" /> -{LOSE_PENALTY}G
+                        </p>
+                    )}
                     <Button onClick={resetGame}>
                         <RotateCcw className="mr-2" />
                         難易度選択に戻る
@@ -779,4 +805,3 @@ export default function BattlePage() {
     </main>
   );
 }
-
