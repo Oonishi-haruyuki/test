@@ -27,7 +27,7 @@ const QUIZ_TARGET_JAPANESE: Record<QuizTarget, string> = {
 };
 
 const REWARD_AMOUNT = 10;
-const MAX_ATTEMPTS = 3;
+const MAX_ATTEMPTS = 5;
 
 export default function MiniGamePage() {
     const { addCurrency } = useCurrency();
@@ -143,6 +143,7 @@ export default function MiniGamePage() {
                             <Input 
                                 id="guess-input"
                                 type="number"
+                                min="0"
                                 value={guess}
                                 onChange={(e) => setGuess(e.target.value)}
                                 placeholder="数値を入力..."
