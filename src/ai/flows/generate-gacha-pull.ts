@@ -70,10 +70,10 @@ const generateGachaPullFlow = ai.defineFlow(
   },
   async ({ count }) => {
     const rarityProbabilities: { [key in Rarity]: number } = {
-        common: 0.65,
-        uncommon: 0.25,
-        rare: 0.08,
-        mythic: 0.02,
+        common: 0.75,
+        uncommon: 0.20,
+        rare: 0.045,
+        mythic: 0.005,
     };
 
     const determineRarity = (): Rarity => {
