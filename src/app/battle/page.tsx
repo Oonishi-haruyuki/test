@@ -28,7 +28,7 @@ const ADVANCED_LOSE_PENALTY = 10;
 type Difficulty = 'beginner' | 'advanced';
 type DeckChoice = 'my-deck' | 'starter-goblin' | 'starter-elemental' | 'starter-undead' | 'starter-dragon' | 'starter-ninja' | 'ai-fantasy' | 'ai-scifi';
 
-const goblinDeck: CardData[] = [
+export const goblinDeck: CardData[] = [
     { id: 'starter-gob-1', theme: 'fantasy', name: 'ゴブリンの突撃兵', manaCost: 1, attack: 2, defense: 1, cardType: 'creature', rarity: 'common', abilities: '', flavorText: '考えるより先に足が動く。', imageUrl: 'https://picsum.photos/seed/sg1/400/300', imageHint: 'goblin warrior' },
     { id: 'starter-gob-1-2', theme: 'fantasy', name: 'ゴブリンの突撃兵', manaCost: 1, attack: 2, defense: 1, cardType: 'creature', rarity: 'common', abilities: '', flavorText: '考えるより先に足が動く。', imageUrl: 'https://picsum.photos/seed/sg1/400/300', imageHint: 'goblin warrior' },
     { id: 'starter-gob-2', theme: 'fantasy', name: 'ゴブリンの斥候', manaCost: 2, attack: 2, defense: 2, cardType: 'creature', rarity: 'common', abilities: 'カードを1枚引く。', flavorText: '危険な道も、奴らにかかれば近道だ。', imageUrl: 'https://picsum.photos/seed/sg2/400/300', imageHint: 'goblin scout' },
@@ -51,7 +51,7 @@ const goblinDeck: CardData[] = [
     { id: 'starter-spell-5', theme: 'fantasy', name: '大地の怒り', manaCost: 4, attack: 0, defense: 0, cardType: 'spell', rarity: 'rare', abilities: '相手に5ダメージ。', flavorText: '大地が、怒りに震える。', imageUrl: 'https://picsum.photos/seed/ss5/400/300', imageHint: 'earth fury' },
 ];
 
-const elementalDeck: CardData[] = [
+export const elementalDeck: CardData[] = [
     { id: 'starter-elem-1', theme: 'fantasy', name: '炎の精霊', manaCost: 1, attack: 1, defense: 1, cardType: 'creature', rarity: 'common', abilities: '速攻', flavorText: '燃え盛る意志の現れ。', imageUrl: 'https://picsum.photos/seed/se1/400/300', imageHint: 'fire elemental' },
     { id: 'starter-elem-1-2', theme: 'fantasy', name: '炎の精霊', manaCost: 1, attack: 1, defense: 1, cardType: 'creature', rarity: 'common', abilities: '速攻', flavorText: '燃え盛る意志の現れ。', imageUrl: 'https://picsum.photos/seed/se1/400/300', imageHint: 'fire elemental' },
     { id: 'starter-elem-2', theme: 'fantasy', name: '水の精霊', manaCost: 2, attack: 1, defense: 3, cardType: 'creature', rarity: 'common', abilities: 'カードを1枚引く。', flavorText: '流れる知識の運び手。', imageUrl: 'https://picsum.photos/seed/se2/400/300', imageHint: 'water elemental' },
@@ -74,7 +74,7 @@ const elementalDeck: CardData[] = [
     { id: 'starter-espell-6', theme: 'fantasy', name: '知恵の泉', manaCost: 4, attack: 0, defense: 0, cardType: 'spell', rarity: 'common', abilities: 'カードを3枚引く。', flavorText: '知識は力なり。', imageUrl: 'https://picsum.photos/seed/ses6/400/300', imageHint: 'fountain wisdom' },
 ];
 
-const undeadDeck: CardData[] = [
+export const undeadDeck: CardData[] = [
     { id: 'starter-undead-1', theme: 'fantasy', name: 'スケルトン兵', manaCost: 1, attack: 1, defense: 1, cardType: 'creature', rarity: 'common', abilities: 'このカードが破壊された時、1/1のスケルトン・トークンを1体生成する。', flavorText: '骨は砕けても、魂は砕けない。', imageUrl: 'https://picsum.photos/seed/su1/400/300', imageHint: 'skeleton warrior' },
     { id: 'starter-undead-1-2', theme: 'fantasy', name: 'スケルトン兵', manaCost: 1, attack: 1, defense: 1, cardType: 'creature', rarity: 'common', abilities: 'このカードが破壊された時、1/1のスケルトン・トークンを1体生成する。', flavorText: '骨は砕けても、魂は砕けない。', imageUrl: 'https://picsum.photos/seed/su1/400/300', imageHint: 'skeleton warrior' },
     { id: 'starter-undead-2', theme: 'fantasy', name: 'ゾンビの群れ', manaCost: 2, attack: 2, defense: 2, cardType: 'creature', rarity: 'common', abilities: '戦場に出た時、相手の手札をランダムに1枚捨てさせる。', flavorText: '彼らの飢えは、肉体だけでは満たされない。', imageUrl: 'https://picsum.photos/seed/su2/400/300', imageHint: 'zombie horde' },
@@ -96,7 +96,7 @@ const undeadDeck: CardData[] = [
     { id: 'starter-uspell-6-2', theme: 'fantasy', name: '死の契約', manaCost: 4, attack: 0, defense: 0, cardType: 'spell', rarity: 'uncommon', abilities: 'カードを3枚引き、3ライフを失う。', flavorText: '知識こそが、究極の力。', imageUrl: 'https://picsum.photos/seed/sus6/400/300', imageHint: 'death contract' },
 ];
 
-const dragonDeck: CardData[] = [
+export const dragonDeck: CardData[] = [
     { id: 'starter-dragon-1', theme: 'fantasy', name: 'ドラゴンの雛', manaCost: 1, attack: 1, defense: 1, cardType: 'creature', rarity: 'common', abilities: '飛行', flavorText: 'いつか空の王者となる、小さな翼。', imageUrl: 'https://picsum.photos/seed/sd1/400/300', imageHint: 'baby dragon' },
     { id: 'starter-dragon-1-2', theme: 'fantasy', name: 'ドラゴンの雛', manaCost: 1, attack: 1, defense: 1, cardType: 'creature', rarity: 'common', abilities: '飛行', flavorText: 'いつか空の王者となる、小さな翼。', imageUrl: 'https://picsum.photos/seed/sd1/400/300', imageHint: 'baby dragon' },
     { id: 'starter-dragon-2', theme: 'fantasy', name: 'マナ加速のドラゴン', manaCost: 2, attack: 0, defense: 2, cardType: 'creature', rarity: 'common', abilities: 'あなたのマナプールにマナを1点加える。', flavorText: 'その鱗は、魔法の源泉。', imageUrl: 'https://picsum.photos/seed/sd2/400/300', imageHint: 'mana dragon' },
@@ -117,7 +117,7 @@ const dragonDeck: CardData[] = [
     { id: 'starter-dspell-5-2', theme: 'fantasy', name: '鱗の鎧', manaCost: 2, attack: 0, defense: 0, cardType: 'spell', rarity: 'uncommon', abilities: 'あなたのクリーチャー1体は、ターン終了時まで+2/+2の修正を受ける。', flavorText: '鋼鉄よりも硬く、炎よりも熱い。', imageUrl: 'https://picsum.photos/seed/sds5/400/300', imageHint: 'scale armor' },
 ];
 
-const ninjaDeck: CardData[] = [
+export const ninjaDeck: CardData[] = [
     { id: 'starter-ninja-1', theme: 'fantasy', name: '下忍', manaCost: 1, attack: 1, defense: 1, cardType: 'creature', rarity: 'common', abilities: '速攻', flavorText: '影に生まれ、影に死す。', imageUrl: 'https://picsum.photos/seed/sn1/400/300', imageHint: 'low-rank ninja' },
     { id: 'starter-ninja-1-2', theme: 'fantasy', name: '下忍', manaCost: 1, attack: 1, defense: 1, cardType: 'creature', rarity: 'common', abilities: '速攻', flavorText: '影に生まれ、影に死す。', imageUrl: 'https://picsum.photos/seed/sn1/400/300', imageHint: 'low-rank ninja' },
     { id: 'starter-ninja-2', theme: 'fantasy', name: 'くノ一', manaCost: 2, attack: 2, defense: 1, cardType: 'creature', rarity: 'common', abilities: 'このクリーチャーはブロックされない。', flavorText: '美しき花には、猛毒がある。', imageUrl: 'https://picsum.photos/seed/sn2/400/300', imageHint: 'female ninja' },
