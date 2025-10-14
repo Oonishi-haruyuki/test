@@ -11,20 +11,14 @@ import { useToast } from '@/hooks/use-toast';
 import { generateDeck } from '@/ai/flows/generate-deck';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
-import { useSearchParams, useRouter } from 'next/navigation';
-import { doc, onSnapshot, updateDoc, getDoc, runTransaction } from "firebase/firestore";
-import { db } from "@/lib/firebase";
-import { useAuth } from '@/components/auth-provider';
-
 
 const HAND_LIMIT = 5;
 const DECK_SIZE = 20;
 const MAX_MANA = 10;
 const BOARD_LIMIT = 5;
-const MAX_IDENTICAL_CARDS = 2;
 
 type Difficulty = 'beginner' | 'advanced';
-type DeckChoice = 'my-deck' | 'starter-goblin' | 'starter-elemental' | 'starter-undead' | 'starter-dragon' | 'starter-ninja' | 'ai-fantasy' | 'ai-scifi' | 'in-game';
+type DeckChoice = 'my-deck' | 'starter-goblin' | 'starter-elemental' | 'starter-undead' | 'starter-dragon' | 'starter-ninja' | 'ai-fantasy' | 'ai-scifi';
 
 const goblinDeck: CardData[] = [
     { id: 'starter-gob-1', theme: 'fantasy', name: 'ゴブリンの突撃兵', manaCost: 1, attack: 2, defense: 1, cardType: 'creature', rarity: 'common', abilities: '', flavorText: '考えるより先に足が動く。', imageUrl: 'https://picsum.photos/seed/sg1/400/300', imageHint: 'goblin warrior' },
@@ -139,13 +133,8 @@ const ninjaDeck: CardData[] = [
 const shuffleDeck = (deck: CardData[]) => [...deck].sort(() => Math.random() - 0.5);
 
 export default function BattlePage() {
-    const router = useRouter();
-    const searchParams = useSearchParams();
-    const roomId = searchParams.get('roomId');
-    const { user } = useAuth();
-    const [playerNumber, setPlayerNumber] = useState<1 | 2 | null>(null);
-    const [isClient, setIsClient] = useState(false);
     const { toast } = useToast();
+    const [isClient, setIsClient] = useState(false);
     const [isGeneratingDeck, setIsGeneratingDeck] = useState(false);
     const [difficulty, setDifficulty] = useState<Difficulty | null>(null);
     const [deckChoice, setDeckChoice] = useState<DeckChoice | null>(null);
@@ -301,115 +290,6 @@ export default function BattlePage() {
         }
     }, []);
 
-    useEffect(() => {
-        if (!roomId || !user) {
-            return;
-        }
-
-        const roomRef = doc(db, "rooms", roomId as string);
-
-        const unsub = onSnapshot(roomRef, (doc) => {
-            const roomData = doc.data();
-            if (!roomData) {
-                toast({ variant: "destructive", title: "ルームが存在しません。" });
-                router.push('/room');
-                return;
-            }
-
-            const players = roomData.players || [];
-            const playerIndex = players.indexOf(user.uid);
-
-            if (playerIndex === -1) {
-                toast({ variant: "destructive", title: "あなたはこのルームの参加者ではありません。" });
-                router.push('/room');
-                return;
-            }
-
-            const currentPlayerNumber = (playerIndex + 1) as (1 | 2);
-            setPlayerNumber(currentPlayerNumber);
-
-            const gameState = roomData.gameState;
-            if (gameState) {
-                const myPlayerState = gameState[`player${currentPlayerNumber}`];
-                const opponentPlayerState = gameState[`player${currentPlayerNumber === 1 ? 2 : 1}`];
-
-                if (myPlayerState) {
-                    setPlayerDeck(myPlayerState.deck || []);
-                    setPlayerHand(myPlayerState.hand || []);
-                    setPlayerBoard(myPlayerState.board || []);
-                    setPlayerHealth(myPlayerState.health);
-                    setPlayerMana(myPlayerState.mana);
-                    setPlayerMaxMana(myPlayerState.maxMana);
-                }
-                if (opponentPlayerState) {
-                    setOpponentDeck(opponentPlayerState.deck || []);
-                    setOpponentHand(opponentPlayerState.hand || []);
-                    setOpponentBoard(opponentPlayerState.board || []);
-                    setOpponentHealth(opponentPlayerState.health);
-                    setOpponentMana(opponentPlayerState.mana);
-                    setOpponentMaxMana(opponentPlayerState.maxMana);
-                }
-                
-                setTurn(roomData.turn);
-                setIsPlayerTurn(roomData.turn === user.uid);
-                setGameOver(roomData.gameOver || '');
-                setGameLog(roomData.gameLog || []);
-                setGamePhase(roomData.gamePhase || 'main');
-                setDeckChoice('in-game');
-            } else if (roomData.status === 'waiting' && players.length === 2 && currentPlayerNumber === 1) {
-                initializeGame();
-            }
-        });
-
-        return () => unsub();
-
-    }, [roomId, user, router, toast]);
-
-    const initializeGame = async () => {
-        if (!roomId || !user) return;
-
-        console.log("Initializing game for room:", roomId);
-
-        const p1Deck = shuffleDeck(goblinDeck);
-        const p2Deck = shuffleDeck(elementalDeck);
-
-        const initialPlayer1Hand = p1Deck.splice(0, HAND_LIMIT);
-        const initialPlayer2Hand = p2Deck.splice(0, HAND_LIMIT);
-
-        const initialGameState = {
-            player1: {
-                deck: p1Deck,
-                hand: initialPlayer1Hand,
-                board: [],
-                health: 20,
-                mana: 1,
-                maxMana: 1,
-            },
-            player2: {
-                deck: p2Deck,
-                hand: initialPlayer2Hand,
-                board: [],
-                health: 20,
-                mana: 1,
-                maxMana: 1,
-            }
-        };
-
-        const roomRef = doc(db, "rooms", roomId);
-        const roomSnap = await getDoc(roomRef);
-        const roomData = roomSnap.data();
-        if (!roomData) return;
-
-        await updateDoc(roomRef, {
-            gameState: initialGameState,
-            gameLog: ['ゲーム開始！', `--- ターン 1: ${roomData.players[0]}のターン ---`],
-            gameOver: '',
-            turn: roomData.players[0],
-            gamePhase: 'main',
-            status: 'playing',
-        });
-    };
-
     const handleSelectDeck = (choice: DeckChoice) => {
         setDeckChoice(choice);
         loadAndSetPlayerDeck(choice);
@@ -458,122 +338,45 @@ export default function BattlePage() {
         }
     }
 
-    const applySpellEffect = async (card: CardData, isCasterPlayer: boolean) => {
-        if (!roomId || !playerNumber) { // AI戦
-            const Caster = isCasterPlayer ? 'あなた' : '相手';
-            const Target = isCasterPlayer ? '相手' : 'あなた';
-            let effectApplied = false;
-            if (card.abilities) {
-                const abilities = card.abilities.toLowerCase();
-                if (abilities.includes('ダメージ')) {
-                    const damage = parseInt(abilities.match(/(\d+)ダメージ/)?.[1] || '0', 10);
-                    if (damage > 0) {
-                        if (isCasterPlayer) setOpponentHealth(prev => Math.max(0, prev - damage));
-                        else setPlayerHealth(prev => Math.max(0, prev - damage));
-                        addToLog(`「${card.name}」の効果で${Target}に${damage}ダメージ！`);
-                        effectApplied = true;
-                    }
-                }
-                if (abilities.includes('回復')) {
-                    const heal = parseInt(abilities.match(/(\d+)回復/)?.[1] || '0', 10);
-                    if (heal > 0) {
-                        if (isCasterPlayer) setPlayerHealth(prev => prev + heal);
-                        else setOpponentHealth(prev => prev + heal);
-                        addToLog(`「${card.name}」の効果で${Caster}はライフを${heal}回復。`);
-                        effectApplied = true;
-                    }
-                }
-                if (abilities.includes('カードを引く')) {
-                    const drawCount = parseInt(abilities.match(/(\d+)枚/)?.[1] || '1', 10);
-                    addToLog(`「${card.name}」の効果で${Caster}はカードを${drawCount}枚引く。`);
-                    for(let i=0; i<drawCount; i++) drawCard(isCasterPlayer);
-                    effectApplied = true;
-                }
-                if (abilities.includes('マナ')) {
-                    const manaBoost = parseInt(abilities.match(/\+(\d+)/)?.[1] || '1', 10);
-                    if (isCasterPlayer) setPlayerMaxMana(prev => Math.min(MAX_MANA, prev + manaBoost));
-                    else setOpponentMaxMana(prev => Math.min(MAX_MANA, prev + manaBoost));
-                    addToLog(`「${card.name}」の効果で${Caster}の最大マナが増えた！`);
+    const applySpellEffect = (card: CardData, isCasterPlayer: boolean) => {
+        const Caster = isCasterPlayer ? 'あなた' : '相手';
+        const Target = isCasterPlayer ? '相手' : 'あなた';
+        let effectApplied = false;
+        if (card.abilities) {
+            const abilities = card.abilities.toLowerCase();
+            if (abilities.includes('ダメージ')) {
+                const damage = parseInt(abilities.match(/(\d+)ダメージ/)?.[1] || '0', 10);
+                if (damage > 0) {
+                    if (isCasterPlayer) setOpponentHealth(prev => Math.max(0, prev - damage));
+                    else setPlayerHealth(prev => Math.max(0, prev - damage));
+                    addToLog(`「${card.name}」の効果で${Target}に${damage}ダメージ！`);
                     effectApplied = true;
                 }
             }
-            if (!effectApplied) addToLog(`「${card.name}」は何の効果ももたらさなかった。`);
-            return;
-        }
-
-        // --- ルーム対戦のロジック ---
-        const casterPlayerNumber = isCasterPlayer ? playerNumber : (playerNumber === 1 ? 2 : 1);
-        try {
-            const roomRef = doc(db, "rooms", roomId);
-            await runTransaction(db, async (transaction) => {
-                const roomDoc = await transaction.get(roomRef);
-                if (!roomDoc.exists()) throw "Document does not exist!";
-
-                const roomData = roomDoc.data();
-                const gameState = roomData.gameState;
-                const casterKey = `player${casterPlayerNumber}`;
-                const opponentKey = `player${casterPlayerNumber === 1 ? 2 : 1}`;
-                const casterState = gameState[casterKey];
-                const opponentState = gameState[opponentKey];
-
-                let newCasterState = { ...casterState };
-                let newOpponentState = { ...opponentState };
-                let effectLogs: string[] = [];
-                let effectApplied = false;
-                const abilities = card.abilities.toLowerCase();
-
-                if (abilities.includes('ダメージ')) {
-                    const damage = parseInt(abilities.match(/(\d+)ダメージ/)?.[1] || '0', 10);
-                    if (damage > 0) {
-                        newOpponentState.health = Math.max(0, newOpponentState.health - damage);
-                        effectLogs.push(`「${card.name}」の効果で${damage}ダメージ！`);
-                        effectApplied = true;
-                    }
-                }
-                if (abilities.includes('回復')) {
-                    const heal = parseInt(abilities.match(/(\d+)回復/)?.[1] || '0', 10);
-                    if (heal > 0) {
-                        newCasterState.health = newCasterState.health + heal;
-                        effectLogs.push(`「${card.name}」の効果でライフを${heal}回復。`);
-                        effectApplied = true;
-                    }
-                }
-                if (abilities.includes('カードを引く')) {
-                    const drawCount = parseInt(abilities.match(/(\d+)枚/)?.[1] || '1', 10);
-                    effectLogs.push(`「${card.name}」の効果でカードを${drawCount}枚引く。`);
-                    let casterDeck = [...newCasterState.deck];
-                    let casterHand = [...newCasterState.hand];
-                    for (let i = 0; i < drawCount; i++) {
-                        if (casterDeck.length > 0) {
-                            const drawnCard = casterDeck.shift();
-                            if (drawnCard && casterHand.length < HAND_LIMIT) casterHand.push(drawnCard);
-                        }
-                    }
-                    newCasterState.deck = casterDeck;
-                    newCasterState.hand = casterHand;
+            if (abilities.includes('回復')) {
+                const heal = parseInt(abilities.match(/(\d+)回復/)?.[1] || '0', 10);
+                if (heal > 0) {
+                    if (isCasterPlayer) setPlayerHealth(prev => prev + heal);
+                    else setOpponentHealth(prev => prev + heal);
+                    addToLog(`「${card.name}」の効果で${Caster}はライフを${heal}回復。`);
                     effectApplied = true;
                 }
-                if (abilities.includes('マナ')) {
-                    const manaBoost = parseInt(abilities.match(/\+(\d+)/)?.[1] || '1', 10);
-                    newCasterState.maxMana = Math.min(MAX_MANA, newCasterState.maxMana + manaBoost);
-                    effectLogs.push(`「${card.name}」の効果で最大マナが増えた！`);
-                    effectApplied = true;
-                }
-
-                if (!effectApplied) effectLogs.push(`「${card.name}」は何の効果ももたらさなかった。`);
-
-                const newGameState = { ...gameState, [casterKey]: newCasterState, [opponentKey]: newOpponentState };
-                const newGameLog = [...effectLogs, ...roomData.gameLog];
-                let gameOverMessage = roomData.gameOver || '';
-                if (newOpponentState.health <= 0) gameOverMessage = `プレイヤー ${casterPlayerNumber}の勝利！`;
-                else if (newCasterState.health <= 0) gameOverMessage = `プレイヤー ${casterPlayerNumber === 1 ? 2 : 1}の勝利！`;
-
-                transaction.update(roomRef, { gameState: newGameState, gameLog: newGameLog, gameOver: gameOverMessage });
-            });
-        } catch (e) {
-            console.error("Spell effect transaction failed: ", e);
-            toast({ variant: "destructive", title: "スペル効果の処理に失敗しました。" });
+            }
+            if (abilities.includes('カードを引く')) {
+                const drawCount = parseInt(abilities.match(/(\d+)枚/)?.[1] || '1', 10);
+                addToLog(`「${card.name}」の効果で${Caster}はカードを${drawCount}枚引く。`);
+                for(let i=0; i<drawCount; i++) drawCard(isCasterPlayer);
+                effectApplied = true;
+            }
+            if (abilities.includes('マナ')) {
+                const manaBoost = parseInt(abilities.match(/\+(\d+)/)?.[1] || '1', 10);
+                if (isCasterPlayer) setPlayerMaxMana(prev => Math.min(MAX_MANA, prev + manaBoost));
+                else setOpponentMaxMana(prev => Math.min(MAX_MANA, prev + manaBoost));
+                addToLog(`「${card.name}」の効果で${Caster}の最大マナが増えた！`);
+                effectApplied = true;
+            }
         }
+        if (!effectApplied) addToLog(`「${card.name}」は何の効果ももたらさなかった。`);
     };
 
     useEffect(() => {
@@ -585,204 +388,49 @@ export default function BattlePage() {
             setGameOver('あなたの勝利！');
             addToLog('ゲーム終了！あなたが勝利しました。');
         }
-    }, [playerHealth, opponentHealth, gameOver]);
+    }, [playerHealth, opponentHealth, gameOver, addToLog]);
 
-    const playCard = async (card: CardData, cardIndex: number) => {
-        if (!roomId) { // AI戦の場合
-            if (!isPlayerTurn || gameOver || gamePhase !== 'main') return;
-            if (playerMana < card.manaCost) {
-                toast({ variant: 'destructive', title: 'マナが足りません！'});
-                return;
-            }
-
-            if (card.cardType === 'creature' && playerBoard.length >= BOARD_LIMIT) {
-                toast({ variant: 'destructive', title: '場が上限に達しています。'});
-                return;
-            }
-            const newHand = [...playerHand];
-            newHand.splice(cardIndex, 1);
-            setPlayerMana(prev => prev - card.manaCost);
-            setPlayerHand(newHand);
-            addToLog(`あなたが「${card.name}」をプレイ！`);
-            if (card.cardType === 'creature') {
-                setPlayerBoard(prev => [...prev, {...card, canAttack: false}]);
-            } else {
-                applySpellEffect(card, true);
-            }
+    const playCard = (card: CardData, cardIndex: number) => {
+        if (!isPlayerTurn || gameOver || gamePhase !== 'main') return;
+        if (playerMana < card.manaCost) {
+            toast({ variant: 'destructive', title: 'マナが足りません！'});
             return;
         }
 
-        // --- ルーム対戦のロジック ---
-        if (!isPlayerTurn || gameOver || gamePhase !== 'main' || !playerNumber) return;
-
-        try {
-            const roomRef = doc(db, "rooms", roomId);
-            await runTransaction(db, async (transaction) => {
-                const roomDoc = await transaction.get(roomRef);
-                if (!roomDoc.exists()) {
-                    throw "Document does not exist!";
-                }
-
-                const roomData = roomDoc.data();
-                if (roomData.turn !== user?.uid) {
-                    toast({ variant: "destructive", title: "相手のターンです。" });
-                    return;
-                }
-
-                const gameState = roomData.gameState;
-                const myPlayerState = gameState[`player${playerNumber}`];
-                const myPlayerKey = `player${playerNumber}`;
-
-                if (myPlayerState.mana < card.manaCost) {
-                    toast({ variant: "destructive", title: "マナが足りません！" });
-                    return;
-                }
-                if (card.cardType === 'creature' && myPlayerState.board.length >= BOARD_LIMIT) {
-                    toast({ variant: "destructive", title: '場が上限に達しています。'});
-                    return;
-                }
-
-                const newHand = [...myPlayerState.hand];
-                newHand.splice(cardIndex, 1);
-
-                const newMana = myPlayerState.mana - card.manaCost;
-                
-                let newBoard = myPlayerState.board;
-                if (card.cardType === 'creature') {
-                    newBoard = [...myPlayerState.board, { ...card, canAttack: false }];
-                }
-
-                const newGameState = {
-                    ...gameState,
-                    [myPlayerKey]: {
-                        ...myPlayerState,
-                        hand: newHand,
-                        mana: newMana,
-                        board: newBoard,
-                    }
-                };
-                
-                const newLog = `「${card.name}」がプレイされた！`;
-                const newGameLog = [newLog, ...(roomData.gameLog || [])];
-
-                transaction.update(roomRef, { gameState: newGameState, gameLog: newGameLog });
-                
-            });
-
-            if (card.cardType !== 'creature') {
-                await applySpellEffect(card, true);
-            }
-
-        } catch (e) {
-            console.error("Play card transaction failed: ", e);
-            toast({ variant: "destructive", title: "カードのプレイに失敗しました。" });
+        if (card.cardType === 'creature' && playerBoard.length >= BOARD_LIMIT) {
+            toast({ variant: 'destructive', title: '場が上限に達しています。'});
+            return;
+        }
+        const newHand = [...playerHand];
+        newHand.splice(cardIndex, 1);
+        setPlayerMana(prev => prev - card.manaCost);
+        setPlayerHand(newHand);
+        addToLog(`あなたが「${card.name}」をプレイ！`);
+        if (card.cardType === 'creature') {
+            setPlayerBoard(prev => [...prev, {...card, canAttack: false}]);
+        } else {
+            applySpellEffect(card, true);
         }
     };
 
-    const handleAttackPhase = async () => {
+    const handleAttackPhase = () => {
         if (!isPlayerTurn || gameOver || gamePhase !== 'main') return;
-
-        if (!roomId) { // AI戦
-            setGamePhase('attack');
-            addToLog('攻撃フェーズへ！');
-            let totalDamage = 0;
-            playerBoard.forEach(c => {
-                if (c.canAttack) {
-                    totalDamage += c.attack;
-                    addToLog(`あなたの「${c.name}」(${c.attack}/${c.defense})が相手に攻撃！`);
-                }
-            });
-            if (totalDamage > 0) {
-                setOpponentHealth(prev => Math.max(0, prev - totalDamage));
-                addToLog(`相手は合計${totalDamage}のダメージを受けた！`);
-            } else {
-                addToLog('攻撃できるクリーチャーがいませんでした。');
+        setGamePhase('attack');
+        addToLog('攻撃フェーズへ！');
+        let totalDamage = 0;
+        playerBoard.forEach(c => {
+            if (c.canAttack) {
+                totalDamage += c.attack;
+                addToLog(`あなたの「${c.name}」(${c.attack}/${c.defense})が相手に攻撃！`);
             }
-            setTimeout(endTurn, 1000); 
-            return;
+        });
+        if (totalDamage > 0) {
+            setOpponentHealth(prev => Math.max(0, prev - totalDamage));
+            addToLog(`相手は合計${totalDamage}のダメージを受けた！`);
+        } else {
+            addToLog('攻撃できるクリーチャーがいませんでした。');
         }
-
-        // --- ルーム対戦のロジック ---
-        if (!playerNumber) return;
-
-        try {
-            const roomRef = doc(db, "rooms", roomId);
-            await runTransaction(db, async (transaction) => {
-                const roomDoc = await transaction.get(roomRef);
-                if (!roomDoc.exists()) throw "Document does not exist!";
-                
-                const roomData = roomDoc.data();
-                if (roomData.turn !== user?.uid) return;
-
-                const gameState = roomData.gameState;
-                const myPlayerKey = `player${playerNumber}`;
-                const myPlayerState = gameState[myPlayerKey];
-                const opponentPlayerIndex = roomData.players.indexOf(user.uid) === 0 ? 1 : 0;
-                const opponentUid = roomData.players[opponentPlayerIndex];
-                const opponentPlayerKey = `player${opponentPlayerIndex + 1}`;
-                const opponentPlayerState = gameState[opponentPlayerKey];
-
-                let totalDamage = 0;
-                let attackLogs: string[] = [];
-                myPlayerState.board.forEach((c: any) => {
-                    if (c.canAttack) {
-                        totalDamage += c.attack;
-                        attackLogs.push(`「${c.name}」(${c.attack}/${c.defense})が攻撃！`);
-                    }
-                });
-
-                const damageLog = totalDamage > 0 ? `合計${totalDamage}のダメージ！` : '攻撃できるクリーチャーがいませんでした。';
-                const newOpponentHealth = Math.max(0, opponentPlayerState.health - totalDamage);
-
-                const newOpponentMaxMana = Math.min(MAX_MANA, opponentPlayerState.maxMana + 1);
-                const newOpponentMana = newOpponentMaxMana;
-                let opponentDeck = [...opponentPlayerState.deck];
-                let opponentHand = [...opponentPlayerState.hand];
-                let drawLog = "";
-                if (opponentDeck.length > 0) {
-                    const drawnCard = opponentDeck.shift();
-                    if (drawnCard && opponentHand.length < HAND_LIMIT) {
-                        opponentHand.push(drawnCard);
-                        drawLog = `相手はカードを1枚引いた。`;
-                    }
-                }
-
-                const newGameState = {
-                    ...gameState,
-                    [myPlayerKey]: {
-                        ...myPlayerState,
-                        board: myPlayerState.board.map((c: any) => ({ ...c, canAttack: true }))
-                    },
-                    [opponentPlayerKey]: {
-                        ...opponentPlayerState,
-                        health: newOpponentHealth,
-                        mana: newOpponentMana,
-                        maxMana: newOpponentMaxMana,
-                        deck: opponentDeck,
-                        hand: opponentHand,
-                        board: opponentPlayerState.board.map((c: any) => ({ ...c, canAttack: true }))
-                    }
-                };
-                
-                const newGameLog = [`相手のターン開始。`, drawLog, damageLog, ...attackLogs, '攻撃フェーズへ！', ...roomData.gameLog];
-                
-                let gameOverMessage = '';
-                if (newOpponentHealth <= 0) {
-                    gameOverMessage = 'あなたの勝利！';
-                }
-
-                transaction.update(roomRef, {
-                    turn: opponentUid,
-                    gamePhase: 'main',
-                    gameState: newGameState,
-                    gameLog: newGameLog,
-                    gameOver: gameOverMessage,
-                });
-            });
-        } catch (e) {
-            console.error("Attack phase transaction failed: ", e);
-            toast({ variant: "destructive", title: "攻撃処理に失敗しました。" });
-        }
+        setTimeout(endTurn, 1000); 
     };
 
     const endTurn = () => {
@@ -1041,7 +689,7 @@ export default function BattlePage() {
         <div className="flex flex-col items-center gap-2">
             <div className="flex items-center gap-4">
                 <Card className="p-2 text-center w-40">
-                    <p className="font-bold">相手 ({roomId ? `プレイヤー ${playerNumber === 1 ? 2 : 1}`: (difficulty === 'beginner' ? '初級' : '上級')})</p>
+                    <p className="font-bold">相手 ({difficulty === 'beginner' ? '初級' : '上級'})</p>
                     <p className="flex items-center justify-center gap-2 text-red-500 font-bold text-xl"><Heart /> {opponentHealth}</p>
                     <p className="flex items-center justify-center gap-2 text-blue-500 font-bold"><Dices /> {opponentMana}/{opponentMaxMana}</p>
                 </Card>
@@ -1101,7 +749,7 @@ export default function BattlePage() {
         <div className="flex flex-col items-center gap-2 mt-2">
             <div className="flex items-center gap-4">
                 <Card className="p-2 text-center w-40">
-                    <p className="font-bold">あなた {roomId ? `(プレイヤー ${playerNumber})` : ''}</p>
+                    <p className="font-bold">あなた</p>
                     <p className="flex items-center justify-center gap-2 text-red-500 font-bold text-xl"><Heart /> {playerHealth}</p>
                     <p className="flex items-center justify-center gap-2 text-blue-500 font-bold"><Dices /> {playerMana}/{playerMaxMana}</p>
                     <p className="mt-2 text-sm">ターン: {Math.ceil(turn/2)}</p>
@@ -1125,7 +773,3 @@ export default function BattlePage() {
     </main>
   );
 }
-
-    
-
-    
