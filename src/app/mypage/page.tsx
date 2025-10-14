@@ -9,20 +9,33 @@ import { Coins, Swords, Shield, Trophy, Star, Library, Users, Skull, Bot } from 
 import type { CardData } from '@/components/card-editor';
 import { Skeleton } from '@/components/ui/skeleton';
 
+
+import { AchievementsUI, type Achievement } from '@/components/ui/achievements';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select"
+
 export default function MyPage() {
   const { currency } = useCurrency();
   const { wins, losses } = useStats();
   const [collection, setCollection] = useState<CardData[]>([]);
   const [deck, setDeck] = useState<CardData[]>([]);
   const [isClient, setIsClient] = useState(false);
+  const [selectedTitle, setSelectedTitle] = useState<string>('未設定');
 
   useEffect(() => {
     setIsClient(true);
     try {
       const savedCollection = JSON.parse(localStorage.getItem('cardCollection') || '[]');
       const savedDeck = JSON.parse(localStorage.getItem('deck') || '[]');
+      const savedTitle = localStorage.getItem('selectedTitle') || '未設定';
       setCollection(savedCollection);
       setDeck(savedDeck);
+      setSelectedTitle(savedTitle);
     } catch (error) {
       console.error("Failed to load data from localStorage", error);
     }
@@ -35,6 +48,11 @@ export default function MyPage() {
   };
 
   const uniqueCardCount = getUniqueCardCount(collection);
+
+  const handleTitleChange = (title: string) => {
+      setSelectedTitle(title);
+      localStorage.setItem('selectedTitle', title);
+  }
   
   const StatCard = ({ title, value, icon, description, loading }: { title: string, value: string | number, icon: React.ReactNode, description: string, loading?: boolean }) => {
     return (
@@ -59,6 +77,13 @@ export default function MyPage() {
         </div>
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <StatCard 
+                title="称号"
+                value={selectedTitle}
+                icon={<Star className="h-4 w-4 text-muted-foreground" />}
+                description="設定した称号"
+                loading={!isClient}
+            />
             <StatCard 
                 title="所持Gコイン"
                 value={`${currency.toLocaleString()} G`}
@@ -95,6 +120,11 @@ export default function MyPage() {
                 loading={!isClient}
             />
         </div>
+
+        <div className="mt-8">
+            <AchievementsUI wins={wins} uniqueCardCount={uniqueCardCount} onTitleChange={handleTitleChange} />
+        </div>
+
         <Card className="mt-8">
             <CardHeader>
                 <CardTitle>今後のアップデート</CardTitle>
@@ -104,7 +134,6 @@ export default function MyPage() {
                 <ul className="list-disc pl-5 space-y-2 text-sm text-muted-foreground">
                     <li>AI対戦内容の改善</li>
                     <li>デッキ登録数を30個までにすること</li>
-                    <li>獲得した称号や実績の表示</li>
                     <li>カード収集率に基づいた報酬の受け取りや称号に応じた報酬受け取り</li>
                 </ul>
             </CardContent>
