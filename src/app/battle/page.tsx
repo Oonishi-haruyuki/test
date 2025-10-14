@@ -140,6 +140,13 @@ const ninjaDeck: CardData[] = [
 
 const shuffleDeck = (deck: CardData[]) => [...deck].sort(() => Math.random() - 0.5);
 
+interface Deck {
+    id: string;
+    name: string;
+    cards: CardData[];
+}
+
+
 export default function BattlePage() {
     const { toast } = useToast();
     const { addCurrency, spendCurrency } = useCurrency();
@@ -212,10 +219,10 @@ export default function BattlePage() {
 
         try {
             if (choice === 'my-deck') {
-                const savedDeck = JSON.parse(localStorage.getItem('deck') || '[]');
-                if (savedDeck.length > 0) {
-                    deckToLoad = savedDeck;
-                    toastMessage = '保存したデッキを読み込みました。';
+                const savedDecks: Deck[] = JSON.parse(localStorage.getItem('decks') || '[]');
+                if (savedDecks.length > 0 && savedDecks[0].cards.length > 0) {
+                    deckToLoad = savedDecks[0].cards;
+                    toastMessage = `保存したデッキ「${savedDecks[0].name}」を読み込みました。`;
                 } else {
                     deckToLoad = goblinDeck;
                     toastMessage = '保存されたデッキがありません。ゴブリンデッキで開始します。';
@@ -287,8 +294,8 @@ export default function BattlePage() {
     useEffect(() => {
         setIsClient(true);
         try {
-            const savedDeck = JSON.parse(localStorage.getItem('deck') || '[]');
-            if (savedDeck.length > 0) {
+            const savedDecks = JSON.parse(localStorage.getItem('decks') || '[]');
+            if (savedDecks.length > 0) {
                 setHasSavedDeck(true);
             }
             const savedCardBack = localStorage.getItem('cardBackImage');
@@ -661,7 +668,7 @@ export default function BattlePage() {
                                 <FileJson className="mr-2" />
                                 <div>
                                     <p>保存したデッキ</p>
-                                    <p className="text-sm font-normal">（デッキ構築で作成）</p>
+                                    <p className="text-sm font-normal">（一番上のデッキを使用）</p>
                                 </div>
                             </Button>
                         )}
