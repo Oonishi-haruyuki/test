@@ -10,7 +10,7 @@ import { useCurrency } from '@/hooks/use-currency';
 import { useToast } from '@/hooks/use-toast';
 import type { CardData } from '@/components/card-editor';
 import { CardPreview } from '@/components/card-preview';
-import { Coins, HelpCircle, Shuffle, ArrowDown, ArrowUp, Brain } from 'lucide-react';
+import { Coins, HelpCircle, Shuffle, ArrowDown, ArrowUp, Brain, Repeat } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from '@/lib/utils';
 
@@ -225,6 +225,9 @@ function ThemeQuizGame() {
 }
 
 // --- Higher or Lower Game ---
+const MAX_ROUNDS = 20;
+const STREAK_BONUS_MULTIPLIER = 10;
+
 function HigherLowerGame() {
     const { currency, addCurrency, spendCurrency } = useCurrency();
     const { toast } = useToast();
@@ -234,8 +237,11 @@ function HigherLowerGame() {
     const [showNextCard, setShowNextCard] = useState(false);
     const [betAmount, setBetAmount] = useState(10);
     const [gameInProgress, setGameInProgress] = useState(false);
+    const [round, setRound] = useState(1);
+    const [gameOver, setGameOver] = useState(false);
 
-    const startNewRound = () => {
+
+    const startNewGame = () => {
         const card1 = uniqueStarterCards[Math.floor(Math.random() * uniqueStarterCards.length)];
         let card2 = uniqueStarterCards[Math.floor(Math.random() * uniqueStarterCards.length)];
         while (card1.id === card2.id) {
@@ -245,14 +251,17 @@ function HigherLowerGame() {
         setNextCard(card2);
         setShowNextCard(false);
         setGameInProgress(false);
+        setStreak(0);
+        setRound(1);
+        setGameOver(false);
     };
 
     useEffect(() => {
-        startNewRound();
+        startNewGame();
     }, []);
 
     const handleGuess = (guess: 'higher' | 'lower') => {
-        if (!currentCard || !nextCard || gameInProgress) return;
+        if (!currentCard || !nextCard || gameInProgress || gameOver) return;
 
         if (currency < betAmount) {
             toast({ variant: 'destructive', title: 'Gが足りません！', description: '賭け金を所持G以下に設定してください。' });
@@ -280,11 +289,28 @@ function HigherLowerGame() {
         setShowNextCard(true);
 
         setTimeout(() => {
+            const nextRound = round + 1;
+            
             if (result === 'win') {
+                const newStreak = streak + 1;
                 const reward = betAmount * 2;
-                addCurrency(reward);
-                setStreak(prev => prev + 1);
-                toast({ title: '勝利！', description: <div className="flex items-center gap-2"><Coins className="h-5 w-5 text-yellow-500" /><span>{reward}G 獲得！ (賭け金 {betAmount}G)</span></div> });
+                const bonus = newStreak * STREAK_BONUS_MULTIPLIER;
+                const totalReward = reward + bonus;
+
+                addCurrency(totalReward);
+                setStreak(newStreak);
+                toast({ 
+                    title: `勝利！ (+${totalReward}G)`, 
+                    description: `賭け金${reward}G + ${newStreak}連続正解ボーナス${bonus}G`
+                });
+
+                if (nextRound > MAX_ROUNDS) {
+                    setGameOver(true);
+                    toast({ title: 'ゲームクリア！', description: '20ラウンド達成しました。おめでとうございます！' });
+                    return;
+                }
+
+                setRound(nextRound);
                 setCurrentCard(nextCard);
                 let newNextCard = uniqueStarterCards[Math.floor(Math.random() * uniqueStarterCards.length)];
                  while (nextCard.id === newNextCard.id) {
@@ -292,14 +318,22 @@ function HigherLowerGame() {
                 }
                 setNextCard(newNextCard);
                 setShowNextCard(false);
+
             } else if (result === 'draw') {
                 addCurrency(betAmount); // Refund
                 toast({ title: '引き分け', description: `賭け金 ${betAmount}G が返金されました。` });
-                startNewRound();
+                
+                if (nextRound > MAX_ROUNDS) {
+                    setGameOver(true);
+                    toast({ title: 'ゲーム終了', description: '20ラウンド経過しました。' });
+                    return;
+                }
+                setRound(nextRound);
+                startNewRound(); // For draw, we could also just get a new next card. Let's restart for simplicity.
+
             } else { // loss
                 toast({ variant: 'destructive', title: '敗北…', description: `賭け金 ${betAmount}G を失いました。連続正解記録: ${streak}` });
-                setStreak(0);
-                startNewRound();
+                setGameOver(true); // End game on loss
             }
             setGameInProgress(false);
         }, 2000); // Show result for 2 seconds
@@ -315,15 +349,33 @@ function HigherLowerGame() {
             setBetAmount(value);
         }
     }
+    
+    if (gameOver) {
+        return (
+            <div className="flex flex-col items-center justify-center gap-4 text-center">
+                 <h3 className="text-2xl font-bold">ゲーム終了</h3>
+                 <p className="text-muted-foreground">最終記録: {streak} 連続正解</p>
+                <Button onClick={startNewGame} size="lg">
+                    <Repeat className="mr-2" />
+                    もう一度プレイする
+                </Button>
+            </div>
+        )
+    }
 
     return (
         <div className="grid md:grid-cols-2 gap-8 items-center">
             <div className="flex flex-col gap-6">
                 <Card>
-                    <CardHeader><CardTitle className="flex items-center gap-2"><HelpCircle className="text-primary" /> 問題</CardTitle></CardHeader>
+                    <CardHeader>
+                        <CardTitle className="flex items-center justify-between gap-2">
+                           <div className="flex items-center gap-2"><HelpCircle className="text-primary" /> 問題</div>
+                           <span className="text-sm font-normal text-muted-foreground">ラウンド {round}/{MAX_ROUNDS}</span>
+                        </CardTitle>
+                    </CardHeader>
                     <CardContent>
                         <p className="text-lg mb-2">次のカードのマナコストは、表示中のカードより高いか低いか？</p>
-                        <p className="text-center text-muted-foreground">現在の連続正解: {streak}</p>
+                        <p className="text-center text-muted-foreground">現在の連続正解: {streak} (ボーナス: {streak * STREAK_BONUS_MULTIPLIER}G)</p>
                     </CardContent>
                 </Card>
                 
@@ -352,7 +404,7 @@ function HigherLowerGame() {
                         <ArrowDown className="mr-2" /> 低い
                     </Button>
                 </div>
-                 <p className="text-sm text-center text-muted-foreground">（勝利で賭け金2倍、引き分けで返金）</p>
+                 <p className="text-sm text-center text-muted-foreground">（勝利で賭け金2倍＋ボーナス、引き分けで返金）</p>
             </div>
             <div className="flex justify-around items-center">
                 {currentCard && <CardPreview {...currentCard} />}
@@ -401,3 +453,5 @@ export default function MiniGamePage() {
         </main>
     );
 }
+
+    
