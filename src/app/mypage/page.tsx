@@ -3,6 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { useCurrency } from '@/hooks/use-currency';
+import { useStats } from '@/hooks/use-stats';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Coins, Swords, Shield, Trophy, Star, Library, Users, Skull, Bot } from 'lucide-react';
 import type { CardData } from '@/components/card-editor';
@@ -10,6 +11,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 export default function MyPage() {
   const { currency } = useCurrency();
+  const { wins, losses } = useStats();
   const [collection, setCollection] = useState<CardData[]>([]);
   const [deck, setDeck] = useState<CardData[]>([]);
   const [isClient, setIsClient] = useState(false);
@@ -80,14 +82,14 @@ export default function MyPage() {
             />
              <StatCard 
                 title="対戦勝利数"
-                value="未実装"
+                value={wins}
                 icon={<Trophy className="h-4 w-4 text-muted-foreground" />}
                 description="AIとの対戦での勝利数"
                 loading={!isClient}
             />
              <StatCard 
                 title="対戦敗北数"
-                value="未実装"
+                value={losses}
                 icon={<Skull className="h-4 w-4 text-muted-foreground" />}
                 description="AIとの対戦での敗北数"
                 loading={!isClient}
@@ -107,7 +109,7 @@ export default function MyPage() {
             </CardHeader>
             <CardContent>
                 <ul className="list-disc pl-5 space-y-2 text-sm text-muted-foreground">
-                    <li>対戦の勝敗記録と勝率の表示</li>
+                    <li>対戦の勝率の表示</li>
                     <li>お気に入りのカードやデッキの登録機能</li>
                     <li>獲得した称号や実績の表示</li>
                     <li>カード収集率に基づいた報酬の受け取り</li>
@@ -117,3 +119,5 @@ export default function MyPage() {
     </main>
   );
 }
+
+    

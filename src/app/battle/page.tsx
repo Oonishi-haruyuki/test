@@ -12,13 +12,17 @@ import { generateDeck } from '@/ai/flows/generate-deck';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
 import { useCurrency } from '@/hooks/use-currency';
+import { useStats } from '@/hooks/use-stats';
 
 const HAND_LIMIT = 5;
 const DECK_SIZE = 20;
 const MAX_MANA = 10;
 const BOARD_LIMIT = 5;
-const WIN_REWARD = 50;
-const LOSE_PENALTY = 10;
+
+const BEGINNER_WIN_REWARD = 10;
+const BEGINNER_LOSE_PENALTY = 5;
+const ADVANCED_WIN_REWARD = 50;
+const ADVANCED_LOSE_PENALTY = 10;
 
 
 type Difficulty = 'beginner' | 'advanced';
@@ -139,6 +143,7 @@ const shuffleDeck = (deck: CardData[]) => [...deck].sort(() => Math.random() - 0
 export default function BattlePage() {
     const { toast } = useToast();
     const { addCurrency, spendCurrency } = useCurrency();
+    const { addWin, addLoss } = useStats();
     const [isClient, setIsClient] = useState(false);
     const [isGeneratingDeck, setIsGeneratingDeck] = useState(false);
     const [difficulty, setDifficulty] = useState<Difficulty | null>(null);
@@ -384,28 +389,44 @@ export default function BattlePage() {
         if (!effectApplied) addToLog(`「${card.name}」は何の効果ももたらさなかった。`);
     };
 
+    const handleEndGame = (result: 'win' | 'loss') => {
+        if (!difficulty) return;
+    
+        const isBeginner = difficulty === 'beginner';
+        const winReward = isBeginner ? BEGINNER_WIN_REWARD : ADVANCED_WIN_REWARD;
+        const losePenalty = isBeginner ? BEGINNER_LOSE_PENALTY : ADVANCED_LOSE_PENALTY;
+    
+        if (result === 'win') {
+          setGameOver('あなたの勝利！');
+          addToLog('ゲーム終了！あなたが勝利しました。');
+          addCurrency(winReward);
+          addWin();
+          toast({
+            title: '勝利！',
+            description: `${winReward}G獲得しました！`,
+          });
+        } else {
+          setGameOver('相手の勝利！');
+          addToLog('ゲーム終了！相手が勝利しました。');
+          spendCurrency(losePenalty);
+          addLoss();
+          toast({
+            title: '敗北...',
+            description: `${losePenalty}G失いました。`,
+            variant: 'destructive',
+          });
+        }
+      };
+
     useEffect(() => {
         if (gameOver) return;
 
         if (playerHealth <= 0) {
-            setGameOver('相手の勝利！');
-            addToLog('ゲーム終了！相手が勝利しました。');
-            spendCurrency(LOSE_PENALTY);
-            toast({
-                title: '敗北...',
-                description: `${LOSE_PENALTY}G失いました。`,
-                variant: 'destructive'
-            });
+            handleEndGame('loss');
         } else if (opponentHealth <= 0) {
-            setGameOver('あなたの勝利！');
-            addToLog('ゲーム終了！あなたが勝利しました。');
-            addCurrency(WIN_REWARD);
-            toast({
-                title: '勝利！',
-                description: `${WIN_REWARD}G獲得しました！`,
-            });
+            handleEndGame('win');
         }
-    }, [playerHealth, opponentHealth, gameOver, addToLog, addCurrency, spendCurrency, toast]);
+    }, [playerHealth, opponentHealth, gameOver]);
 
     const playCard = (card: CardData, cardIndex: number) => {
         if (!isPlayerTurn || gameOver || gamePhase !== 'main') return;
@@ -612,10 +633,10 @@ export default function BattlePage() {
                     </CardHeader>
                     <CardContent className="flex flex-col gap-4">
                         <Button onClick={() => setDifficulty('beginner')} size="lg">
-                            <Bot className="mr-2" /> 初級 (+10G / -5G)
+                            <Bot className="mr-2" /> 初級 (+{BEGINNER_WIN_REWARD}G / -{BEGINNER_LOSE_PENALTY}G)
                         </Button>
                         <Button onClick={() => setDifficulty('advanced')} size="lg">
-                           <BrainCircuit className="mr-2" /> 上級 (+50G / -10G)
+                           <BrainCircuit className="mr-2" /> 上級 (+{ADVANCED_WIN_REWARD}G / -{ADVANCED_LOSE_PENALTY}G)
                         </Button>
                     </CardContent>
                 </Card>
@@ -700,6 +721,9 @@ export default function BattlePage() {
     }
 
 
+    const winReward = difficulty === 'beginner' ? BEGINNER_WIN_REWARD : ADVANCED_WIN_REWARD;
+    const losePenalty = difficulty === 'beginner' ? BEGINNER_LOSE_PENALTY : ADVANCED_LOSE_PENALTY;
+
     return (
     <main
         className="flex flex-col gap-2 min-h-screen bg-cover bg-center bg-fixed p-4"
@@ -748,11 +772,11 @@ export default function BattlePage() {
                     <p className="text-2xl font-semibold mb-2">{gameOver}</p>
                     {gameOver === 'あなたの勝利！' ? (
                         <p className="flex items-center justify-center gap-2 text-lg font-medium text-yellow-700 mb-4">
-                            <Coins className="h-6 w-6" /> +{WIN_REWARD}G
+                            <Coins className="h-6 w-6" /> +{winReward}G
                         </p>
                     ) : (
                         <p className="flex items-center justify-center gap-2 text-lg font-medium text-red-600 mb-4">
-                            <Coins className="h-6 w-6" /> -{LOSE_PENALTY}G
+                            <Coins className="h-6 w-6" /> -{losePenalty}G
                         </p>
                     )}
                     <Button onClick={resetGame}>
