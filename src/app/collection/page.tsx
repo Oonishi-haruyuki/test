@@ -28,6 +28,29 @@ import {
   } from "@/components/ui/dialog"
 import { CollectionCardEditor } from '@/components/collection-card-editor';
 import { useToast } from '@/hooks/use-toast';
+import { useCurrency } from '@/hooks/use-currency';
+
+// Levenshtein distance to calculate the difference between two strings
+const levenshtein = (s1: string, s2: string): number => {
+    if (s1.length < s2.length) {
+      return levenshtein(s2, s1);
+    }
+    if (s2.length === 0) {
+      return s1.length;
+    }
+    let previousRow = Array.from({ length: s2.length + 1 }, (_, i) => i);
+    for (let i = 0; i < s1.length; i++) {
+      let currentRow = [i + 1];
+      for (let j = 0; j < s2.length; j++) {
+        let insertions = previousRow[j + 1] + 1;
+        let deletions = currentRow[j] + 1;
+        let substitutions = previousRow[j] + (s1[i] !== s2[j] ? 1 : 0);
+        currentRow.push(Math.min(insertions, deletions, substitutions));
+      }
+      previousRow = currentRow;
+    }
+    return previousRow[previousRow.length - 1];
+};
   
 
 export default function CollectionPage() {
@@ -35,14 +58,15 @@ export default function CollectionPage() {
   const [isClient, setIsClient] = useState(false);
   const [editingCard, setEditingCard] = useState<CardData | null>(null);
   const { toast } = useToast();
+  const { spendCurrency } = useCurrency();
+  const EDIT_COST_PER_CHAR = 3;
 
   useEffect(() => {
     setIsClient(true);
     try {
       const savedCollection = JSON.parse(localStorage.getItem('cardCollection') || '[]');
       setCollection(savedCollection);
-    } catch (error) {
-      console.error("Failed to load card collection from localStorage", error);
+    } catch (error)      console.error("Failed to load card collection from localStorage", error);
       setCollection([]);
     }
   }, []);
@@ -59,12 +83,24 @@ export default function CollectionPage() {
     localStorage.removeItem('cardCollection');
   };
 
-  const handleSaveEdit = (updatedCard: CardData) => {
-    if (!updatedCard.id) return;
+  const handleSaveEdit = (originalCard: CardData, updatedCard: CardData) => {
+    const nameDiff = levenshtein(originalCard.name, updatedCard.name);
+    const abilitiesDiff = levenshtein(originalCard.abilities, updatedCard.abilities);
+    const flavorTextDiff = levenshtein(originalCard.flavorText, updatedCard.flavorText);
     
-    // In a future step, we will calculate cost here.
-    const cost = 0; 
-    console.log(`Calculated cost: ${cost}G`);
+    const totalChanges = nameDiff + abilitiesDiff + flavorTextDiff;
+    const cost = totalChanges * EDIT_COST_PER_CHAR;
+
+    if (cost > 0) {
+        if (!spendCurrency(cost)) {
+            toast({
+                variant: 'destructive',
+                title: 'Gコインが足りません！',
+                description: `この変更には ${cost}G が必要です。`,
+            });
+            return;
+        }
+    }
 
     const newCollection = collection.map(card => card.id === updatedCard.id ? updatedCard : card);
     setCollection(newCollection);
@@ -72,7 +108,7 @@ export default function CollectionPage() {
 
     toast({
         title: 'カードを更新しました',
-        description: `「${updatedCard.name}」の情報を更新しました。`,
+        description: `「${updatedCard.name}」の情報を更新しました。` + (cost > 0 ? ` (${cost}G 消費)` : ''),
     });
     setEditingCard(null);
   }
@@ -157,13 +193,13 @@ export default function CollectionPage() {
             <DialogHeader>
                 <DialogTitle>カードを編集</DialogTitle>
                 <DialogDescription>
-                    カードのテキスト情報を編集します。変更内容に応じてGコインが消費されます。（現在は無料）
+                    カードのテキスト情報を編集します。変更内容に応じてGコインが消費されます。(1文字あたり{EDIT_COST_PER_CHAR}G)
                 </DialogDescription>
             </DialogHeader>
             {editingCard && (
                 <CollectionCardEditor 
                     card={editingCard}
-                    onSave={handleSaveEdit}
+                    onSave={(updatedCard) => handleSaveEdit(editingCard, updatedCard)}
                     onCancel={() => setEditingCard(null)}
                 />
             )}
@@ -172,4 +208,3 @@ export default function CollectionPage() {
     </main>
   );
 }
-
