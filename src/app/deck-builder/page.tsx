@@ -30,6 +30,7 @@ import {
   } from "@/components/ui/dialog"
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
 
 
 const DECK_SIZE = 30;
@@ -283,10 +284,10 @@ export default function DeckBuilderPage() {
                         <Button variant="destructive" disabled={decks.length <= 1 || !activeDeck}><Trash2 className="mr-2" />削除</Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent>
-                        <AlertDialogHeader>
-                            <AlertDialogTitle>本当にこのデッキを削除しますか？</AlertDialogTitle>
-                            <AlertDialogDescription>「{activeDeck?.name}」は完全に削除されます。この操作は元に戻せません。</AlertDialogDescription>
-                        </AlertDialogHeader>
+                        <DialogHeader>
+                            <DialogTitle>本当にこのデッキを削除しますか？</DialogTitle>
+                            <DialogDescription>「{activeDeck?.name}」は完全に削除されます。この操作は元に戻せません。</DialogDescription>
+                        </DialogHeader>
                         <AlertDialogFooter>
                             <AlertDialogCancel>キャンセル</AlertDialogCancel>
                             <AlertDialogAction onClick={handleDeleteDeck}>削除</AlertDialogAction>

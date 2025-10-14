@@ -66,8 +66,9 @@ export default function CollectionPage() {
     try {
       const savedCollection = JSON.parse(localStorage.getItem('cardCollection') || '[]');
       setCollection(savedCollection);
-    } catch (error)      console.error("Failed to load card collection from localStorage", error);
-      setCollection([]);
+    } catch (error) {
+        console.error("Failed to load card collection from localStorage", error);
+        setCollection([]);
     }
   }, []);
 
@@ -208,3 +209,5 @@ export default function CollectionPage() {
     </main>
   );
 }
+
+    
