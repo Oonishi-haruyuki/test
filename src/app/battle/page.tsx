@@ -6,6 +6,7 @@ import type { CardData } from '@/components/card-editor';
 import { CardPreview } from '@/components/card-preview';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Swords, Heart, Shield, Dices, RotateCcw, Loader2, BrainCircuit, Bot, Wand2, Group, FileJson, Coins } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { generateDeck } from '@/ai/flows/generate-deck';
@@ -24,6 +25,11 @@ const BEGINNER_LOSE_PENALTY = 5;
 const ADVANCED_WIN_REWARD = 50;
 const ADVANCED_LOSE_PENALTY = 10;
 
+interface Deck {
+    id: string;
+    name: string;
+    cards: CardData[];
+}
 
 type Difficulty = 'beginner' | 'advanced';
 type DeckChoice = 'my-deck' | 'starter-goblin' | 'starter-elemental' | 'starter-undead' | 'starter-dragon' | 'starter-ninja' | 'ai-fantasy' | 'ai-scifi';
@@ -140,12 +146,6 @@ export const ninjaDeck: CardData[] = [
 
 const shuffleDeck = (deck: CardData[]) => [...deck].sort(() => Math.random() - 0.5);
 
-interface Deck {
-    id: string;
-    name: string;
-    cards: CardData[];
-}
-
 
 export default function BattlePage() {
     const { toast } = useToast();
@@ -154,8 +154,8 @@ export default function BattlePage() {
     const [isClient, setIsClient] = useState(false);
     const [isGeneratingDeck, setIsGeneratingDeck] = useState(false);
     const [difficulty, setDifficulty] = useState<Difficulty | null>(null);
-    const [deckChoice, setDeckChoice] = useState<DeckChoice | null>(null);
-    const [hasSavedDeck, setHasSavedDeck] = useState(false);
+    const [deckChoice, setDeckChoice] = useState<string | null>(null);
+    const [savedDecks, setSavedDecks] = useState<Deck[]>([]);
     const [cardBackImage, setCardBackImage] = useState<string | null>(null);
 
     // Game State
@@ -211,23 +211,14 @@ export default function BattlePage() {
         setGameLog([`--- ターン 1: あなたのターン ---`, 'ゲーム開始！']);
     };
     
-    const loadAndSetPlayerDeck = async (choice: DeckChoice) => {
+    const loadAndSetPlayerDeck = async (choice: string) => {
         setIsGeneratingDeck(true);
         addToLog('対戦の準備をしています...');
         let deckToLoad: CardData[] = [];
         let toastMessage = '';
 
         try {
-            if (choice === 'my-deck') {
-                const savedDecks: Deck[] = JSON.parse(localStorage.getItem('decks') || '[]');
-                if (savedDecks.length > 0 && savedDecks[0].cards.length > 0) {
-                    deckToLoad = savedDecks[0].cards;
-                    toastMessage = `保存したデッキ「${savedDecks[0].name}」を読み込みました。`;
-                } else {
-                    deckToLoad = goblinDeck;
-                    toastMessage = '保存されたデッキがありません。ゴブリンデッキで開始します。';
-                }
-            } else if (choice === 'starter-goblin') {
+            if (choice === 'starter-goblin') {
                 deckToLoad = goblinDeck;
                 toastMessage = 'スターターデッキ「ゴブリン軍団」で開始します。';
             } else if (choice === 'starter-elemental') {
@@ -252,6 +243,18 @@ export default function BattlePage() {
                     imageUrl: `https://picsum.photos/seed/p-ai${index}/${400}/${300}`,
                 }));
                 toastMessage = `AIが生成した「${theme}」デッキで開始します。`;
+            } else { // Handle saved decks
+                const selectedDeck = savedDecks.find(d => d.id === choice);
+                if (selectedDeck && selectedDeck.cards.length === DECK_SIZE) {
+                    deckToLoad = selectedDeck.cards;
+                    toastMessage = `デッキ「${selectedDeck.name}」で開始します。`;
+                } else if (savedDecks.length > 0) {
+                    deckToLoad = savedDecks[0].cards;
+                    toastMessage = `選択したデッキが不正です。保存された最初のデッキ「${savedDecks[0].name}」で開始します。`;
+                } else {
+                    deckToLoad = goblinDeck; // Fallback
+                    toastMessage = '保存されたデッキが見つかりません。ゴブリンデッキで開始します。';
+                }
             }
             
             const aiDeck = await createAiDeck(deckToLoad);
@@ -294,10 +297,9 @@ export default function BattlePage() {
     useEffect(() => {
         setIsClient(true);
         try {
-            const savedDecks = JSON.parse(localStorage.getItem('decks') || '[]');
-            if (savedDecks.length > 0) {
-                setHasSavedDeck(true);
-            }
+            const decksFromStorage: Deck[] = JSON.parse(localStorage.getItem('decks') || '[]');
+            setSavedDecks(decksFromStorage);
+            
             const savedCardBack = localStorage.getItem('cardBackImage');
             if (savedCardBack) {
                 setCardBackImage(savedCardBack);
@@ -307,7 +309,7 @@ export default function BattlePage() {
         }
     }, []);
 
-    const handleSelectDeck = (choice: DeckChoice) => {
+    const handleSelectDeck = (choice: string) => {
         setDeckChoice(choice);
         loadAndSetPlayerDeck(choice);
     };
@@ -652,6 +654,7 @@ export default function BattlePage() {
     }
 
     if (difficulty && !deckChoice) {
+        const validDecks = savedDecks.filter(d => d.cards.length === DECK_SIZE);
         return (
              <main className="text-center p-10">
                 <Card className="max-w-3xl mx-auto">
@@ -662,15 +665,21 @@ export default function BattlePage() {
                             <Button variant="link" onClick={() => setDifficulty(null)}>変更</Button>
                         </CardDescription>
                     </CardHeader>
-                    <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        {hasSavedDeck && (
-                             <Button onClick={() => handleSelectDeck('my-deck')} size="lg" className="h-20">
-                                <FileJson className="mr-2" />
-                                <div>
-                                    <p>保存したデッキ</p>
-                                    <p className="text-sm font-normal">（一番上のデッキを使用）</p>
-                                </div>
-                            </Button>
+                    <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {validDecks.length > 0 && (
+                            <div className="md:col-span-2 space-y-2">
+                                <p className="font-semibold text-left">保存したデッキ</p>
+                                <Select onValueChange={(deckId) => handleSelectDeck(deckId)}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="保存したデッキを選択..." />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {validDecks.map(deck => (
+                                            <SelectItem key={deck.id} value={deck.id}>{deck.name}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
                         )}
                         <Button onClick={() => handleSelectDeck('starter-goblin')} size="lg" className="h-20">
                             <Group className="mr-2" />
@@ -707,14 +716,14 @@ export default function BattlePage() {
                                 <p className="text-sm font-normal">（奇襲タイプ）</p>
                             </div>
                         </Button>
-                        <Button onClick={() => handleSelectDeck('ai-fantasy')} size="lg" className="h-20 col-span-1 md:col-span-3">
+                        <Button onClick={() => handleSelectDeck('ai-fantasy')} size="lg" className="h-20">
                            <Wand2 className="mr-2" /> 
                            <div>
                                 <p>AI生成デッキ (ファンタジー)</p>
                                 <p className="text-sm font-normal">（毎回新しいデッキ）</p>
                             </div>
                         </Button>
-                        <Button onClick={() => handleSelectDeck('ai-scifi')} size="lg" className="h-20 col-span-1 md:col-span-3">
+                        <Button onClick={() => handleSelectDeck('ai-scifi')} size="lg" className="h-20">
                            <Wand2 className="mr-2" /> 
                            <div>
                                 <p>AI生成デッキ (SF)</p>
@@ -836,5 +845,7 @@ export default function BattlePage() {
     </main>
   );
 }
+
+    
 
     
