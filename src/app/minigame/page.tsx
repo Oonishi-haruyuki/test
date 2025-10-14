@@ -12,6 +12,7 @@ import type { CardData } from '@/components/card-editor';
 import { CardPreview } from '@/components/card-preview';
 import { Coins, HelpCircle, Shuffle, ArrowDown, ArrowUp, Brain } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { cn } from '@/lib/utils';
 
 import { goblinDeck, elementalDeck, undeadDeck, dragonDeck, ninjaDeck } from '@/app/battle/page';
 
@@ -225,88 +226,139 @@ function ThemeQuizGame() {
 
 // --- Higher or Lower Game ---
 function HigherLowerGame() {
-    const { addCurrency } = useCurrency();
+    const { currency, addCurrency, spendCurrency } = useCurrency();
     const { toast } = useToast();
     const [currentCard, setCurrentCard] = useState<CardData | null>(null);
     const [nextCard, setNextCard] = useState<CardData | null>(null);
     const [streak, setStreak] = useState(0);
     const [showNextCard, setShowNextCard] = useState(false);
+    const [betAmount, setBetAmount] = useState(10);
+    const [gameInProgress, setGameInProgress] = useState(false);
 
-    const startNewGame = () => {
+    const startNewRound = () => {
         const card1 = uniqueStarterCards[Math.floor(Math.random() * uniqueStarterCards.length)];
         let card2 = uniqueStarterCards[Math.floor(Math.random() * uniqueStarterCards.length)];
-        while (card1.id === card2.id) { // Ensure they are not the same card
+        while (card1.id === card2.id) {
             card2 = uniqueStarterCards[Math.floor(Math.random() * uniqueStarterCards.length)];
         }
         setCurrentCard(card1);
         setNextCard(card2);
         setShowNextCard(false);
+        setGameInProgress(false);
     };
 
     useEffect(() => {
-        startNewGame();
+        startNewRound();
     }, []);
 
     const handleGuess = (guess: 'higher' | 'lower') => {
-        if (!currentCard || !nextCard) return;
+        if (!currentCard || !nextCard || gameInProgress) return;
+
+        if (currency < betAmount) {
+            toast({ variant: 'destructive', title: 'Gが足りません！', description: '賭け金を所持G以下に設定してください。' });
+            return;
+        }
+
+        if (!spendCurrency(betAmount)) {
+            toast({ variant: 'destructive', title: '賭け金の支払いに失敗しました。' });
+            return;
+        }
         
+        setGameInProgress(true);
         const currentCost = currentCard.manaCost;
         const nextCost = nextCard.manaCost;
 
-        let isCorrect = false;
-        if (guess === 'higher' && nextCost > currentCost) isCorrect = true;
-        if (guess === 'lower' && nextCost < currentCost) isCorrect = true;
-        if (nextCost === currentCost) isCorrect = true; // Draw is a win
+        let result: 'win' | 'loss' | 'draw' = 'loss';
+        if (nextCost === currentCost) {
+            result = 'draw';
+        } else if (guess === 'higher' && nextCost > currentCost) {
+            result = 'win';
+        } else if (guess === 'lower' && nextCost < currentCost) {
+            result = 'win';
+        }
 
         setShowNextCard(true);
 
         setTimeout(() => {
-            if (isCorrect) {
-                const reward = REWARD_AMOUNT + streak * 2;
+            if (result === 'win') {
+                const reward = betAmount * 2;
                 addCurrency(reward);
                 setStreak(prev => prev + 1);
-                toast({ title: '正解！', description: <div className="flex items-center gap-2"><Coins className="h-5 w-5 text-yellow-500" /><span>{reward}G を獲得！</span></div> });
-                setCurrentCard(nextCard); // The next card becomes the current card
+                toast({ title: '勝利！', description: <div className="flex items-center gap-2"><Coins className="h-5 w-5 text-yellow-500" /><span>{reward}G 獲得！ (賭け金 {betAmount}G)</span></div> });
+                setCurrentCard(nextCard);
                 let newNextCard = uniqueStarterCards[Math.floor(Math.random() * uniqueStarterCards.length)];
                  while (nextCard.id === newNextCard.id) {
                     newNextCard = uniqueStarterCards[Math.floor(Math.random() * uniqueStarterCards.length)];
                 }
                 setNextCard(newNextCard);
                 setShowNextCard(false);
-
-            } else {
-                toast({ variant: 'destructive', title: '残念！', description: `正解は ${nextCost} でした。連続正解記録: ${streak}` });
+            } else if (result === 'draw') {
+                addCurrency(betAmount); // Refund
+                toast({ title: '引き分け', description: `賭け金 ${betAmount}G が返金されました。` });
+                startNewRound();
+            } else { // loss
+                toast({ variant: 'destructive', title: '敗北…', description: `賭け金 ${betAmount}G を失いました。連続正解記録: ${streak}` });
                 setStreak(0);
-                startNewGame();
+                startNewRound();
             }
+            setGameInProgress(false);
         }, 2000); // Show result for 2 seconds
     };
     
+    const handleBetChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = parseInt(e.target.value, 10);
+        if (isNaN(value)) {
+            setBetAmount(0);
+        } else if (value > currency) {
+            setBetAmount(currency);
+        } else {
+            setBetAmount(value);
+        }
+    }
+
     return (
         <div className="grid md:grid-cols-2 gap-8 items-center">
             <div className="flex flex-col gap-6">
                 <Card>
                     <CardHeader><CardTitle className="flex items-center gap-2"><HelpCircle className="text-primary" /> 問題</CardTitle></CardHeader>
                     <CardContent>
-                        <p className="text-lg mb-2">次のカードのマナコストは、このカードより...</p>
+                        <p className="text-lg mb-2">次のカードのマナコストは、表示中のカードより高いか低いか？</p>
                         <p className="text-center text-muted-foreground">現在の連続正解: {streak}</p>
                     </CardContent>
                 </Card>
+                
+                <div className="space-y-2">
+                    <Label htmlFor="bet-input" className="text-lg">賭け金:</Label>
+                    <div className="flex items-center gap-2">
+                        <Coins className="h-6 w-6 text-yellow-500" />
+                        <Input
+                            id="bet-input"
+                            type="number"
+                            min="1"
+                            max={currency}
+                            value={betAmount}
+                            onChange={handleBetChange}
+                            className="text-lg h-12"
+                            disabled={gameInProgress}
+                        />
+                    </div>
+                </div>
+
                 <div className="flex gap-4">
-                    <Button onClick={() => handleGuess('higher')} size="lg" className="flex-1 h-20 bg-green-600 hover:bg-green-700" disabled={showNextCard}>
+                    <Button onClick={() => handleGuess('higher')} size="lg" className="flex-1 h-20 bg-green-600 hover:bg-green-700" disabled={showNextCard || gameInProgress}>
                         <ArrowUp className="mr-2" /> 高い
                     </Button>
-                    <Button onClick={() => handleGuess('lower')} size="lg" className="flex-1 h-20 bg-red-600 hover:bg-red-700" disabled={showNextCard}>
+                    <Button onClick={() => handleGuess('lower')} size="lg" className="flex-1 h-20 bg-red-600 hover:bg-red-700" disabled={showNextCard || gameInProgress}>
                         <ArrowDown className="mr-2" /> 低い
                     </Button>
                 </div>
-                 <p className="text-sm text-center text-muted-foreground">（同じ場合は正解になります）</p>
+                 <p className="text-sm text-center text-muted-foreground">（勝利で賭け金2倍、引き分けで返金）</p>
             </div>
             <div className="flex justify-around items-center">
                 {currentCard && <CardPreview {...currentCard} />}
                 <div className="text-4xl font-bold mx-4">？</div>
                 {nextCard && (
-                    <div className={showNextCard ? '' : 'blur-xl'}>
+                    <div className={cn(showNextCard ? 'opacity-100' : 'opacity-0', 'transition-opacity duration-500')}>
                         <CardPreview {...nextCard} />
                     </div>
                 )}
