@@ -6,7 +6,7 @@ import type { CardData } from '@/components/card-editor';
 import { CardPreview } from '@/components/card-preview';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Trash2 } from 'lucide-react';
+import { Pencil, Trash2 } from 'lucide-react';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -18,11 +18,23 @@ import {
     AlertDialogTitle,
     AlertDialogTrigger,
   } from "@/components/ui/alert-dialog"
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+  } from "@/components/ui/dialog"
+import { CollectionCardEditor } from '@/components/collection-card-editor';
+import { useToast } from '@/hooks/use-toast';
   
 
 export default function CollectionPage() {
   const [collection, setCollection] = useState<CardData[]>([]);
   const [isClient, setIsClient] = useState(false);
+  const [editingCard, setEditingCard] = useState<CardData | null>(null);
+  const { toast } = useToast();
 
   useEffect(() => {
     setIsClient(true);
@@ -46,6 +58,24 @@ export default function CollectionPage() {
     setCollection([]);
     localStorage.removeItem('cardCollection');
   };
+
+  const handleSaveEdit = (updatedCard: CardData) => {
+    if (!updatedCard.id) return;
+    
+    // In a future step, we will calculate cost here.
+    const cost = 0; 
+    console.log(`Calculated cost: ${cost}G`);
+
+    const newCollection = collection.map(card => card.id === updatedCard.id ? updatedCard : card);
+    setCollection(newCollection);
+    localStorage.setItem('cardCollection', JSON.stringify(newCollection));
+
+    toast({
+        title: 'カードを更新しました',
+        description: `「${updatedCard.name}」の情報を更新しました。`,
+    });
+    setEditingCard(null);
+  }
 
   if (!isClient) {
     return null; // or a loading spinner
@@ -93,29 +123,53 @@ export default function CollectionPage() {
           {collection.map(card => (
             <div key={card.id} className="relative group">
               <CardPreview {...card} />
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                    <Button variant="destructive" size="icon" className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Trash2 size={20} />
+                <div className="absolute top-4 right-4 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Button variant="secondary" size="icon" onClick={() => setEditingCard(card)}>
+                        <Pencil size={20} />
                     </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>このカードを削除しますか？</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      この操作は元に戻せません。「{card.name}」をコレクションから削除します。
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>キャンセル</AlertDialogCancel>
-                    <AlertDialogAction onClick={() => handleDeleteCard(card.id)}>削除</AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
+                    <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            <Button variant="destructive" size="icon">
+                                <Trash2 size={20} />
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>このカードを削除しますか？</AlertDialogTitle>
+                            <AlertDialogDescription>
+                            この操作は元に戻せません。「{card.name}」をコレクションから削除します。
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>キャンセル</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleDeleteCard(card.id)}>削除</AlertDialogAction>
+                        </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+                </div>
             </div>
           ))}
         </div>
       )}
+
+      <Dialog open={!!editingCard} onOpenChange={(open) => !open && setEditingCard(null)}>
+        <DialogContent className="max-w-2xl">
+            <DialogHeader>
+                <DialogTitle>カードを編集</DialogTitle>
+                <DialogDescription>
+                    カードのテキスト情報を編集します。変更内容に応じてGコインが消費されます。（現在は無料）
+                </DialogDescription>
+            </DialogHeader>
+            {editingCard && (
+                <CollectionCardEditor 
+                    card={editingCard}
+                    onSave={handleSaveEdit}
+                    onCancel={() => setEditingCard(null)}
+                />
+            )}
+        </DialogContent>
+      </Dialog>
     </main>
   );
 }
+
