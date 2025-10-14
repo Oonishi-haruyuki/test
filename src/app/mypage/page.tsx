@@ -53,6 +53,8 @@ export default function MyPage() {
   const handleClaimRewards = (reward: number) => {
     if (reward <= 0) return;
     addCurrency(reward);
+    
+    // This logic feels a bit disconnected, let's refactor achievement checking to be self-contained in the component.
     const achievementsToClaim = achievementsList.filter(ach => {
         let unlocked = false;
         if (ach.id.startsWith('wins-')) {
@@ -64,6 +66,7 @@ export default function MyPage() {
         }
         return unlocked && !claimedRewards.includes(ach.id);
     });
+
     const newClaimedRewards = [...claimedRewards, ...achievementsToClaim.map(ach => ach.id)];
     setClaimedRewards(newClaimedRewards);
     localStorage.setItem('claimedRewards', JSON.stringify(newClaimedRewards));
@@ -153,12 +156,20 @@ export default function MyPage() {
         <Card className="mt-8">
             <CardHeader>
                 <CardTitle>今後のアップデート</CardTitle>
-                <CardDescription>今後、マイページには以下のような機能が追加される予定です。</CardDescription>
+                <CardDescription>今後、カードクラフターには以下のような機能が追加される予定です。</CardDescription>
             </CardHeader>
             <CardContent>
                 <ul className="list-disc pl-5 space-y-2 text-sm text-muted-foreground">
-                    <li>AI対戦内容の改善</li>
-                    <li>デッキ登録数を30個までにすること</li>
+                    <li>ショップ機能の実装（Gコインでカードフレームやカード裏面を購入）</li>
+                    <li>オンライン対戦（PVP）モードの追加</li>
+                    <li>デイリー/ウィークリーミッション機能</li>
+                    <li>ランキングシステム（対戦レーティングなど）</li>
+                    <li>カードトレード機能</li>
+                    <li>デッキ分析AIの強化（シナジーや改善案の提案）</li>
+                    <li>新しいカードテーマ（海賊、神話など）の追加</li>
+                    <li>ストーリーモードの実装</li>
+                    <li>AI対戦の難易度追加（超級など）</li>
+                    <li>カードのアニメーション効果の追加</li>
                 </ul>
             </CardContent>
         </Card>
