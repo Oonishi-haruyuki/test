@@ -8,14 +8,39 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { generateGachaPull } from '@/ai/flows/generate-gacha-pull';
-import { Loader2, Save, Wand2 } from 'lucide-react';
+import { Loader2, Save, Wand2, Coins } from 'lucide-react';
+import { useCurrency } from '@/hooks/use-currency';
+
+const GACHA_COST_SINGLE = 100;
+const GACHA_COST_MULTI = 1000;
+
 
 export default function GachaPage() {
   const [isPending, setIsPending] = useState(false);
   const [pulledCards, setPulledCards] = useState<CardData[]>([]);
   const { toast } = useToast();
+  const { currency, spendCurrency } = useCurrency();
 
   const handlePullGacha = async (pullCount: number) => {
+    const cost = pullCount === 1 ? GACHA_COST_SINGLE : GACHA_COST_MULTI;
+    
+    if (currency < cost) {
+        toast({
+            variant: 'destructive',
+            title: 'Gコインが足りません！',
+            description: `ガチャを引くには${cost}Gが必要です。`,
+        });
+        return;
+    }
+    
+    if (!spendCurrency(cost)) {
+        toast({
+            variant: 'destructive',
+            title: 'Gコインの支払いに失敗しました。',
+        });
+        return;
+    }
+
     setIsPending(true);
     setPulledCards([]);
     try {
@@ -38,6 +63,8 @@ export default function GachaPage() {
         title: 'ガチャの実行に失敗しました',
         description: '時間をおいて再度お試しください。',
       });
+      // Rollback currency if gacha fails
+    //   addCurrency(cost); // This might be desired depending on UX choice
     } finally {
       setIsPending(false);
     }
@@ -66,19 +93,31 @@ export default function GachaPage() {
 
   return (
     <main className="container mx-auto">
-      <Card className="max-w-xl mx-auto text-center">
+      <Card className="max-w-2xl mx-auto text-center">
         <CardHeader>
           <CardTitle className="text-3xl">カードガチャ</CardTitle>
           <CardDescription>新しいカードを手に入れよう！</CardDescription>
         </CardHeader>
-        <CardContent className="flex justify-center gap-4">
-          <Button onClick={() => handlePullGacha(1)} disabled={isPending}>
-            {isPending ? <Loader2 className="animate-spin" /> : <Wand2 />}
-            1回ガチャを引く
+        <CardContent className="flex justify-center items-stretch gap-4">
+            <Button onClick={() => handlePullGacha(1)} disabled={isPending} className="flex-1 h-auto py-4">
+                <div className="flex flex-col gap-2 items-center">
+                    {isPending ? <Loader2 className="animate-spin" /> : <Wand2 />}
+                    <span>1回ガチャを引く</span>
+                    <div className="flex items-center gap-1 font-semibold text-base">
+                        <Coins className="h-4 w-4 text-yellow-300" />
+                        <span>{GACHA_COST_SINGLE} G</span>
+                    </div>
+                </div>
           </Button>
-          <Button onClick={() => handlePullGacha(10)} disabled={isPending} size="lg">
-            {isPending ? <Loader2 className="animate-spin" /> : <Wand2 />}
-            10連ガチャを引く
+          <Button onClick={() => handlePullGacha(10)} disabled={isPending} size="lg" className="flex-1 h-auto py-4">
+             <div className="flex flex-col gap-2 items-center">
+                {isPending ? <Loader2 className="animate-spin" /> : <Wand2 />}
+                <span>10連ガチャを引く</span>
+                <div className="flex items-center gap-1 font-semibold text-base">
+                    <Coins className="h-4 w-4 text-yellow-300" />
+                    <span>{GACHA_COST_MULTI} G</span>
+                </div>
+            </div>
           </Button>
         </CardContent>
       </Card>
@@ -113,3 +152,4 @@ export default function GachaPage() {
     </main>
   );
 }
+
