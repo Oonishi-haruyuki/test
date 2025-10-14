@@ -75,7 +75,7 @@ export default function MyPage() {
             />
             <StatCard 
                 title="現在のデッキ枚数"
-                value={`${deck.length} / 20 枚`}
+                value={`${deck.length} / 30 枚`}
                 icon={<Users className="h-4 w-4 text-muted-foreground" />}
                 description="対戦で使用するデッキ"
                 loading={!isClient}
@@ -112,5 +112,3 @@ export default function MyPage() {
     </main>
   );
 }
-
-    

@@ -15,7 +15,7 @@ import { useCurrency } from '@/hooks/use-currency';
 import { useStats } from '@/hooks/use-stats';
 
 const HAND_LIMIT = 5;
-const DECK_SIZE = 20;
+const DECK_SIZE = 30;
 const MAX_MANA = 10;
 const BOARD_LIMIT = 5;
 

@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { PlusCircle, MinusCircle, Save } from 'lucide-react';
 
-const DECK_SIZE = 20;
+const DECK_SIZE = 30;
 const MAX_IDENTICAL_CARDS = 2;
 
 export default function DeckBuilderPage() {
