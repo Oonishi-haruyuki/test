@@ -10,13 +10,13 @@ import { useCurrency } from '@/hooks/use-currency';
 import { useToast } from '@/hooks/use-toast';
 import type { CardData } from '@/components/card-editor';
 import { CardPreview } from '@/components/card-preview';
-import { Coins, HelpCircle, Shuffle, ArrowDown, ArrowUp } from 'lucide-react';
+import { Coins, HelpCircle, Shuffle, ArrowDown, ArrowUp, Brain } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 import { goblinDeck, elementalDeck, undeadDeck, dragonDeck, ninjaDeck } from '@/app/battle/page';
 
 const allStarterCards = [...goblinDeck, ...elementalDeck, ...undeadDeck, ...dragonDeck, ...ninjaDeck];
-const uniqueStarterCards = Array.from(new Map(allStarterCards.map(card => [card.name, card])).values());
+const uniqueStarterCards = Array.from(new Map(allStarterCards.map(card => [card.id, card])).values());
 
 type QuizTarget = 'manaCost' | 'attack' | 'defense';
 
@@ -25,6 +25,15 @@ const QUIZ_TARGET_JAPANESE: Record<QuizTarget, string> = {
     attack: '攻撃力',
     defense: '防御力',
 };
+
+const DECK_THEMES = {
+    'starter-goblin': 'ゴブリン軍団',
+    'starter-elemental': 'エレメンタル召喚',
+    'starter-undead': 'アンデッド軍団',
+    'starter-dragon': 'ドラゴンズ・ホード',
+    'starter-ninja': 'ニンジャ一族',
+};
+type DeckThemeKey = keyof typeof DECK_THEMES;
 
 const REWARD_AMOUNT = 10;
 const MAX_ATTEMPTS = 5;
@@ -140,79 +149,75 @@ function StatsQuizGame() {
     );
 }
 
-// --- Scramble Game ---
-function ScrambleGame() {
+// --- Theme Quiz Game ---
+function ThemeQuizGame() {
     const { addCurrency } = useCurrency();
     const { toast } = useToast();
     const [currentCard, setCurrentCard] = useState<CardData | null>(null);
-    const [scrambledName, setScrambledName] = useState('');
-    const [guess, setGuess] = useState('');
-    const [attempts, setAttempts] = useState(MAX_ATTEMPTS);
+    const [correctTheme, setCorrectTheme] = useState<DeckThemeKey | null>(null);
     const [showAnswer, setShowAnswer] = useState(false);
 
-    const shuffleString = (str: string) => {
-        const arr = str.split('');
-        for (let i = arr.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [arr[i], arr[j]] = [arr[j], arr[i]];
+    const getThemeFromCardId = (cardId: string): DeckThemeKey | null => {
+        for (const key in DECK_THEMES) {
+            if (cardId.startsWith(key)) {
+                return key as DeckThemeKey;
+            }
         }
-        // Make sure it's not the same as original
-        if (arr.join('') === str) return shuffleString(str);
-        return arr.join('');
-    };
+        return null;
+    }
 
     const startNewGame = () => {
         const randomCard = uniqueStarterCards[Math.floor(Math.random() * uniqueStarterCards.length)];
-        setCurrentCard(randomCard);
-        setScrambledName(shuffleString(randomCard.name));
-        setGuess('');
-        setAttempts(MAX_ATTEMPTS);
-        setShowAnswer(false);
+        const theme = getThemeFromCardId(randomCard.id || '');
+        
+        if (theme) {
+            setCurrentCard(randomCard);
+            setCorrectTheme(theme);
+            setShowAnswer(false);
+        } else {
+            // If for some reason a card without a valid theme ID is found, retry
+            startNewGame();
+        }
     };
 
     useEffect(() => {
         startNewGame();
     }, []);
 
-    const handleGuess = () => {
-        if (!currentCard) return;
-        if (guess.trim() === currentCard.name) {
+    const handleGuess = (guess: DeckThemeKey) => {
+        if (showAnswer) return;
+
+        if (guess === correctTheme) {
             addCurrency(REWARD_AMOUNT);
             toast({ title: '正解！', description: <div className="flex items-center gap-2"><Coins className="h-5 w-5 text-yellow-500" /><span>{REWARD_AMOUNT}G を獲得！</span></div> });
-            setShowAnswer(true);
         } else {
-            setAttempts(prev => prev - 1);
-            if (attempts - 1 <= 0) {
-                toast({ variant: 'destructive', title: '残念！', description: `正解は「${currentCard.name}」でした。` });
-                setShowAnswer(true);
-            } else {
-                toast({ variant: 'destructive', title: '不正解！', description: `残り挑戦回数: ${attempts - 1}回` });
-            }
+            toast({ variant: 'destructive', title: '残念！', description: `正解は「${correctTheme ? DECK_THEMES[correctTheme] : ''}」でした。` });
         }
+        setShowAnswer(true);
     };
 
     return (
         <div className="grid md:grid-cols-2 gap-8 items-center">
             <div className="flex flex-col gap-6">
                 <Card>
-                    <CardHeader><CardTitle className="flex items-center gap-2"><Shuffle className="text-primary" /> 問題</CardTitle></CardHeader>
+                    <CardHeader><CardTitle className="flex items-center gap-2"><Brain className="text-primary" /> 問題</CardTitle></CardHeader>
                     <CardContent>
-                        <p className="text-lg">シャッフルされたカード名は何？</p>
-                        <p className="text-3xl font-bold tracking-widest my-4 text-center bg-muted p-4 rounded-lg">{scrambledName}</p>
+                        <p className="text-lg">このカードが属しているスターターデッキのテーマは何？</p>
                     </CardContent>
                 </Card>
-                <div className="space-y-2">
-                    <Label htmlFor="scramble-guess" className="text-lg">あなたの回答:</Label>
-                    <Input id="scramble-guess" value={guess} onChange={(e) => setGuess(e.target.value)} placeholder="カード名を入力..." className="text-lg h-12" disabled={showAnswer} />
+                <div className="grid grid-cols-2 gap-3">
+                    {(Object.keys(DECK_THEMES) as DeckThemeKey[]).map(themeKey => (
+                         <Button key={themeKey} onClick={() => handleGuess(themeKey)} size="lg" variant="outline" disabled={showAnswer} className="h-16 text-base">
+                            {DECK_THEMES[themeKey]}
+                        </Button>
+                    ))}
                 </div>
-                {showAnswer ? (
+                {showAnswer && (
                     <Button onClick={startNewGame} size="lg">次の問題へ</Button>
-                ) : (
-                    <Button onClick={handleGuess} size="lg" disabled={!guess.trim()}>回答する (残り: {attempts}回)</Button>
                 )}
             </div>
             <div>
-                {currentCard && <div className={showAnswer ? '' : 'opacity-0'}><CardPreview {...currentCard} /></div>}
+                {currentCard && <CardPreview {...currentCard} />}
             </div>
         </div>
     );
@@ -326,14 +331,14 @@ export default function MiniGamePage() {
                     <Tabs defaultValue="stats-quiz">
                         <TabsList className="grid w-full grid-cols-3">
                             <TabsTrigger value="stats-quiz">能力値当て</TabsTrigger>
-                            <TabsTrigger value="scramble">カード名シャッフル</TabsTrigger>
+                            <TabsTrigger value="theme-quiz">テーマ当て</TabsTrigger>
                             <TabsTrigger value="higher-lower">ハイ＆ロー</TabsTrigger>
                         </TabsList>
                         <TabsContent value="stats-quiz" className="pt-6">
                             <StatsQuizGame />
                         </TabsContent>
-                        <TabsContent value="scramble" className="pt-6">
-                            <ScrambleGame />
+                        <TabsContent value="theme-quiz" className="pt-6">
+                            <ThemeQuizGame />
                         </TabsContent>
                         <TabsContent value="higher-lower" className="pt-6">
                             <HigherLowerGame />
@@ -344,5 +349,3 @@ export default function MiniGamePage() {
         </main>
     );
 }
-
-    
