@@ -94,13 +94,6 @@ export default function MyPage() {
                 description="AIとの対戦での敗北数"
                 loading={!isClient}
             />
-             <StatCard 
-                title="最高到達難易度"
-                value="未実装"
-                icon={<Bot className="h-4 w-4 text-muted-foreground" />}
-                description="クリアした最も高い難易度"
-                loading={!isClient}
-            />
         </div>
         <Card className="mt-8">
             <CardHeader>
