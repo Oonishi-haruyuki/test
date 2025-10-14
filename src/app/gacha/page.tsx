@@ -11,8 +11,8 @@ import { generateGachaPull } from '@/ai/flows/generate-gacha-pull';
 import { Loader2, Save, Wand2, Coins } from 'lucide-react';
 import { useCurrency } from '@/hooks/use-currency';
 
-const GACHA_COST_SINGLE = 100;
-const GACHA_COST_MULTI = 1000;
+const GACHA_COST_SINGLE = 50;
+const GACHA_COST_MULTI = 500;
 
 
 export default function GachaPage() {
