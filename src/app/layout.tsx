@@ -66,6 +66,9 @@ export default function RootLayout({
                       <Button variant="outline" asChild className="ml-4">
                         <Link href="/battle">対戦</Link>
                       </Button>
+                      <Button variant="outline" asChild className="ml-4">
+                        <Link href="/minigame">ミニゲーム</Link>
+                      </Button>
                     </nav>
                     <CurrencyDisplay />
                   </div>
@@ -80,5 +83,3 @@ export default function RootLayout({
     </html>
   );
 }
-
-    
