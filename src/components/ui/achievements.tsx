@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { Star, Trophy } from 'lucide-react';
@@ -17,6 +16,8 @@ export type Achievement = {
   name: string;
   description: string;
   unlocked: boolean;
+  reward: number;
+  claimed: boolean;
 };
 
 export type Title = {
@@ -24,17 +25,17 @@ export type Title = {
   name: string;
 };
 
-const achievementsList: Omit<Achievement, 'unlocked'>[] = [
-    { id: 'wins-1', name: '初勝利', description: '初めてAIに勝利する' },
-    { id: 'wins-10', name: 'ベテラン', description: 'AIに10回勝利する' },
-    { id: 'wins-50', name: 'エキスパート', description: 'AIに50回勝利する' },
-    { id: 'wins-100', name: 'マスター', description: 'AIに100回勝利する' },
-    { id: 'collection-10', name: 'コレクター', description: '10種類のカードを集める' },
-    { id: 'collection-50', name: 'マスターコレクター', description: '50種類のカードを集める' },
-    { id: 'collection-100', name: 'コンプリート', description: '100種類のカードを集める' },
+const achievementsList: Omit<Achievement, 'unlocked' | 'claimed'>[] = [
+    { id: 'wins-1', name: '初勝利', description: '初めてAIに勝利する', reward: 100 },
+    { id: 'wins-10', name: 'ベテラン', description: 'AIに10回勝利する', reward: 500 },
+    { id: 'wins-50', name: 'エキスパート', description: 'AIに50回勝利する', reward: 1000 },
+    { id: 'wins-100', name: 'マスター', description: 'AIに100回勝利する', reward: 5000 },
+    { id: 'collection-10', name: 'コレクター', description: '10種類のカードを集める', reward: 200 },
+    { id: 'collection-50', name: 'マスターコレクター', description: '50種類のカードを集める', reward: 1000 },
+    { id: 'collection-100', name: 'コンプリート', description: '100種類のカードを集める', reward: 10000 },
 ];
 
-export function AchievementsUI({ wins, uniqueCardCount, onTitleChange }: { wins: number, uniqueCardCount: number, onTitleChange: (title: string) => void }) {
+export function AchievementsUI({ wins, uniqueCardCount, onTitleChange, onClaimRewards, claimedRewards }: { wins: number, uniqueCardCount: number, onTitleChange: (title: string) => void, onClaimRewards: (reward: number) => void, claimedRewards: string[] }) {
     const achievements: Achievement[] = achievementsList.map(ach => {
         let unlocked = false;
         if (ach.id.startsWith('wins-')) {
@@ -44,16 +45,23 @@ export function AchievementsUI({ wins, uniqueCardCount, onTitleChange }: { wins:
             const requiredCount = parseInt(ach.id.split('-')[1]);
             unlocked = uniqueCardCount >= requiredCount;
         }
-        return { ...ach, unlocked };
+        const claimed = claimedRewards.includes(ach.id);
+        return { ...ach, unlocked, claimed };
     });
 
     const unlockedAchievements = achievements.filter(ach => ach.unlocked);
+    const claimableAchievements = unlockedAchievements.filter(ach => !ach.claimed);
+
+    const handleClaim = () => {
+        const totalReward = claimableAchievements.reduce((sum, ach) => sum + ach.reward, 0);
+        onClaimRewards(totalReward);
+    }
 
     return (
         <Card>
             <CardHeader>
                 <CardTitle>実績と称号</CardTitle>
-                <CardDescription>獲得した実績一覧と称号の設定ができます。</CardDescription>
+                <CardDescription>獲得した実績一覧と称号の設定、報酬の受け取りができます。</CardDescription>
             </CardHeader>
             <CardContent>
                 <div className="space-y-4">
@@ -72,6 +80,10 @@ export function AchievementsUI({ wins, uniqueCardCount, onTitleChange }: { wins:
                         </Select>
                     </div>
                     <div>
+                        <h4 className="font-bold mb-2">報酬の受け取り</h4>
+                        <button onClick={handleClaim} disabled={claimableAchievements.length === 0}>報酬を受け取る</button>
+                    </div>
+                    <div>
                         <h4 className="font-bold mb-2">実績一覧</h4>
                         <ul className="space-y-4">
                         {achievements.map((ach) => (
@@ -84,8 +96,9 @@ export function AchievementsUI({ wins, uniqueCardCount, onTitleChange }: { wins:
                                 )}
                             </div>
                             <div>
-                                <h4 className="font-bold">{ach.name}</h4>
+                                <h4 className="font-bold">{ach.name} {ach.claimed && "(報酬受け取り済み)"}</h4>
                                 <p className="text-sm text-muted-foreground">{ach.description}</p>
+                                <p className="text-sm text-muted-foreground">報酬: {ach.reward}G</p>
                             </div>
                             </li>
                         ))}

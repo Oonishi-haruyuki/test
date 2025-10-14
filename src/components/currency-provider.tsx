@@ -9,6 +9,7 @@ interface CurrencyContextType {
   currency: number;
   addCurrency: (amount: number) => void;
   spendCurrency: (amount: number) => boolean;
+  setCurrency: React.Dispatch<React.SetStateAction<number>>;
 }
 
 export const CurrencyContext = createContext<CurrencyContextType | null>(null);
@@ -94,6 +95,7 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
     currency,
     addCurrency,
     spendCurrency,
+    setCurrency,
   };
 
   return (

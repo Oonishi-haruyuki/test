@@ -8,8 +8,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Coins, Swords, Shield, Trophy, Star, Library, Users, Skull, Bot } from 'lucide-react';
 import type { CardData } from '@/components/card-editor';
 import { Skeleton } from '@/components/ui/skeleton';
-
-
 import { AchievementsUI, type Achievement } from '@/components/ui/achievements';
 import {
     Select,
@@ -18,14 +16,17 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select"
+import { useToast } from '@/hooks/use-toast';
 
 export default function MyPage() {
-  const { currency } = useCurrency();
+  const { currency, setCurrency } = useCurrency();
   const { wins, losses } = useStats();
   const [collection, setCollection] = useState<CardData[]>([]);
   const [deck, setDeck] = useState<CardData[]>([]);
   const [isClient, setIsClient] = useState(false);
   const [selectedTitle, setSelectedTitle] = useState<string>('未設定');
+  const [claimedRewards, setClaimedRewards] = useState<string[]>([]);
+  const { toast } = useToast();
 
   useEffect(() => {
     setIsClient(true);
@@ -33,9 +34,11 @@ export default function MyPage() {
       const savedCollection = JSON.parse(localStorage.getItem('cardCollection') || '[]');
       const savedDeck = JSON.parse(localStorage.getItem('deck') || '[]');
       const savedTitle = localStorage.getItem('selectedTitle') || '未設定';
+      const savedClaimedRewards = JSON.parse(localStorage.getItem('claimedRewards') || '[]');
       setCollection(savedCollection);
       setDeck(savedDeck);
       setSelectedTitle(savedTitle);
+      setClaimedRewards(savedClaimedRewards);
     } catch (error) {
       console.error("Failed to load data from localStorage", error);
     }
@@ -52,6 +55,29 @@ export default function MyPage() {
   const handleTitleChange = (title: string) => {
       setSelectedTitle(title);
       localStorage.setItem('selectedTitle', title);
+  }
+
+  const handleClaimRewards = (reward: number) => {
+    const newCurrency = currency + reward;
+    setCurrency(newCurrency);
+    const achievementsToClaim = achievementsList.filter(ach => {
+        let unlocked = false;
+        if (ach.id.startsWith('wins-')) {
+            const requiredWins = parseInt(ach.id.split('-')[1]);
+            unlocked = wins >= requiredWins;
+        } else if (ach.id.startsWith('collection-')) {
+            const requiredCount = parseInt(ach.id.split('-')[1]);
+            unlocked = uniqueCardCount >= requiredCount;
+        }
+        return unlocked && !claimedRewards.includes(ach.id);
+    });
+    const newClaimedRewards = [...claimedRewards, ...achievementsToClaim.map(ach => ach.id)];
+    setClaimedRewards(newClaimedRewards);
+    localStorage.setItem('claimedRewards', JSON.stringify(newClaimedRewards));
+    toast({
+        title: "報酬を受け取りました！",
+        description: `${reward}Gを獲得しました。`,
+    });
   }
   
   const StatCard = ({ title, value, icon, description, loading }: { title: string, value: string | number, icon: React.ReactNode, description: string, loading?: boolean }) => {
@@ -122,7 +148,7 @@ export default function MyPage() {
         </div>
 
         <div className="mt-8">
-            <AchievementsUI wins={wins} uniqueCardCount={uniqueCardCount} onTitleChange={handleTitleChange} />
+            <AchievementsUI wins={wins} uniqueCardCount={uniqueCardCount} onTitleChange={handleTitleChange} onClaimRewards={handleClaimRewards} claimedRewards={claimedRewards} />
         </div>
 
         <Card className="mt-8">
@@ -134,10 +160,19 @@ export default function MyPage() {
                 <ul className="list-disc pl-5 space-y-2 text-sm text-muted-foreground">
                     <li>AI対戦内容の改善</li>
                     <li>デッキ登録数を30個までにすること</li>
-                    <li>カード収集率に基づいた報酬の受け取りや称号に応じた報酬受け取り</li>
                 </ul>
             </CardContent>
         </Card>
     </main>
   );
 }
+
+const achievementsList: Omit<Achievement, 'unlocked' | 'claimed'>[] = [
+    { id: 'wins-1', name: '初勝利', description: '初めてAIに勝利する', reward: 100 },
+    { id: 'wins-10', name: 'ベテラン', description: 'AIに10回勝利する', reward: 500 },
+    { id: 'wins-50', name: 'エキスパート', description: 'AIに50回勝利する', reward: 1000 },
+    { id: 'wins-100', name: 'マスター', description: 'AIに100回勝利する', reward: 5000 },
+    { id: 'collection-10', name: 'コレクター', description: '10種類のカードを集める', reward: 200 },
+    { id: 'collection-50', name: 'マスターコレクター', description: '50種類のカードを集める', reward: 1000 },
+    { id: 'collection-100', name: 'コンプリート', description: '100種類のカードを集める', reward: 10000 },
+];
