@@ -684,14 +684,19 @@ export default function BattlePage() {
 
 
     return (
-    <main className="flex flex-col gap-2">
+    <main
+        className="flex flex-col gap-2 min-h-screen bg-cover bg-center bg-fixed p-4"
+        style={{ backgroundImage: "url('https://picsum.photos/seed/battleground/1920/1080')" }}
+    >
+        <div className="absolute inset-0 bg-black/30 z-0"></div>
+        <div className="relative z-10 flex flex-col gap-2 flex-grow">
         {/* Opponent's Area */}
         <div className="flex flex-col items-center gap-2">
             <div className="flex items-center gap-4">
-                <Card className="p-2 text-center w-40">
+                <Card className="p-2 text-center w-40 bg-black/70 text-white border-slate-700">
                     <p className="font-bold">相手 ({difficulty === 'beginner' ? '初級' : '上級'})</p>
-                    <p className="flex items-center justify-center gap-2 text-red-500 font-bold text-xl"><Heart /> {opponentHealth}</p>
-                    <p className="flex items-center justify-center gap-2 text-blue-500 font-bold"><Dices /> {opponentMana}/{opponentMaxMana}</p>
+                    <p className="flex items-center justify-center gap-2 text-red-400 font-bold text-xl"><Heart /> {opponentHealth}</p>
+                    <p className="flex items-center justify-center gap-2 text-blue-400 font-bold"><Dices /> {opponentMana}/{opponentMaxMana}</p>
                 </Card>
                 <div className="flex gap-2 min-h-[180px]">
                     {opponentHand.map((card, i) => (
@@ -704,13 +709,13 @@ export default function BattlePage() {
                         </div>
                     ))}
                 </div>
-                <Card className="p-2 text-center w-28">
+                <Card className="p-2 text-center w-28 bg-black/70 text-white border-slate-700">
                      <p className="font-bold">山札</p>
                      <p className="text-2xl">{opponentDeck.length}</p>
                 </Card>
             </div>
             {/* Opponent's Board */}
-            <div className="flex items-center justify-center gap-2 bg-black/10 p-2 rounded-lg min-h-[160px] w-full max-w-4xl">
+            <div className="flex items-center justify-center gap-2 bg-black/40 p-2 rounded-lg min-h-[160px] w-full max-w-4xl border border-slate-700">
                 {opponentBoard.map((card, i) => (
                     <div key={card.id + i.toString()} className="w-[110px]">
                         <CardPreview {...card} />
@@ -722,7 +727,7 @@ export default function BattlePage() {
         {/* Game Log / Result */}
         <div className="flex justify-center my-2">
             {gameOver ? (
-                <Card className="p-6 my-4 max-w-2xl text-center bg-yellow-200">
+                <Card className="p-6 my-4 max-w-2xl text-center bg-yellow-200/90 text-slate-800">
                     <p className="text-2xl font-semibold mb-4">{gameOver}</p>
                     <Button onClick={resetGame}>
                         <RotateCcw className="mr-2" />
@@ -730,14 +735,14 @@ export default function BattlePage() {
                     </Button>
                 </Card>
             ) : (
-                <Card className="p-2 w-full max-w-lg h-24 overflow-y-auto text-sm">
+                <Card className="p-2 w-full max-w-lg h-24 overflow-y-auto text-sm bg-black/70 text-white border-slate-700">
                    {gameLog.map((log, i) => <p key={i}>{log}</p>)}
                 </Card>
             )}
         </div>
         
         {/* Player's Board */}
-         <div className="flex items-center justify-center gap-2 bg-black/10 p-2 rounded-lg min-h-[160px] w-full max-w-4xl mx-auto">
+         <div className="flex items-center justify-center gap-2 bg-black/40 p-2 rounded-lg min-h-[160px] w-full max-w-4xl mx-auto border border-slate-700">
             {playerBoard.map((card, i) => (
                 <div key={card.id + i.toString()} className={cn("w-[110px] transform transition-transform", card.canAttack ? "border-4 border-green-500 rounded-2xl hover:scale-105" : "opacity-70")}>
                     <CardPreview {...card} />
@@ -748,10 +753,10 @@ export default function BattlePage() {
         {/* Player's Area */}
         <div className="flex flex-col items-center gap-2 mt-2">
             <div className="flex items-center gap-4">
-                <Card className="p-2 text-center w-40">
+                <Card className="p-2 text-center w-40 bg-black/70 text-white border-slate-700">
                     <p className="font-bold">あなた</p>
-                    <p className="flex items-center justify-center gap-2 text-red-500 font-bold text-xl"><Heart /> {playerHealth}</p>
-                    <p className="flex items-center justify-center gap-2 text-blue-500 font-bold"><Dices /> {playerMana}/{playerMaxMana}</p>
+                    <p className="flex items-center justify-center gap-2 text-red-400 font-bold text-xl"><Heart /> {playerHealth}</p>
+                    <p className="flex items-center justify-center gap-2 text-blue-400 font-bold"><Dices /> {playerMana}/{playerMaxMana}</p>
                     <p className="mt-2 text-sm">ターン: {Math.ceil(turn/2)}</p>
                 </Card>
                 <div className="flex gap-2 min-h-[180px]">
@@ -761,7 +766,7 @@ export default function BattlePage() {
                         </div>
                     ))}
                 </div>
-                 <Card className="p-2 text-center w-28">
+                 <Card className="p-2 text-center w-28 bg-black/70 text-white border-slate-700">
                      <p className="font-bold">山札</p>
                      <p className="text-2xl">{playerDeck.length}</p>
                 </Card>
@@ -770,6 +775,8 @@ export default function BattlePage() {
                 攻撃フェーズへ
             </Button>
         </div>
+        </div>
     </main>
   );
 }
+
