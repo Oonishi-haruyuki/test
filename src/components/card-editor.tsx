@@ -12,10 +12,22 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Download, Loader2, Save, Wand2, Upload, Sparkles } from 'lucide-react';
+import { Download, Loader2, Save, Wand2, Upload, Sparkles, Coins } from 'lucide-react';
 import type React from 'react';
-import { useState, useTransition, useCallback } from 'react';
+import { useState, useTransition, useCallback, useMemo } from 'react';
 import { toPng } from 'html-to-image';
+import { useCurrency } from '@/hooks/use-currency';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+  } from "@/components/ui/alert-dialog"
 
 
 // Type definitions
@@ -52,6 +64,7 @@ export function CardEditor({ cardData, setCardData, cardPreviewRef }: CardEditor
   const [isExporting, setIsExporting] = useState(false);
   const [aiTheme, setAiTheme] = useState('パワフルな神秘のドラゴン');
   const { toast } = useToast();
+  const { currency, spendCurrency } = useCurrency();
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -214,7 +227,36 @@ export function CardEditor({ cardData, setCardData, cardPreviewRef }: CardEditor
     });
   };
 
+  const creationCost = useMemo(() => {
+    let cost = 0;
+    // Name: 1G per character
+    cost += cardData.name.length;
+    // Card Type: 5G for creature, 10G for artifact
+    if (cardData.cardType === 'creature') cost += 5;
+    if (cardData.cardType === 'artifact') cost += 10;
+    // Abilities: 5G per 3 characters
+    cost += Math.ceil(cardData.abilities.length / 3) * 5;
+    return cost;
+  }, [cardData.name, cardData.cardType, cardData.abilities]);
+
   const handleSaveToCollection = () => {
+    if (currency < creationCost) {
+        toast({
+            variant: 'destructive',
+            title: 'Gコインが足りません！',
+            description: `このカードの作成には ${creationCost}G が必要ですが、${currency}G しかありません。`,
+        });
+        return;
+    }
+
+    if (!spendCurrency(creationCost)) {
+        toast({
+            variant: 'destructive',
+            title: 'Gコインの支払いに失敗しました。',
+        });
+        return;
+    }
+
     try {
       const collection = JSON.parse(localStorage.getItem('cardCollection') || '[]');
       const newCard = { ...cardData, id: self.crypto.randomUUID() };
@@ -222,7 +264,7 @@ export function CardEditor({ cardData, setCardData, cardPreviewRef }: CardEditor
       localStorage.setItem('cardCollection', JSON.stringify(newCollection));
       toast({
         title: 'コレクションに保存しました',
-        description: `「${newCard.name}」をマイカードに追加しました。`,
+        description: `「${newCard.name}」をマイカードに追加しました。 (${creationCost}G 消費)`,
       });
     } catch (error) {
       console.error(error);
@@ -448,15 +490,38 @@ export function CardEditor({ cardData, setCardData, cardPreviewRef }: CardEditor
             <CardDescription>完成したカードを保存またはダウンロードします。</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-             <Button onClick={handleSaveToCollection} className="w-full">
-                <Save className="mr-2" />
-                コレクションに追加
-            </Button>
+            <AlertDialog>
+                <AlertDialogTrigger asChild>
+                    <Button className="w-full" disabled={!cardData.name}>
+                        <Save className="mr-2" />
+                        コレクションに追加
+                    </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>カード作成の確認</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            このカードを作成するには <span className="font-bold text-primary">{creationCost}G</span> が必要です。よろしいですか？
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>キャンセル</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleSaveToCollection}>作成する</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
             <Button onClick={handleExport} variant="outline" className="w-full" disabled={isExporting}>
                 {isExporting ? <Loader2 className="animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
                 PNGとしてダウンロード
             </Button>
           </CardContent>
+          <CardFooter>
+            <p className="text-sm text-muted-foreground flex items-center gap-2">
+                <Coins className="h-4 w-4 text-yellow-500"/>
+                現在の作成コスト: {creationCost}G
+            </p>
+          </CardFooter>
         </Card>
       </div>
   );
