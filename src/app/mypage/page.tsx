@@ -5,24 +5,17 @@ import { useState, useEffect } from 'react';
 import { useCurrency } from '@/hooks/use-currency';
 import { useStats } from '@/hooks/use-stats';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Coins, Swords, Shield, Trophy, Star, Library, Users, Skull, Bot } from 'lucide-react';
+import { Coins, Trophy, Star, Library, Users, Skull } from 'lucide-react';
 import type { CardData } from '@/components/card-editor';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AchievementsUI, type Achievement } from '@/components/ui/achievements';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select"
 import { useToast } from '@/hooks/use-toast';
 
 export default function MyPage() {
-  const { currency, setCurrency } = useCurrency();
+  const { currency, addCurrency } = useCurrency();
   const { wins, losses } = useStats();
   const [collection, setCollection] = useState<CardData[]>([]);
-  const [deck, setDeck] = useState<CardData[]>([]);
+  const [decks, setDecks] = useState<{id: string, name: string, cards: CardData[]}[]>([]);
   const [isClient, setIsClient] = useState(false);
   const [selectedTitle, setSelectedTitle] = useState<string>('未設定');
   const [claimedRewards, setClaimedRewards] = useState<string[]>([]);
@@ -32,11 +25,11 @@ export default function MyPage() {
     setIsClient(true);
     try {
       const savedCollection = JSON.parse(localStorage.getItem('cardCollection') || '[]');
-      const savedDeck = JSON.parse(localStorage.getItem('deck') || '[]');
+      const savedDecks = JSON.parse(localStorage.getItem('decks') || '[]');
       const savedTitle = localStorage.getItem('selectedTitle') || '未設定';
       const savedClaimedRewards = JSON.parse(localStorage.getItem('claimedRewards') || '[]');
       setCollection(savedCollection);
-      setDeck(savedDeck);
+      setDecks(savedDecks);
       setSelectedTitle(savedTitle);
       setClaimedRewards(savedClaimedRewards);
     } catch (error) {
@@ -58,8 +51,8 @@ export default function MyPage() {
   }
 
   const handleClaimRewards = (reward: number) => {
-    const newCurrency = currency + reward;
-    setCurrency(newCurrency);
+    if (reward <= 0) return;
+    addCurrency(reward);
     const achievementsToClaim = achievementsList.filter(ach => {
         let unlocked = false;
         if (ach.id.startsWith('wins-')) {
@@ -124,11 +117,11 @@ export default function MyPage() {
                 description="集めたユニークなカードの数"
                 loading={!isClient}
             />
-            <StatCard 
-                title="現在のデッキ枚数"
-                value={`${deck.length} / 30 枚`}
+             <StatCard 
+                title="デッキ数"
+                value={`${decks.length} 個`}
                 icon={<Users className="h-4 w-4 text-muted-foreground" />}
-                description="対戦で使用するデッキ"
+                description="作成したデッキの数"
                 loading={!isClient}
             />
              <StatCard 
@@ -148,7 +141,13 @@ export default function MyPage() {
         </div>
 
         <div className="mt-8">
-            <AchievementsUI wins={wins} uniqueCardCount={uniqueCardCount} onTitleChange={handleTitleChange} onClaimRewards={handleClaimRewards} claimedRewards={claimedRewards} />
+            <AchievementsUI 
+                wins={wins} 
+                uniqueCardCount={uniqueCardCount} 
+                onTitleChange={handleTitleChange} 
+                onClaimRewards={handleClaimRewards} 
+                claimedRewards={claimedRewards} 
+            />
         </div>
 
         <Card className="mt-8">

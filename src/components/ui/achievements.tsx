@@ -1,7 +1,7 @@
 
 'use client';
 
-import { Star, Trophy } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import {
     Select,
@@ -10,6 +10,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select"
+import { Coins, Trophy } from 'lucide-react';
 
 export type Achievement = {
   id: string;
@@ -53,9 +54,12 @@ export function AchievementsUI({ wins, uniqueCardCount, onTitleChange, onClaimRe
     const claimableAchievements = unlockedAchievements.filter(ach => !ach.claimed);
 
     const handleClaim = () => {
+        if (claimableAchievements.length === 0) return;
         const totalReward = claimableAchievements.reduce((sum, ach) => sum + ach.reward, 0);
         onClaimRewards(totalReward);
     }
+
+    const totalClaimableReward = claimableAchievements.reduce((sum, ach) => sum + ach.reward, 0);
 
     return (
         <Card>
@@ -64,11 +68,11 @@ export function AchievementsUI({ wins, uniqueCardCount, onTitleChange, onClaimRe
                 <CardDescription>獲得した実績一覧と称号の設定、報酬の受け取りができます。</CardDescription>
             </CardHeader>
             <CardContent>
-                <div className="space-y-4">
+                <div className="space-y-6">
                     <div>
-                        <h4 className="font-bold mb-2">称号の選択</h4>
-                        <Select onValueChange={onTitleChange}>
-                            <SelectTrigger className="w-[180px]">
+                        <h4 className="font-semibold mb-2">称号の選択</h4>
+                        <Select onValueChange={onTitleChange} defaultValue="未設定">
+                            <SelectTrigger className="w-full md:w-[280px]">
                                 <SelectValue placeholder="称号を選択" />
                             </SelectTrigger>
                             <SelectContent>
@@ -80,26 +84,35 @@ export function AchievementsUI({ wins, uniqueCardCount, onTitleChange, onClaimRe
                         </Select>
                     </div>
                     <div>
-                        <h4 className="font-bold mb-2">報酬の受け取り</h4>
-                        <button onClick={handleClaim} disabled={claimableAchievements.length === 0}>報酬を受け取る</button>
+                        <h4 className="font-semibold mb-2">報酬の受け取り</h4>
+                        <div className="flex items-center gap-4 p-4 border rounded-lg bg-secondary/50">
+                            <div className='flex-grow'>
+                                <p>受け取り可能な報酬があります。</p>
+                                <p className="font-bold text-lg text-primary flex items-center gap-1.5"><Coins className="h-5 w-5 text-yellow-500" /> {totalClaimableReward.toLocaleString()} G</p>
+                            </div>
+                            <Button onClick={handleClaim} disabled={claimableAchievements.length === 0}>
+                                すべて受け取る
+                            </Button>
+                        </div>
                     </div>
                     <div>
-                        <h4 className="font-bold mb-2">実績一覧</h4>
+                        <h4 className="font-semibold mb-2">実績一覧</h4>
                         <ul className="space-y-4">
                         {achievements.map((ach) => (
-                            <li key={ach.id} className="flex items-center">
-                            <div className="mr-4">
-                                {ach.unlocked ? (
-                                <Trophy className="h-8 w-8 text-yellow-500" />
-                                ) : (
-                                <Trophy className="h-8 w-8 text-gray-400" />
+                            <li key={ach.id} className="flex items-center p-3 rounded-lg data-[unlocked=false]:opacity-50" data-unlocked={ach.unlocked}>
+                                <div className="mr-4">
+                                    <Trophy className="h-8 w-8 text-yellow-500" />
+                                </div>
+                                <div className="flex-grow">
+                                    <h4 className="font-bold">{ach.name}</h4>
+                                    <p className="text-sm text-muted-foreground">{ach.description}</p>
+                                    <p className="text-sm text-muted-foreground flex items-center gap-1"><Coins className="h-4 w-4 text-yellow-600" /> {ach.reward}G</p>
+                                </div>
+                                {ach.unlocked && (
+                                    <div className={`text-sm font-semibold ${ach.claimed ? 'text-green-600' : 'text-blue-600'}`}>
+                                        {ach.claimed ? '報酬受取済' : '達成！'}
+                                    </div>
                                 )}
-                            </div>
-                            <div>
-                                <h4 className="font-bold">{ach.name} {ach.claimed && "(報酬受け取り済み)"}</h4>
-                                <p className="text-sm text-muted-foreground">{ach.description}</p>
-                                <p className="text-sm text-muted-foreground">報酬: {ach.reward}G</p>
-                            </div>
                             </li>
                         ))}
                         </ul>
