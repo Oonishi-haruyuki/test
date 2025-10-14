@@ -12,7 +12,7 @@ interface CurrencyContextType {
 export const CurrencyContext = createContext<CurrencyContextType | null>(null);
 
 const CURRENCY_STORAGE_KEY = 'card-crafter-currency';
-const INITIAL_CURRENCY = 500;
+const INITIAL_CURRENCY = 100000;
 
 export function CurrencyProvider({ children }: { children: React.ReactNode }) {
   const [currency, setCurrency] = useState<number>(INITIAL_CURRENCY);
