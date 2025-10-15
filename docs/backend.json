@@ -104,6 +104,14 @@
           "type": "string",
           "description": "The UID of the second player."
         },
+        "player1LoginId": {
+          "type": "string",
+          "description": "The login ID of player 1."
+        },
+        "player2LoginId": {
+          "type": "string",
+          "description": "The login ID of player 2."
+        },
         "player1Health": {
           "type": "number",
           "description": "The current health of player 1."
@@ -116,11 +124,11 @@
           "type": "number",
           "description": "The current turn number."
         },
-        "isPlayer1Turn": {
-          "type": "boolean",
-          "description": "True if it is currently player 1's turn."
+        "activePlayerId": {
+          "type": "string",
+          "description": "The UID of the player whose turn it is."
         },
-        "winner": {
+        "winnerId": {
           "type": "string",
           "description": "The UID of the winning player, if the game is finished."
         },
@@ -133,33 +141,29 @@
           "format": "date-time",
           "description": "The timestamp when the game was created."
         },
+        "player1Deck": {
+          "type": "array",
+          "items": { "$ref": "#/entities/Card" }
+        },
+        "player2Deck": {
+          "type": "array",
+          "items": { "$ref": "#/entities/Card" }
+        },
         "player1Board": {
           "type": "array",
-          "items": { "$ref": "#/entities/Card" },
-          "description": "The cards on player 1's board."
+          "items": { "$ref": "#/entities/Card" }
         },
         "player2Board": {
           "type": "array",
-          "items": { "$ref": "#/entities/Card" },
-          "description": "The cards on player 2's board."
+          "items": { "$ref": "#/entities/Card" }
         },
          "player1Hand": {
           "type": "array",
-          "items": { "$ref": "#/entities/Card" },
-          "description": "The cards in player 1's hand."
+          "items": { "$ref": "#/entities/Card" }
         },
         "player2Hand": {
           "type": "array",
-          "items": { "$ref": "#/entities/Card" },
-          "description": "The cards in player 2's hand."
-        },
-        "player1DeckCount": {
-          "type": "number",
-          "description": "The number of cards left in player 1's deck."
-        },
-        "player2DeckCount": {
-          "type": "number",
-          "description": "The number of cards left in player 2's deck."
+          "items": { "$ref": "#/entities/Card" }
         },
         "player1Mana": {
             "type": "number",
@@ -168,9 +172,14 @@
         "player2Mana": {
             "type": "number",
             "description": "Current mana for player 2."
+        },
+        "player1MaxMana": {
+          "type": "number"
+        },
+        "player2MaxMana": {
+            "type": "number"
         }
-      },
-      "required": ["status", "player1Id", "player1Health", "player2Health", "turn", "isPlayer1Turn", "createdAt"]
+      }
     }
   },
   "auth": {
@@ -198,7 +207,14 @@
       "schema": {
         "$ref": "#/entities/Game"
       },
-      "description": "Stores individual game sessions for online battles."
+      "description": "Stores individual game sessions for online battles.",
+      "rules": [
+        {
+            "description": "Authenticated users can read, create and update games.",
+            "allow": ["read", "create", "update"],
+            "if": "request.auth != null"
+        }
+      ]
     }
   }
 }
