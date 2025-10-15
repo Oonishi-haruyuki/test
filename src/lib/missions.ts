@@ -6,7 +6,7 @@ export interface Mission {
     type: MissionType;
     title: string;
     description: string;
-    action: 'win-game' | 'play-game' | 'create-cards' | 'pull-gacha';
+    action: 'win-game' | 'play-game' | 'create-cards' | 'pull-gacha' | 'win-daily-challenge';
     goal: number;
     reward: number;
     progress: number;
@@ -48,6 +48,17 @@ export const allMissions: Mission[] = [
         progress: 0,
         claimed: false,
     },
+    {
+        id: 'daily-challenge-win-1',
+        type: 'daily',
+        title: 'デイリーチャレンジに勝利する',
+        description: '今日の指定デッキで上級AIに勝利しよう。',
+        action: 'win-daily-challenge',
+        goal: 1,
+        reward: 150,
+        progress: 0,
+        claimed: false,
+    },
     // Weekly
     {
         id: 'weekly-win-5',
@@ -83,3 +94,5 @@ export const allMissions: Mission[] = [
         claimed: false,
     },
 ];
+
+    

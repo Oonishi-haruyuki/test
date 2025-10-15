@@ -6,13 +6,14 @@ import { initializeFirebase } from '@/firebase';
 
 const K_FACTOR = 32;
 
-// AIのレーティング（初級、上級）
+// AIのレーティング（初級、上級、超級）
 const AI_RATINGS = {
     beginner: 1400,
     advanced: 1600,
+    super: 1800,
 };
 
-type Difficulty = 'beginner' | 'advanced';
+type Difficulty = 'beginner' | 'advanced' | 'super';
 type GameResult = 'win' | 'loss';
 
 /**
@@ -74,3 +75,5 @@ export async function updateUserRating(userId: string, difficulty: Difficulty, r
         throw error;
     }
 }
+
+    

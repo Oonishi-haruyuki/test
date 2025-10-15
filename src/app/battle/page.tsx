@@ -1,13 +1,13 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import type { CardData } from '@/components/card-editor';
 import { CardPreview } from '@/components/card-preview';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Swords, Heart, Shield, Dices, RotateCcw, Loader2, BrainCircuit, Bot, Wand2, Group, FileJson, Coins, BarChart } from 'lucide-react';
+import { Swords, Heart, Shield, Dices, RotateCcw, Loader2, BrainCircuit, Bot, Wand2, Group, FileJson, Coins, BarChart, Crown } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { generateDeck } from '@/ai/flows/generate-deck';
 import { cn } from '@/lib/utils';
@@ -27,6 +27,9 @@ const BEGINNER_WIN_REWARD = 10;
 const BEGINNER_LOSE_PENALTY = 5;
 const ADVANCED_WIN_REWARD = 50;
 const ADVANCED_LOSE_PENALTY = 10;
+const SUPER_WIN_REWARD = 100;
+const SUPER_LOSE_PENALTY = 25;
+
 
 interface Deck {
     id: string;
@@ -34,7 +37,7 @@ interface Deck {
     cards: CardData[];
 }
 
-type Difficulty = 'beginner' | 'advanced';
+type Difficulty = 'beginner' | 'advanced' | 'super';
 type DeckChoice = 'my-deck' | 'starter-goblin' | 'starter-elemental' | 'starter-undead' | 'starter-dragon' | 'starter-ninja' | 'ai-fantasy' | 'ai-scifi';
 
 export const goblinDeck: CardData[] = [
@@ -146,6 +149,16 @@ export const ninjaDeck: CardData[] = [
     { id: 'starter-nspell-5-2', theme: 'fantasy', name: '毒の刃', manaCost: 1, attack: 0, defense: 0, cardType: 'spell', rarity: 'common', abilities: 'クリーチャー1体に-1/-1のカウンターを置く。', flavorText: '遅効性の毒が、確実に命を蝕む。', imageUrl: 'https://picsum.photos/seed/sns5/400/300', imageHint: 'poison blade' },
 ];
 
+const starterDecks = {
+    'starter-goblin': { name: 'ゴブリン軍団', deck: goblinDeck },
+    'starter-elemental': { name: 'エレメンタル召喚', deck: elementalDeck },
+    'starter-undead': { name: 'アンデッド軍団', deck: undeadDeck },
+    'starter-dragon': { name: 'ドラゴンズ・ホード', deck: dragonDeck },
+    'starter-ninja': { name: 'ニンジャ一族', deck: ninjaDeck },
+};
+
+type StarterDeckId = keyof typeof starterDecks;
+
 
 export default function BattlePage() {
     const { toast } = useToast();
@@ -161,7 +174,7 @@ export default function BattlePage() {
     const [cardBackImage, setCardBackImage] = useState<string | null>(null);
     const [purchasedArtifacts, setPurchasedArtifacts] = useState<string[]>([]);
     const [ratingChange, setRatingChange] = useState<number | null>(null);
-
+    const [isDailyChallenge, setIsDailyChallenge] = useState(false);
 
     // Game State
     const [playerDeck, setPlayerDeck] = useState<CardData[]>([]);
@@ -183,6 +196,13 @@ export default function BattlePage() {
     const [gameLog, setGameLog] = useState<string[]>([]);
     const [gameOver, setGameOver] = useState('');
     const [gamePhase, setGamePhase] = useState<'main' | 'attack'>('main');
+
+    const dailyChallengeDeckId = useMemo<StarterDeckId>(() => {
+        if (!isClient) return 'starter-goblin';
+        const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / (1000 * 60 * 60 * 24));
+        const deckIds = Object.keys(starterDecks) as StarterDeckId[];
+        return deckIds[dayOfYear % deckIds.length];
+    }, [isClient]);
 
     const shuffleDeck = (deck: CardData[]) => {
         return [...deck].sort(() => Math.random() - 0.5);
@@ -244,21 +264,10 @@ export default function BattlePage() {
         let toastMessage = '';
 
         try {
-            if (choice === 'starter-goblin') {
-                deckToLoad = goblinDeck;
-                toastMessage = 'スターターデッキ「ゴブリン軍団」で開始します。';
-            } else if (choice === 'starter-elemental') {
-                deckToLoad = elementalDeck;
-                toastMessage = 'スターターデッキ「エレメンタル召喚」で開始します。';
-            } else if (choice === 'starter-undead') {
-                deckToLoad = undeadDeck;
-                toastMessage = 'スターターデッキ「アンデッド軍団」で開始します。';
-            } else if (choice === 'starter-dragon') {
-                deckToLoad = dragonDeck;
-                toastMessage = 'スターターデッキ「ドラゴンズ・ホード」で開始します。';
-            } else if (choice === 'starter-ninja') {
-                deckToLoad = ninjaDeck;
-                toastMessage = 'スターターデッキ「ニンジャ一族」で開始します。';
+            const starterDeck = starterDecks[choice as StarterDeckId];
+            if (starterDeck) {
+                deckToLoad = starterDeck.deck;
+                toastMessage = `スターターデッキ「${starterDeck.name}」で開始します。`;
             } else if (choice === 'ai-fantasy' || choice === 'ai-scifi') {
                 const theme = choice === 'ai-fantasy' ? 'ファンタジー' : 'SF';
                 const result = await generateDeck({ theme, cardCount: DECK_SIZE });
@@ -345,11 +354,18 @@ export default function BattlePage() {
         }
     };
 
+    const startDailyChallenge = () => {
+        setDifficulty('advanced'); // Daily challenge is always advanced
+        setIsDailyChallenge(true);
+        handleSelectDeck(dailyChallengeDeckId);
+    }
+
     const resetGame = () => {
         setDifficulty(null);
         setDeckChoice(null);
         setGameOver('');
         setGameLog([]);
+        setIsDailyChallenge(false);
     }
 
     const drawCard = (isPlayer: boolean) => {
@@ -433,9 +449,11 @@ export default function BattlePage() {
     const handleEndGame = async (result: 'win' | 'loss') => {
         if (!difficulty || !user) return;
     
-        const isBeginner = difficulty === 'beginner';
-        const winReward = isBeginner ? BEGINNER_WIN_REWARD : ADVANCED_WIN_REWARD;
-        const losePenalty = isBeginner ? BEGINNER_LOSE_PENALTY : ADVANCED_LOSE_PENALTY;
+        const winRewardMap = { 'beginner': BEGINNER_WIN_REWARD, 'advanced': ADVANCED_WIN_REWARD, 'super': SUPER_WIN_REWARD };
+        const losePenaltyMap = { 'beginner': BEGINNER_LOSE_PENALTY, 'advanced': ADVANCED_LOSE_PENALTY, 'super': SUPER_LOSE_PENALTY };
+        
+        const winReward = winRewardMap[difficulty];
+        const losePenalty = losePenaltyMap[difficulty];
         
         updateMissionProgress('play-game', 1);
 
@@ -449,6 +467,9 @@ export default function BattlePage() {
               addCurrency(winReward);
               addWin();
               updateMissionProgress('win-game', 1);
+              if (isDailyChallenge) {
+                  updateMissionProgress('win-daily-challenge', 1);
+              }
               toast({
                 title: '勝利！',
                 description: `${winReward}G獲得しました！ レーティング: ${newRating} (${change > 0 ? '+' : ''}${change})`,
@@ -553,11 +574,23 @@ export default function BattlePage() {
             return playableCards.sort((a,b) => b.manaCost - a.manaCost)[0];
         }
 
-        // Advanced AI
+        // Advanced & Super AI
         const creatureCards = playableCards.filter(c => c.cardType === 'creature');
         const spellCards = playableCards.filter(c => c.cardType !== 'creature');
+        const damageSpells = spellCards.filter(s => s.abilities.includes('ダメージ'));
 
-        // Play creature with best score (atk+def / cost)
+        // Super AI specific logic
+        if (difficulty === 'super') {
+             // If player is low on health, prioritize direct damage
+            if (damageSpells.length > 0 && playerHealth <= 10) {
+                const lethalSpell = damageSpells.find(s => (parseInt(s.abilities.match(/(\d+)ダメージ/)?.[1] || '0', 10)) >= playerHealth);
+                if (lethalSpell) return lethalSpell;
+                // Return strongest damage spell if lethal is not available
+                return damageSpells.sort((a, b) => (parseInt(b.abilities.match(/(\d+)ダメージ/)?.[1] || '0', 10)) - (parseInt(a.abilities.match(/(\d+)ダメージ/)?.[1] || '0', 10)))[0];
+            }
+        }
+
+        // Advanced AI
         if (creatureCards.length > 0 && myBoard.length < BOARD_LIMIT) {
              const bestCreature = creatureCards.reduce((best, current) => {
                 const bestScore = (best.attack + best.defense) / (best.manaCost + 1);
@@ -568,7 +601,6 @@ export default function BattlePage() {
         }
         
         if (spellCards.length > 0) {
-            const damageSpells = spellCards.filter(s => s.abilities.includes('ダメージ'));
             if (damageSpells.length > 0 && playerHealth < opponentHealth / 2) {
                 return damageSpells.sort((a, b) => (parseInt(b.abilities.match(/(\d+)ダメージ/)?.[1] || '0', 10)) - (parseInt(a.abilities.match(/(\d+)ダメージ/)?.[1] || '0', 10)))[0];
             }
@@ -687,8 +719,9 @@ export default function BattlePage() {
     }
     
     if (!difficulty) {
+        const dailyDeckInfo = starterDecks[dailyChallengeDeckId];
         return (
-            <main className="text-center p-10">
+            <main className="text-center p-10 space-y-8">
                 <Card className="max-w-md mx-auto">
                     <CardHeader>
                         <CardTitle className="text-2xl">難易度を選択してください</CardTitle>
@@ -699,6 +732,21 @@ export default function BattlePage() {
                         </Button>
                         <Button onClick={() => setDifficulty('advanced')} size="lg">
                            <BrainCircuit className="mr-2" /> 上級 (+{ADVANCED_WIN_REWARD}G / -{ADVANCED_LOSE_PENALTY}G)
+                        </Button>
+                        <Button onClick={() => setDifficulty('super')} size="lg" variant="destructive">
+                           <Crown className="mr-2" /> 超級 (+{SUPER_WIN_REWARD}G / -{SUPER_LOSE_PENALTY}G)
+                        </Button>
+                    </CardContent>
+                </Card>
+                <Card className="max-w-md mx-auto border-primary">
+                     <CardHeader>
+                        <CardTitle className="text-2xl text-primary">デイリーチャレンジ</CardTitle>
+                        <CardDescription>指定されたデッキで上級AIに挑戦しよう！勝利すると特別ボーナス！</CardDescription>
+                    </CardHeader>
+                    <CardContent className="flex flex-col gap-4">
+                        <p>本日の挑戦デッキ： <span className="font-bold">{dailyDeckInfo.name}</span></p>
+                        <Button onClick={startDailyChallenge} size="lg">
+                           挑戦する
                         </Button>
                     </CardContent>
                 </Card>
@@ -714,7 +762,7 @@ export default function BattlePage() {
                     <CardHeader>
                         <CardTitle className="text-2xl">使用するデッキを選択してください</CardTitle>
                         <CardDescription>
-                            難易度: {difficulty === 'beginner' ? '初級' : '上級'}
+                            難易度: {difficulty === 'beginner' ? '初級' : difficulty === 'advanced' ? '上級' : '超級'}
                             <Button variant="link" onClick={() => setDifficulty(null)}>変更</Button>
                         </CardDescription>
                     </CardHeader>
@@ -734,41 +782,14 @@ export default function BattlePage() {
                                 </Select>
                             </div>
                         )}
-                        <Button onClick={() => handleSelectDeck('starter-goblin')} size="lg" className="h-20">
-                            <Group className="mr-2" />
-                            <div>
-                                <p>ゴブリン軍団</p>
-                                <p className="text-sm font-normal">（速攻タイプ）</p>
-                            </div>
-                        </Button>
-                         <Button onClick={() => handleSelectDeck('starter-elemental')} size="lg" className="h-20">
-                            <Group className="mr-2" />
-                            <div>
-                                <p>エレメンタル召喚</p>
-                                <p className="text-sm font-normal">（コントロールタイプ）</p>
-                            </div>
-                        </Button>
-                        <Button onClick={() => handleSelectDeck('starter-undead')} size="lg" className="h-20">
-                            <Group className="mr-2" />
-                            <div>
-                                <p>アンデッド軍団</p>
-                                <p className="text-sm font-normal">（物量タイプ）</p>
-                            </div>
-                        </Button>
-                        <Button onClick={() => handleSelectDeck('starter-dragon')} size="lg" className="h-20">
-                            <Group className="mr-2" />
-                            <div>
-                                <p>ドラゴンズ・ホード</p>
-                                <p className="text-sm font-normal">（重量級タイプ）</p>
-                            </div>
-                        </Button>
-                        <Button onClick={() => handleSelectDeck('starter-ninja')} size="lg" className="h-20">
-                            <Group className="mr-2" />
-                            <div>
-                                <p>ニンジャ一族</p>
-                                <p className="text-sm font-normal">（奇襲タイプ）</p>
-                            </div>
-                        </Button>
+                        {(Object.keys(starterDecks) as StarterDeckId[]).map(deckId => (
+                             <Button key={deckId} onClick={() => handleSelectDeck(deckId)} size="lg" className="h-20">
+                                <Group className="mr-2" />
+                                <div>
+                                    <p>{starterDecks[deckId].name}</p>
+                                </div>
+                            </Button>
+                        ))}
                         <Button onClick={() => handleSelectDeck('ai-fantasy')} size="lg" className="h-20">
                            <Wand2 className="mr-2" /> 
                            <div>
@@ -790,8 +811,9 @@ export default function BattlePage() {
     }
 
 
-    const winReward = difficulty === 'beginner' ? BEGINNER_WIN_REWARD : ADVANCED_WIN_REWARD;
-    const losePenalty = difficulty === 'beginner' ? BEGINNER_LOSE_PENALTY : ADVANCED_LOSE_PENALTY;
+    const winReward = difficulty === 'beginner' ? BEGINNER_WIN_REWARD : difficulty === 'advanced' ? ADVANCED_WIN_REWARD : SUPER_WIN_REWARD;
+    const losePenalty = difficulty === 'beginner' ? BEGINNER_LOSE_PENALTY : difficulty === 'advanced' ? ADVANCED_LOSE_PENALTY : SUPER_LOSE_PENALTY;
+    const difficultyText = difficulty === 'beginner' ? '初級' : difficulty === 'advanced' ? '上級' : '超級';
 
     return (
     <main
@@ -804,7 +826,7 @@ export default function BattlePage() {
         <div className="flex flex-col items-center gap-2">
             <div className="flex items-center gap-4">
                 <Card className="p-2 text-center w-40 bg-black/70 text-white border-slate-700">
-                    <p className="font-bold">相手 ({difficulty === 'beginner' ? '初級' : '上級'})</p>
+                    <p className="font-bold">相手 ({difficultyText})</p>
                     <p className="flex items-center justify-center gap-2 text-red-400 font-bold text-xl"><Heart /> {opponentHealth}</p>
                     <p className="flex items-center justify-center gap-2 text-blue-400 font-bold"><Dices /> {opponentMana}/{opponentMaxMana}</p>
                 </Card>
@@ -903,3 +925,5 @@ export default function BattlePage() {
     </main>
   );
 }
+
+    
