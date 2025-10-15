@@ -1,0 +1,207 @@
+{
+  "entities": {
+    "Card": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Card",
+      "type": "object",
+      "description": "Represents a card in the card game.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Card entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the card."
+        },
+        "ability": {
+          "type": "string",
+          "description": "Description of the card's special ability or effect."
+        },
+        "flavorText": {
+          "type": "string",
+          "description": "Descriptive flavor text of the card."
+        },
+        "attack": {
+          "type": "number",
+          "description": "The attack power of the card."
+        },
+        "defense": {
+          "type": "number",
+          "description": "The defense or health points of the card."
+        },
+        "manaCost": {
+          "type": "number",
+          "description": "The mana cost required to play the card."
+        },
+        "cardType": {
+          "type": "string",
+          "description": "The type of the card (e.g., monster, spell, trap)."
+        },
+        "cardRarity": {
+          "type": "string",
+          "description": "The rarity of the card (e.g., common, uncommon, rare)."
+        },
+        "visualTheme": {
+          "type": "string",
+          "description": "The visual theme of the card (e.g., fantasy, sci-fi)."
+        },
+        "imagePlaceholder": {
+          "type": "string",
+          "description": "Placeholder or URL for the card's image."
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "ability",
+        "flavorText",
+        "attack",
+        "defense",
+        "manaCost",
+        "cardType",
+        "cardRarity",
+        "visualTheme",
+        "imagePlaceholder"
+      ]
+    },
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user of the application.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the User entity."
+        },
+        "username": {
+          "type": "string",
+          "description": "The username of the user."
+        },
+        "email": {
+          "type": "string",
+          "description": "The email address of the user.",
+          "format": "email"
+        },
+        "eloRating": {
+          "type": "number",
+          "description": "The ELO rating of the user for matchmaking."
+        }
+      },
+      "required": [
+        "id",
+        "username",
+        "email",
+        "eloRating"
+      ]
+    },
+    "Match": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Match",
+      "type": "object",
+      "description": "Represents an online match between two players.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Match entity."
+        },
+        "player1Id": {
+          "type": "string",
+          "description": "Reference to User 1. (Relationship: User 1:N Match)"
+        },
+        "player2Id": {
+          "type": "string",
+          "description": "Reference to User 2. (Relationship: User 1:N Match)"
+        },
+        "startTime": {
+          "type": "string",
+          "description": "Timestamp indicating when the match started.",
+          "format": "date-time"
+        },
+        "endTime": {
+          "type": "string",
+          "description": "Timestamp indicating when the match ended.",
+          "format": "date-time"
+        },
+        "winnerId": {
+          "type": "string",
+          "description": "Reference to User. The id of the winner of the match. Null if the match is a draw or still in progress. (Relationship: User 1:N Match)"
+        },
+        "matchData": {
+          "type": "string",
+          "description": "The data that represents the match, stored as a JSON string."
+        }
+      },
+      "required": [
+        "id",
+        "player1Id",
+        "player2Id",
+        "startTime"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user profiles. Path-based ownership guarantees only the authenticated user can access their profile.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/cards/{cardId}",
+        "definition": {
+          "entityName": "Card",
+          "schema": {
+            "$ref": "#/backend/entities/Card"
+          },
+          "description": "Stores user-created card data. Path-based ownership ensures that only the user can access cards they've created.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            },
+            {
+              "name": "cardId",
+              "description": "The unique identifier of the card."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/matches/{matchId}",
+        "definition": {
+          "entityName": "Match",
+          "schema": {
+            "$ref": "#/backend/entities/Match"
+          },
+          "description": "Stores match data for online games. Includes player IDs, start/end times, and winner.  The match data itself (`matchData`) is stored as a JSON string to allow flexibility in representing the game state.",
+          "params": [
+            {
+              "name": "matchId",
+              "description": "The unique identifier of the match."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure is designed to support the CardCrafter application, emphasizing secure online matches and user-generated card content.  Authorization Independence is achieved through a path-based ownership model for user data and denormalization of match data. The segregation of card data by ownership (user-created vs. system cards) ensures consistent security rules. The online matches are structured for real-time data and efficient querying.\n\nSpecifically:\n\n*   `/users/{userId}`: Stores user profiles. Path-based ownership guarantees only the authenticated user can access their profile.\n*   `/users/{userId}/cards/{cardId}`:  Enables users to manage their custom card collection. Path-based ownership ensures that only the user can access cards they've created. This structure allows secure listing of a user's cards without needing to filter based on user ID in the rules.\n*   `/matches/{matchId}`: Stores match data, including player IDs, start/end times, and winner. Match data includes `player1Id` and `player2Id`, which can be used to implement security rules that ensure only the involved players can access or modify the match data.  The match data itself (`matchData`) is stored as a JSON string to allow flexibility in representing the game state. Because access control is based on `matchId` this supports secure `list` operations, as only those with knowledge of the `matchId` can attempt to access match data.\n\nThis structure facilitates the addition of online matches as requested, while maintaining the core design principles of security and scalability."
+  }
+}
