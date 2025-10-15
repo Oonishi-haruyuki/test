@@ -39,7 +39,7 @@ type DeckThemeKey = keyof typeof DECK_THEMES;
 const REWARD_AMOUNT = 10;
 const MAX_ATTEMPTS_STATS_QUIZ = 5;
 const MAX_ATTEMPTS_THEME_QUIZ = 10;
-const HINT_COST = 5;
+const HINT_COST = 3;
 
 // --- Stats Quiz Game ---
 function StatsQuizGame() {
@@ -162,8 +162,7 @@ function ThemeQuizGame() {
     const [correctTheme, setCorrectTheme] = useState<DeckThemeKey | null>(null);
     const [showAnswer, setShowAnswer] = useState(false);
     const [attempts, setAttempts] = useState(MAX_ATTEMPTS_THEME_QUIZ);
-    const [hint, setHint] = useState<string | null>(null);
-    const [hintUsed, setHintUsed] = useState(false);
+    const [hintLevel, setHintLevel] = useState(0); // 0: none, 1: flavor, 2: abilities, 3: name, 4: image
 
     const getThemeFromCardId = (cardId: string): DeckThemeKey | null => {
         for (const key in DECK_THEMES) {
@@ -183,8 +182,7 @@ function ThemeQuizGame() {
             setCorrectTheme(theme);
             setShowAnswer(false);
             setAttempts(MAX_ATTEMPTS_THEME_QUIZ);
-            setHint(null);
-            setHintUsed(false);
+            setHintLevel(0);
         } else {
             startNewGame();
         }
@@ -213,10 +211,9 @@ function ThemeQuizGame() {
     };
 
     const showHint = () => {
-        if (hintUsed || !currentCard) return;
+        if (hintLevel >= 4 || !currentCard) return;
         if (spendCurrency(HINT_COST)) {
-            setHint(currentCard.flavorText);
-            setHintUsed(true);
+            setHintLevel(prev => prev + 1);
             toast({ title: 'ヒントを表示しました', description: `${HINT_COST}G を消費しました。`})
         } else {
             toast({ variant: 'destructive', title: 'Gコインが足りません！'})
@@ -227,10 +224,15 @@ function ThemeQuizGame() {
         if (!currentCard) return null;
         const cardToShow = {
             ...currentCard,
-            name: '？？？',
-            abilities: '？？？',
+            flavorText: hintLevel >= 1 ? currentCard.flavorText : '？？？',
+            abilities: hintLevel >= 2 ? currentCard.abilities : '？？？',
+            name: hintLevel >= 3 ? currentCard.name : '？？？',
         };
-        return <CardPreview {...cardToShow} />;
+        return (
+            <div className={cn(hintLevel >= 4 ? '' : 'blur-sm pointer-events-none')}>
+                <CardPreview {...cardToShow} />
+            </div>
+        );
     }
 
     if (!currentCard) return null;
@@ -247,7 +249,6 @@ function ThemeQuizGame() {
                     </CardHeader>
                     <CardContent>
                         <p className="text-lg">このカードが属しているスターターデッキのテーマは何？</p>
-                        {hint && <p className="mt-4 text-sm bg-secondary p-3 rounded-md">ヒント:『 {hint} 』</p>}
                     </CardContent>
                 </Card>
                 <div className="grid grid-cols-2 gap-3">
@@ -258,8 +259,8 @@ function ThemeQuizGame() {
                     ))}
                 </div>
                  {!showAnswer && (
-                    <Button onClick={showHint} disabled={hintUsed || attempts <= 0}>
-                        <Lightbulb className="mr-2" />ヒントを見る ({HINT_COST}G)
+                    <Button onClick={showHint} disabled={hintLevel >= 4 || attempts <= 0}>
+                        <Lightbulb className="mr-2" />ヒントを見る ({HINT_COST}G) {hintLevel > 0 && `(${hintLevel}/4)`}
                     </Button>
                  )}
                 {showAnswer && (
