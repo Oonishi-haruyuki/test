@@ -10,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { generateGachaPull } from '@/ai/flows/generate-gacha-pull';
 import { Loader2, Save, Wand2, Coins } from 'lucide-react';
 import { useCurrency } from '@/hooks/use-currency';
+import { useMissions } from '@/hooks/use-missions';
 
 const GACHA_COST_SINGLE = 50;
 const GACHA_COST_MULTI = 500;
@@ -20,6 +21,7 @@ export default function GachaPage() {
   const [pulledCards, setPulledCards] = useState<CardData[]>([]);
   const { toast } = useToast();
   const { currency, spendCurrency } = useCurrency();
+  const { updateMissionProgress } = useMissions();
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
@@ -57,6 +59,7 @@ export default function GachaPage() {
         imageUrl: `https://picsum.photos/seed/gacha${Date.now()}${index}/${400}/${300}`,
       }));
       setPulledCards(newCards);
+      updateMissionProgress('pull-gacha', pullCount);
       toast({
         title: 'ガチャを引きました！',
         description: `${pullCount}枚のカードを獲得しました。`,

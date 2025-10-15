@@ -32,6 +32,7 @@ import { shopItems } from '@/lib/shop-items';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { useProfile } from '@/hooks/use-profile';
+import { useMissions } from '@/hooks/use-missions';
 
 
 // Type definitions
@@ -64,6 +65,7 @@ interface CardEditorProps {
 
 export function CardEditor({ cardData, setCardData, cardPreviewRef }: CardEditorProps) {
   const { activeProfile } = useProfile();
+  const { updateMissionProgress } = useMissions();
   const [isIdeaPending, startIdeaTransition] = useTransition();
   const [isImagePending, startImageTransition] = useTransition();
   const [isExporting, setIsExporting] = useState(false);
@@ -286,6 +288,7 @@ export function CardEditor({ cardData, setCardData, cardPreviewRef }: CardEditor
       const newCard = { ...cardData, id: self.crypto.randomUUID() };
       const newCollection = [...collection, newCard];
       localStorage.setItem(collectionKey, JSON.stringify(newCollection));
+      updateMissionProgress('create-cards', 1);
       toast({
         title: 'コレクションに保存しました',
         description: `「${newCard.name}」をマイカードに追加しました。 (${creationCost}G 消費)`,

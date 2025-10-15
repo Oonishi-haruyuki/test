@@ -19,6 +19,9 @@ import { cn } from '@/lib/utils';
 import { useUser, loginWithId, signUpWithId, loginWithGoogle } from '@/firebase';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useMissions } from '@/hooks/use-missions';
+import { MissionsUI } from '@/components/ui/missions-ui';
+import { allMissions } from '@/lib/missions';
 
 const loginSchema = z.object({
     loginId: z.string().min(1, { message: 'ログインIDを入力してください。' }),
@@ -32,6 +35,7 @@ export default function MyPage() {
     const { activeProfile, setActiveProfile } = useProfile();
     const { currency, addCurrency } = useCurrency();
     const { wins, losses } = useStats();
+    const { missions, claimMissionReward } = useMissions();
     const { toast } = useToast();
     const {
         register,
@@ -334,6 +338,13 @@ export default function MyPage() {
                     icon={<Skull className="h-4 w-4 text-muted-foreground" />}
                     description="AIとの対戦での敗北数"
                     loading={!isClient}
+                />
+            </div>
+
+             <div className="mt-8">
+                <MissionsUI 
+                    missions={missions}
+                    onClaimReward={claimMissionReward}
                 />
             </div>
 

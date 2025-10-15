@@ -15,6 +15,7 @@ import Image from 'next/image';
 import { useCurrency } from '@/hooks/use-currency';
 import { useStats } from '@/hooks/use-stats';
 import { shopItems } from '@/lib/shop-items';
+import { useMissions } from '@/hooks/use-missions';
 
 const DECK_SIZE = 30;
 const MAX_MANA = 10;
@@ -148,6 +149,7 @@ export default function BattlePage() {
     const { toast } = useToast();
     const { addCurrency, spendCurrency } = useCurrency();
     const { addWin, addLoss } = useStats();
+    const { updateMissionProgress } = useMissions();
     const [isClient, setIsClient] = useState(false);
     const [isGeneratingDeck, setIsGeneratingDeck] = useState(false);
     const [difficulty, setDifficulty] = useState<Difficulty | null>(null);
@@ -427,12 +429,15 @@ export default function BattlePage() {
         const isBeginner = difficulty === 'beginner';
         const winReward = isBeginner ? BEGINNER_WIN_REWARD : ADVANCED_WIN_REWARD;
         const losePenalty = isBeginner ? BEGINNER_LOSE_PENALTY : ADVANCED_LOSE_PENALTY;
-    
+        
+        updateMissionProgress('play-game', 1);
+
         if (result === 'win') {
           setGameOver('あなたの勝利！');
           addToLog('ゲーム終了！あなたが勝利しました。');
           addCurrency(winReward);
           addWin();
+          updateMissionProgress('win-game', 1);
           toast({
             title: '勝利！',
             description: `${winReward}G獲得しました！`,
@@ -868,5 +873,3 @@ export default function BattlePage() {
     </main>
   );
 }
-
-    
