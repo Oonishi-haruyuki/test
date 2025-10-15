@@ -180,6 +180,21 @@
             "type": "number"
         }
       }
+    },
+    "TradeOffer": {
+      "title": "Trade Offer",
+      "description": "Represents a trade offer between two users.",
+      "type": "object",
+      "properties": {
+        "offerorId": { "type": "string", "description": "The UID of the user making the offer." },
+        "offerorLoginId": { "type": "string", "description": "The login ID of the offeror." },
+        "offereeId": { "type": "string", "description": "The UID of the user receiving the offer." },
+        "offereeLoginId": { "type": "string", "description": "The login ID of the offeree." },
+        "offeredCards": { "type": "array", "items": { "$ref": "#/entities/Card" } },
+        "requestedCards": { "type": "array", "items": { "$ref": "#/entities/Card" } },
+        "status": { "type": "string", "enum": ["pending", "accepted", "rejected", "cancelled"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
     }
   },
   "auth": {
@@ -213,6 +228,34 @@
             "description": "Authenticated users can read, create and update games.",
             "allow": ["read", "create", "update"],
             "if": "request.auth != null"
+        }
+      ]
+    },
+    "/trades/{tradeId}": {
+      "schema": {
+        "$ref": "#/entities/TradeOffer"
+      },
+      "description": "Stores trade offers between users.",
+      "rules": [
+        {
+            "description": "Authenticated users can create trade offers.",
+            "allow": ["create"],
+            "if": "request.auth != null"
+        },
+        {
+            "description": "Users can read trade offers they are involved in.",
+            "allow": ["read"],
+            "if": "request.auth != null && (request.auth.uid == resource.data.offerorId || request.auth.uid == resource.data.offereeId)"
+        },
+        {
+            "description": "The offeree can accept or reject a pending offer.",
+            "allow": ["update"],
+            "if": "request.auth != null && request.auth.uid == resource.data.offereeId && resource.data.status == 'pending' && (request.resource.data.status == 'accepted' || request.resource.data.status == 'rejected')"
+        },
+        {
+            "description": "The offeror can cancel a pending offer.",
+            "allow": ["update"],
+            "if": "request.auth != null && request.auth.uid == resource.data.offerorId && resource.data.status == 'pending' && request.resource.data.status == 'cancelled'"
         }
       ]
     }
