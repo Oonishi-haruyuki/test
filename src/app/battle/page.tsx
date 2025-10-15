@@ -206,10 +206,17 @@ export default function BattlePage() {
         setOpponentMaxMana(1);
 
         setTurn(1);
-        setIsPlayerTurn(true);
+        const playerGoesFirst = Math.random() < 0.5;
+        setIsPlayerTurn(playerGoesFirst);
+        
         setGamePhase('main');
         setGameOver('');
-        setGameLog([`--- ターン 1: あなたのターン ---`, 'ゲーム開始！']);
+        const firstTurnMessage = playerGoesFirst ? 'あなたが先攻です。' : '相手が先攻です。';
+        setGameLog([`--- ターン 1: ${playerGoesFirst ? 'あなた' : '相手'}のターン ---`, firstTurnMessage, 'ゲーム開始！']);
+
+        if (!playerGoesFirst) {
+            setTimeout(aiTurn, 1000);
+        }
     };
     
     const loadAndSetPlayerDeck = async (choice: string) => {
