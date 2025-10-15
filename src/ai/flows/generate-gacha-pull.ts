@@ -14,7 +14,7 @@ import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 import type { Rarity } from '@/components/card-editor';
 
-const THEMES = ['ファンタジー', 'SF', 'モダン', 'サイバーパンク', 'スチームパンク', 'ホラー', '神話'];
+const THEMES = ['ファンタジー', 'SF', 'モダン', 'サイバーパンク', 'スチームパンク', 'ホラー', '神話', '海賊', '西部劇', '古代エジプト'];
 
 const CardSchemaForGacha = z.object({
     name: z.string().describe('カードの名前。'),
