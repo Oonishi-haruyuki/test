@@ -7,7 +7,7 @@ import { CardPreview } from '@/components/card-preview';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Swords, Heart, Shield, Dices, RotateCcw, Loader2, BrainCircuit, Bot, Wand2, Group, FileJson, Coins } from 'lucide-react';
+import { Swords, Heart, Shield, Dices, RotateCcw, Loader2, BrainCircuit, Bot, Wand2, Group, FileJson, Coins, BarChart } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { generateDeck } from '@/ai/flows/generate-deck';
 import { cn } from '@/lib/utils';
@@ -16,6 +16,8 @@ import { useCurrency } from '@/hooks/use-currency';
 import { useStats } from '@/hooks/use-stats';
 import { shopItems } from '@/lib/shop-items';
 import { useMissions } from '@/hooks/use-missions';
+import { useUser } from '@/firebase';
+import { updateUserRating } from '@/lib/rating-system';
 
 const DECK_SIZE = 30;
 const MAX_MANA = 10;
@@ -150,6 +152,7 @@ export default function BattlePage() {
     const { addCurrency, spendCurrency } = useCurrency();
     const { addWin, addLoss } = useStats();
     const { updateMissionProgress } = useMissions();
+    const { user } = useUser();
     const [isClient, setIsClient] = useState(false);
     const [isGeneratingDeck, setIsGeneratingDeck] = useState(false);
     const [difficulty, setDifficulty] = useState<Difficulty | null>(null);
@@ -157,6 +160,8 @@ export default function BattlePage() {
     const [savedDecks, setSavedDecks] = useState<Deck[]>([]);
     const [cardBackImage, setCardBackImage] = useState<string | null>(null);
     const [purchasedArtifacts, setPurchasedArtifacts] = useState<string[]>([]);
+    const [ratingChange, setRatingChange] = useState<number | null>(null);
+
 
     // Game State
     const [playerDeck, setPlayerDeck] = useState<CardData[]>([]);
@@ -220,6 +225,7 @@ export default function BattlePage() {
         
         setGamePhase('main');
         setGameOver('');
+        setRatingChange(null);
         const firstTurnMessage = playerGoesFirst ? 'あなたが先攻です。' : '相手が先攻です。';
         setGameLog([`--- ターン 1: ${playerGoesFirst ? 'あなた' : '相手'}のターン ---`, firstTurnMessage, 'ゲーム開始！']);
         
@@ -356,7 +362,8 @@ export default function BattlePage() {
             const drawnCard = deck.shift();
             setPlayerDeck(deck);
             if (drawnCard) {
-                if (playerHand.length < 6) { // Hand limit can be 6 due to artifact
+                const handLimit = purchasedArtifacts.includes('artifact-hand-boost') ? 6 : 5;
+                if (playerHand.length < handLimit) {
                     setPlayerHand(prev => [...prev, drawnCard]);
                     addToLog('あなたはカードを1枚引いた。');
                 } else {
@@ -423,8 +430,8 @@ export default function BattlePage() {
         if (!effectApplied) addToLog(`「${card.name}」は何の効果ももたらさなかった。`);
     };
 
-    const handleEndGame = (result: 'win' | 'loss') => {
-        if (!difficulty) return;
+    const handleEndGame = async (result: 'win' | 'loss') => {
+        if (!difficulty || !user) return;
     
         const isBeginner = difficulty === 'beginner';
         const winReward = isBeginner ? BEGINNER_WIN_REWARD : ADVANCED_WIN_REWARD;
@@ -432,28 +439,46 @@ export default function BattlePage() {
         
         updateMissionProgress('play-game', 1);
 
-        if (result === 'win') {
-          setGameOver('あなたの勝利！');
-          addToLog('ゲーム終了！あなたが勝利しました。');
-          addCurrency(winReward);
-          addWin();
-          updateMissionProgress('win-game', 1);
-          toast({
-            title: '勝利！',
-            description: `${winReward}G獲得しました！`,
-          });
-        } else {
-          setGameOver('相手の勝利！');
-          addToLog('ゲーム終了！相手が勝利しました。');
-          spendCurrency(losePenalty);
-          addLoss();
-          toast({
-            title: '敗北...',
-            description: `${losePenalty}G失いました。`,
-            variant: 'destructive',
-          });
+        try {
+            const { newRating, change } = await updateUserRating(user.uid, difficulty, result);
+            setRatingChange(change);
+            
+            if (result === 'win') {
+              setGameOver('あなたの勝利！');
+              addToLog('ゲーム終了！あなたが勝利しました。');
+              addCurrency(winReward);
+              addWin();
+              updateMissionProgress('win-game', 1);
+              toast({
+                title: '勝利！',
+                description: `${winReward}G獲得しました！ レーティング: ${newRating} (${change > 0 ? '+' : ''}${change})`,
+              });
+            } else {
+              setGameOver('相手の勝利！');
+              addToLog('ゲーム終了！相手が勝利しました。');
+              spendCurrency(losePenalty);
+              addLoss();
+              toast({
+                title: '敗北...',
+                description: `${losePenalty}G失いました。レーティング: ${newRating} (${change})`,
+                variant: 'destructive',
+              });
+            }
+        } catch (error) {
+            console.error("Rating update failed", error);
+            toast({ variant: 'destructive', title: 'レーティングの更新に失敗しました。'});
+            // Still process game end without rating change
+            if (result === 'win') {
+                setGameOver('あなたの勝利！');
+                addCurrency(winReward);
+                addWin();
+            } else {
+                setGameOver('相手の勝利！');
+                spendCurrency(losePenalty);
+                addLoss();
+            }
         }
-      };
+    };
 
     useEffect(() => {
         if (gameOver) return;
@@ -815,12 +840,17 @@ export default function BattlePage() {
                  <Card className="p-6 my-4 max-w-2xl text-center bg-yellow-200/90 text-slate-800">
                     <p className="text-2xl font-semibold mb-2">{gameOver}</p>
                     {gameOver === 'あなたの勝利！' ? (
-                        <p className="flex items-center justify-center gap-2 text-lg font-medium text-yellow-700 mb-4">
+                        <p className="flex items-center justify-center gap-2 text-lg font-medium text-yellow-700 mb-2">
                             <Coins className="h-6 w-6" /> +{winReward}G
                         </p>
                     ) : (
-                        <p className="flex items-center justify-center gap-2 text-lg font-medium text-red-600 mb-4">
+                        <p className="flex items-center justify-center gap-2 text-lg font-medium text-red-600 mb-2">
                             <Coins className="h-6 w-6" /> -{losePenalty}G
+                        </p>
+                    )}
+                    {ratingChange !== null && (
+                        <p className={cn("flex items-center justify-center gap-2 text-lg font-medium mb-4", ratingChange >= 0 ? "text-green-600" : "text-red-600")}>
+                           <BarChart className="h-6 w-6" /> レーティング: {ratingChange > 0 ? '+' : ''}{ratingChange}
                         </p>
                     )}
                     <Button onClick={resetGame}>

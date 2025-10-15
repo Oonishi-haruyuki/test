@@ -8,6 +8,8 @@ import { initializeFirebase } from '.';
 
 type UserProfile = {
   loginId?: string;
+  rating?: number;
+  lastMatchDate?: string;
 } & DocumentData;
 
 interface FirebaseContextType {
@@ -57,9 +59,13 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({ children }) 
           if (docSnap.exists()) {
             setProfile(docSnap.data());
           } else {
-            // If profile doesn't exist (e.g. first Google login), create it
+            // If profile doesn't exist (e.g. first login), create it
             try {
-              const newProfileData = { loginId: user.email }; // Use email as loginId for Google users
+              const newProfileData = { 
+                loginId: user.email || `user_${user.uid.substring(0, 5)}`,
+                rating: 1500, // Initial rating
+                lastMatchDate: new Date(0).toISOString(), // Epoch time
+              };
               await setDoc(profileRef, newProfileData);
               setProfile(newProfileData);
             } catch (error) {

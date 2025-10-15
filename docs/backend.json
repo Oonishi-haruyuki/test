@@ -9,6 +9,15 @@
         "loginId": {
           "type": "string",
           "description": "The user's unique login identifier."
+        },
+        "rating": {
+          "type": "number",
+          "description": "The user's ELO rating for ranked matches. Defaults to 1500."
+        },
+        "lastMatchDate": {
+            "type": "string",
+            "format": "date-time",
+            "description": "The timestamp of the user's last completed match."
         }
       }
     },
@@ -172,7 +181,18 @@
       "schema": {
         "$ref": "#/entities/UserProfile"
       },
-      "description": "Stores public information about a user, like their display name."
+      "description": "Stores public information about a user, like their display name and rating.",
+      "rules": [
+        {
+          "description": "Users can read their own profile and all profiles for ranking purposes.",
+          "allow": ["read"]
+        },
+        {
+          "description": "Users can only create or update their own profile.",
+          "allow": ["create", "update"],
+          "if": "request.auth != null && request.auth.uid == userId"
+        }
+      ]
     },
     "/games/{gameId}": {
       "schema": {
@@ -182,4 +202,3 @@
     }
   }
 }
-    

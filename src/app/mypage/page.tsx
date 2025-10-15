@@ -8,7 +8,7 @@ import { z } from 'zod';
 import { useCurrency } from '@/hooks/use-currency';
 import { useStats } from '@/hooks/use-stats';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Coins, Trophy, Star, Library, Users, Skull, User, LogIn } from 'lucide-react';
+import { Coins, Trophy, Star, Library, Users, Skull, User, LogIn, BarChart } from 'lucide-react';
 import type { CardData } from '@/components/card-editor';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AchievementsUI, type Achievement } from '@/components/ui/achievements';
@@ -310,6 +310,13 @@ export default function MyPage() {
                     icon={<Coins className="h-4 w-4 text-muted-foreground" />}
                     description="ガチャや今後のショップで使用できます"
                     loading={!isClient}
+                />
+                 <StatCard
+                    title="レーティング"
+                    value={profile?.rating || 1500}
+                    icon={<BarChart className="h-4 w-4 text-muted-foreground" />}
+                    description="現在の対戦レーティング"
+                    loading={isUserLoading}
                 />
                 <StatCard
                     title="カード収集率"

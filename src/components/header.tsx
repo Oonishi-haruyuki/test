@@ -17,7 +17,7 @@ const navLinks = [
     { href: '/gacha', label: 'ガチャ' },
     { href: '/battle', label: 'AI対戦' },
     { href: '/rules', label: 'ルール' },
-    // { href: '/online-battle', label: 'オンライン対戦' },
+    { href: '/ranking', label: 'ランキング' },
     { href: '/shop', label: 'ショップ' },
     { href: '/minigame', label: 'ミニゲーム' },
 ];
