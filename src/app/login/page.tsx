@@ -106,7 +106,7 @@ export default function LoginPage() {
 
       toast({ title: 'アカウントを登録しました。' });
       router.push('/mypage');
-    } catch (error: any)
+    } catch (error: any) {
       console.error('Sign up failed:', error);
       let description = '時間をおいて再度お試しください。';
       if (error.code === 'auth/email-already-in-use') {
