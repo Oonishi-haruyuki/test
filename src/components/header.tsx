@@ -16,7 +16,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { CurrencyDisplay } from './currency-display';
 import { Skeleton } from './ui/skeleton';
-import { LogOut, LayoutDashboard, User as UserIcon, LogIn } from 'lucide-react';
+import { LogOut, LayoutDashboard, User as UserIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { signOut } from 'firebase/auth';
 
@@ -42,6 +42,7 @@ export function AppHeader() {
   
   const getDisplayName = () => {
     if (profile?.loginId) return profile.loginId;
+    if (user?.displayName) return user.displayName;
     if (user?.email) return user.email.split('@')[0];
     return 'ゲスト';
   }
@@ -100,14 +101,9 @@ export function AppHeader() {
       );
     }
 
-    return (
-      <Button asChild>
-        <Link href="/login">
-          <LogIn className="mr-2" />
-          ログイン/登録
-        </Link>
-      </Button>
-    );
+    // No login button in the header when user is not logged in.
+    // They will be prompted to login on the mypage.
+    return null;
   };
 
 
@@ -144,3 +140,5 @@ export function AppHeader() {
     </header>
   );
 }
+
+    
