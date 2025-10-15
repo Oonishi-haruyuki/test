@@ -30,6 +30,10 @@ export function useUser(auth: Auth, firestore: Firestore): UserAuthHookResult {
   const [userError, setUserError] = useState<Error | null>(null);
 
   useEffect(() => {
+    // Wait until auth is initialized
+    if (!auth) {
+        return;
+    }
     // Listener for authentication state changes
     const unsubscribeAuth = onAuthStateChanged(auth,
       (firebaseUser) => {
