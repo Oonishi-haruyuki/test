@@ -1,13 +1,14 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   useAuth,
   useUser,
   useFirestore,
   useDoc,
   useCollection,
+  useMemoFirebase,
 } from '@/firebase';
 import {
   doc,
@@ -55,15 +56,20 @@ function GameLobby() {
   const [isCreating, setIsCreating] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
 
-  const gamesCollection = collection(firestore, 'games');
-  const gamesQuery = query(
-    gamesCollection,
-    where('status', '==', 'waiting'),
-    orderBy('createdAt', 'desc'),
-    limit(10)
+  const gamesQuery = useMemoFirebase(
+    () =>
+      firestore
+        ? query(
+            collection(firestore, 'games'),
+            where('status', '==', 'waiting'),
+            orderBy('createdAt', 'desc'),
+            limit(10)
+          )
+        : null,
+    [firestore]
   );
 
-  const { data: openGames, loading: gamesLoading } = useCollection(gamesQuery);
+  const { data: openGames, isLoading: gamesLoading } = useCollection(gamesQuery);
 
   const createGame = async () => {
     if (!user || !firestore) return;
@@ -83,7 +89,7 @@ function GameLobby() {
         player1Board: [],
         player1Mana: 1,
       };
-      await addDoc(gamesCollection, newGame);
+      await addDoc(collection(firestore, 'games'), newGame);
     } catch (error) {
       console.error('Error creating game:', error);
     } finally {
@@ -128,7 +134,7 @@ function GameLobby() {
         </CardHeader>
         <CardContent>
           <p>
-            オンライン対戦をプレイするには、Googleアカウントでログインしてください。
+            オンライン対戦をプレイするには、匿名ログインが必要です。
           </p>
           {/* We'll add a sign-in button here later */}
         </CardContent>
@@ -200,11 +206,11 @@ function GameLobby() {
 function GameComponent({ gameId }: { gameId: string }) {
   const firestore = useFirestore();
   const { user } = useUser();
-  const gameRef = doc(firestore, 'games', gameId);
-  const { data: gameState, loading } = useDoc<GameState>(gameRef);
+  const gameRef = useMemoFirebase(() => firestore ? doc(firestore, 'games', gameId) : null, [firestore, gameId]);
+  const { data: gameState, isLoading: loading } = useDoc<GameState>(gameRef);
 
   const takeTurn = async () => {
-    if (!gameState || !user) return;
+    if (!gameState || !user || !gameRef) return;
     const isPlayer1 = user.uid === gameState.player1Id;
     if (isPlayer1 !== gameState.isPlayer1Turn) return; // Not your turn
 
@@ -268,63 +274,60 @@ function GameComponent({ gameId }: { gameId: string }) {
 }
 
 export default function OnlineBattlePage() {
-  const { user, loading } = useUser();
+  const { user, loading: userLoading } = useUser();
+  const auth = useAuth();
   const firestore = useFirestore();
   const [activeGameId, setActiveGameId] = useState<string | null>(null);
 
-  // Check if user is currently in a game
   useEffect(() => {
-    if (!user || !firestore) return;
-
-    const gamesCollection = collection(firestore, 'games');
-    const q = query(
-      gamesCollection,
-      where('status', '==', 'active'),
-      limit(1)
-    );
-
-    const checkPlayer1 = query(q, where('player1Id', '==', user.uid));
-    const checkPlayer2 = query(q, where('player2Id', '==', user.uid));
-
-    Promise.all([
-      // A proper implementation would use getDocs and onSnapshot
-    ]).then(() => {
-      // This is a simplified demo. In a real app, you'd use getDocs and onSnapshot
-      // to find and listen to the active game. For this demo, we'll rely on the
-      // lobby to transition to the game view.
-    });
-  }, [user, firestore]);
-
-  // For this demo, we will find an active game to join if one exists
-  // A better approach would be to pass the game ID in the URL
-  const gamesCollection = collection(firestore, 'games');
-  const activeGamesQuery = query(
-    gamesCollection,
-    where('status', 'in', ['active', 'waiting']),
-    limit(20)
-  );
-  const { data: activeGames } = useCollection(activeGamesQuery);
-
-  useEffect(() => {
-    if (user && activeGames) {
-      const myGame = activeGames.find(
-        g => g.player1Id === user.uid || g.player2Id === user.uid
-      );
-      if (myGame) {
-        setActiveGameId(myGame.id);
-      } else {
-        setActiveGameId(null);
-      }
+    if (!user && !userLoading && auth) {
+      signInAnonymously(auth).catch(console.error);
     }
-  }, [activeGames, user]);
+  }, [user, userLoading, auth]);
 
-  if (loading) {
-    return <Loader2 className="animate-spin" />;
+  const activeGamesQuery = useMemoFirebase(
+    () =>
+      user && firestore
+        ? query(
+            collection(firestore, 'games'),
+            where('status', 'in', ['active', 'waiting']),
+            where('player1Id', '==', user.uid)
+          )
+        : null,
+    [user, firestore]
+  );
+  
+  const activeGamesQuery2 = useMemoFirebase(
+    () =>
+      user && firestore
+        ? query(
+            collection(firestore, 'games'),
+            where('status', 'in', ['active', 'waiting']),
+            where('player2Id', '==', user.uid)
+          )
+        : null,
+    [user, firestore]
+  );
+
+  const { data: gamesAsPlayer1 } = useCollection(activeGamesQuery);
+  const { data: gamesAsPlayer2 } = useCollection(activeGamesQuery2);
+
+  useEffect(() => {
+    const myGame = gamesAsPlayer1?.[0] || gamesAsPlayer2?.[0];
+    if (myGame) {
+      setActiveGameId(myGame.id);
+    } else {
+      setActiveGameId(null);
+    }
+  }, [gamesAsPlayer1, gamesAsPlayer2]);
+
+  if (userLoading) {
+    return <div className="flex justify-center p-8"><Loader2 className="animate-spin" /></div>;
   }
 
   return (
     <div>
-      {activeGameId && activeGameId ? (
+      {activeGameId ? (
         <GameComponent gameId={activeGameId} />
       ) : (
         <GameLobby />
@@ -332,5 +335,3 @@ export default function OnlineBattlePage() {
     </div>
   );
 }
-
-    
