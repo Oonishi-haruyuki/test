@@ -22,7 +22,7 @@ import {
   limit,
 } from 'firebase/firestore';
 import { signInAnonymously } from 'firebase/auth';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Loader2, Swords, User, Users } from 'lucide-react';
 import type { CardData } from '@/components/card-editor';
@@ -53,14 +53,13 @@ interface GameState {
 
 function GameLobby() {
   const firestore = useFirestore();
-  const auth = useAuth();
-  const { user, isUserLoading: userLoading } = useUser();
+  const { user, isUserLoading } = useUser();
   const [isCreating, setIsCreating] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
 
   const gamesQuery = useMemoFirebase(
     () =>
-      firestore
+      firestore && user // Ensure user is available before creating query
         ? query(
             collection(firestore, 'games'),
             where('status', '==', 'waiting'),
@@ -68,7 +67,7 @@ function GameLobby() {
             limit(10)
           )
         : null,
-    [firestore]
+    [firestore, user]
   );
 
   const { data: openGames, isLoading: gamesLoading } = useCollection(gamesQuery);
@@ -120,30 +119,6 @@ function GameLobby() {
     }
   };
 
-  if (userLoading) {
-    return (
-      <div className="flex justify-center items-center h-40">
-        <Loader2 className="animate-spin" />
-      </div>
-    );
-  }
-
-  if (!user) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>ログインが必要です</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="mb-4">
-            オンライン対戦をプレイするには、匿名ログインが必要です。
-          </p>
-          <Button onClick={() => signInAnonymously(auth)}>匿名でログイン</Button>
-        </CardContent>
-      </Card>
-    );
-  }
-
   return (
     <Card className="max-w-2xl mx-auto">
       <CardHeader>
@@ -151,6 +126,9 @@ function GameLobby() {
           <Swords />
           オンライン対戦ロビー
         </CardTitle>
+        <CardDescription>
+          あなたのID: <span className="font-mono text-xs">{user?.uid}</span>
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         <Button
@@ -171,14 +149,14 @@ function GameLobby() {
             参加可能なゲーム
           </h3>
           {gamesLoading && <Loader2 className="animate-spin" />}
-          {openGames && openGames.length === 0 && !gamesLoading && (
+          {!gamesLoading && openGames && openGames.length === 0 && (
             <p className="text-muted-foreground text-center py-4">
               現在参加可能なゲームはありません。
             </p>
           )}
           <div className="space-y-2">
             {openGames &&
-              openGames.map(game => (
+              openGames.filter(game => game.player1Id !== user?.uid).map(game => (
                 <div
                   key={game.id}
                   className="flex justify-between items-center p-3 border rounded-lg"
@@ -186,7 +164,7 @@ function GameLobby() {
                   <div className="flex items-center gap-2">
                     <User />
                     <span className="text-sm font-medium">
-                      {game.player1Id.substring(0, 6)}...
+                      プレイヤー: {game.player1Id.substring(0, 6)}...
                     </span>
                   </div>
                   <Button
@@ -275,66 +253,77 @@ function GameComponent({ gameId }: { gameId: string }) {
   );
 }
 
-export default function OnlineBattlePage() {
-  const { user, isUserLoading: userLoading } = useUser();
-  const auth = useAuth();
-  const firestore = useFirestore();
-  const [activeGameId, setActiveGameId] = useState<string | null>(null);
+function ActiveGameFinder() {
+    const { user } = useUser();
+    const firestore = useFirestore();
+    const [activeGameId, setActiveGameId] = useState<string | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    if (!user && !userLoading && auth) {
-      // We no longer automatically sign in. User must click the button.
-      // signInAnonymously(auth).catch(console.error);
-    }
-  }, [user, userLoading, auth]);
-
-  const activeGamesQuery = useMemoFirebase(
-    () =>
-      user && firestore
-        ? query(
+    const gamesAsPlayer1Query = useMemoFirebase(
+        () => user ? query(
             collection(firestore, 'games'),
             where('status', 'in', ['active', 'waiting']),
             where('player1Id', '==', user.uid)
-          )
-        : null,
-    [user, firestore]
-  );
-  
-  const activeGamesQuery2 = useMemoFirebase(
-    () =>
-      user && firestore
-        ? query(
+        ) : null,
+        [firestore, user]
+    );
+
+    const gamesAsPlayer2Query = useMemoFirebase(
+        () => user ? query(
             collection(firestore, 'games'),
-            where('status', 'in', ['active', 'waiting']),
+            where('status', '==', 'active'),
             where('player2Id', '==', user.uid)
-          )
-        : null,
-    [user, firestore]
-  );
+        ) : null,
+        [firestore, user]
+    );
 
-  const { data: gamesAsPlayer1 } = useCollection(activeGamesQuery);
-  const { data: gamesAsPlayer2 } = useCollection(activeGamesQuery2);
+    const { data: gamesAsPlayer1 } = useCollection(gamesAsPlayer1Query);
+    const { data: gamesAsPlayer2 } = useCollection(gamesAsPlayer2Query);
 
-  useEffect(() => {
-    const myGame = gamesAsPlayer1?.[0] || gamesAsPlayer2?.[0];
-    if (myGame) {
-      setActiveGameId(myGame.id);
-    } else {
-      setActiveGameId(null);
+    useEffect(() => {
+        const myGame = gamesAsPlayer1?.[0] || gamesAsPlayer2?.[0];
+        if (myGame) {
+            setActiveGameId(myGame.id);
+        } else {
+            setActiveGameId(null);
+        }
+        setIsLoading(false);
+    }, [gamesAsPlayer1, gamesAsPlayer2]);
+
+    if (isLoading) {
+        return <div className="flex justify-center p-8"><Loader2 className="animate-spin" /></div>;
     }
-  }, [gamesAsPlayer1, gamesAsPlayer2]);
 
-  if (userLoading) {
+    if (activeGameId) {
+        return <GameComponent gameId={activeGameId} />;
+    }
+
+    return <GameLobby />;
+}
+
+export default function OnlineBattlePage() {
+  const { user, isUserLoading } = useUser();
+  const auth = useAuth();
+  
+  if (isUserLoading) {
     return <div className="flex justify-center p-8"><Loader2 className="animate-spin" /></div>;
   }
 
-  return (
-    <div>
-      {activeGameId ? (
-        <GameComponent gameId={activeGameId} />
-      ) : (
-        <GameLobby />
-      )}
-    </div>
-  );
+  if (!user) {
+    return (
+      <Card className="max-w-2xl mx-auto">
+        <CardHeader>
+          <CardTitle>ログインが必要です</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="mb-4">
+            オンライン対戦をプレイするには、匿名ログインが必要です。
+          </p>
+          <Button onClick={() => signInAnonymously(auth)}>匿名でログイン</Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return <ActiveGameFinder />;
 }
