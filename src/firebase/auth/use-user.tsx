@@ -37,11 +37,12 @@ export function useUser(auth: Auth, firestore: Firestore): UserAuthHookResult {
       (firebaseUser) => {
         setUser(firebaseUser);
         if (!firebaseUser) {
-          // User is logged out
+          // User is logged out, clear profile and finish loading.
           setProfile(null);
           setIsUserLoading(false);
         }
-        // If user is logged in, the other useEffect will handle profile loading.
+        // If user is logged in, the other useEffect will handle the rest.
+        // isUserLoading will be set to false inside the profile listener.
       },
       (error) => {
         console.error("Auth state change error:", error);
@@ -55,15 +56,15 @@ export function useUser(auth: Auth, firestore: Firestore): UserAuthHookResult {
 
   useEffect(() => {
     if (!user) {
-      // No user, no profile to fetch. Loading state is managed by the auth listener.
+      // If user is null (either initially or after logout), we don't fetch a profile.
+      // The auth listener handles setting loading to false in this case.
       return;
     }
-
-    // Auth state is known, but profile is not yet loaded.
-    // This is part of the overall loading state.
-    setIsUserLoading(true);
     
+    // User is logged in, but we haven't fetched the profile yet.
+    // isUserLoading should remain true until the profile is fetched.
     if (!firestore) {
+        // If firestore is not available, we can't fetch a profile.
         setIsUserLoading(false);
         return;
     }
@@ -74,16 +75,17 @@ export function useUser(auth: Auth, firestore: Firestore): UserAuthHookResult {
         if (docSnap.exists()) {
           setProfile(docSnap.data() as UserProfile);
         } else {
-          // User document doesn't exist. This might be a new user.
+          // User document doesn't exist. This might be a new user (e.g. Google sign-in).
           setProfile(null);
         }
-        setIsUserLoading(false); // Finished loading profile, so overall user loading is done.
+        // We have a definitive answer about the profile, so loading is complete.
+        setIsUserLoading(false);
       },
       (error) => {
         console.error("User profile snapshot error:", error);
         setUserError(error);
         setProfile(null);
-        setIsUserLoading(false);
+        setIsUserLoading(false); // Loading is complete even if there's an error.
       }
     );
     
