@@ -31,6 +31,7 @@ import {
 import { shopItems } from '@/lib/shop-items';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
+import { useProfile } from '@/hooks/use-profile';
 
 
 // Type definitions
@@ -62,6 +63,7 @@ interface CardEditorProps {
 }
 
 export function CardEditor({ cardData, setCardData, cardPreviewRef }: CardEditorProps) {
+  const { activeProfile } = useProfile();
   const [isIdeaPending, startIdeaTransition] = useTransition();
   const [isImagePending, startImageTransition] = useTransition();
   const [isExporting, setIsExporting] = useState(false);
@@ -75,15 +77,18 @@ export function CardEditor({ cardData, setCardData, cardPreviewRef }: CardEditor
 
   useEffect(() => {
     setIsClient(true);
+    if (!activeProfile) return;
     try {
-        const savedFrames = JSON.parse(localStorage.getItem('purchasedCardFrames') || '[]');
-        const savedBacks = JSON.parse(localStorage.getItem('purchasedCardBacks') || '[]');
+        const framesKey = `${activeProfile}-purchasedCardFrames`;
+        const backsKey = `${activeProfile}-purchasedCardBacks`;
+        const savedFrames = JSON.parse(localStorage.getItem(framesKey) || '["frame-default"]');
+        const savedBacks = JSON.parse(localStorage.getItem(backsKey) || '["back-default"]');
         setPurchasedFrames(savedFrames);
         setPurchasedBacks(savedBacks);
     } catch (e) {
         console.error("Failed to load purchased items", e);
     }
-  }, []);
+  }, [activeProfile]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -159,11 +164,13 @@ export function CardEditor({ cardData, setCardData, cardPreviewRef }: CardEditor
   };
   
   const handleCardBackSelect = (cardBackId: string) => {
+    if (!activeProfile) return;
     const cardBack = shopItems.backs.find(b => b.id === cardBackId);
     if (!cardBack) return;
 
     try {
-        localStorage.setItem('cardBackImage', cardBack.url);
+        const key = `${activeProfile}-cardBackImage`;
+        localStorage.setItem(key, cardBack.url);
         toast({
             title: 'カード裏面の画像を変更しました',
             description: `「${cardBack.name}」が設定されました。`,
@@ -254,6 +261,8 @@ export function CardEditor({ cardData, setCardData, cardPreviewRef }: CardEditor
   }, [cardData.name, cardData.cardType, cardData.abilities]);
 
   const handleSaveToCollection = () => {
+    if (!activeProfile) return;
+
     if (currency < creationCost) {
         toast({
             variant: 'destructive',
@@ -272,10 +281,11 @@ export function CardEditor({ cardData, setCardData, cardPreviewRef }: CardEditor
     }
 
     try {
-      const collection = JSON.parse(localStorage.getItem('cardCollection') || '[]');
+      const collectionKey = `${activeProfile}-cardCollection`;
+      const collection = JSON.parse(localStorage.getItem(collectionKey) || '[]');
       const newCard = { ...cardData, id: self.crypto.randomUUID() };
       const newCollection = [...collection, newCard];
-      localStorage.setItem('cardCollection', JSON.stringify(newCollection));
+      localStorage.setItem(collectionKey, JSON.stringify(newCollection));
       toast({
         title: 'コレクションに保存しました',
         description: `「${newCard.name}」をマイカードに追加しました。 (${creationCost}G 消費)`,
@@ -320,8 +330,11 @@ export function CardEditor({ cardData, setCardData, cardPreviewRef }: CardEditor
       });
   }, [cardPreviewRef, cardData.name, toast]);
 
-  const availableFrames = shopItems.frames.filter(frame => purchasedFrames.includes(frame.id));
+  const availableFrames = shopItems.frames.filter(frame => purchasedFrames.includes(frame.id) || frame.price === 0);
   const availableBacks = shopItems.backs.filter(back => purchasedBacks.includes(back.id) || back.price === 0);
+  
+  const currentBackUrl = isClient && activeProfile ? localStorage.getItem(`${activeProfile}-cardBackImage`) : null;
+
 
   return (
       <div className="space-y-6">
@@ -498,12 +511,12 @@ export function CardEditor({ cardData, setCardData, cardPreviewRef }: CardEditor
             </Label>
             <Separator />
             <Label>カード裏面のデザイン</Label>
-            <RadioGroup onValueChange={handleCardBackSelect} className="grid grid-cols-3 gap-4">
+            <RadioGroup onValueChange={handleCardBackSelect} defaultValue={currentBackUrl || shopItems.backs[0].id} className="grid grid-cols-3 gap-4">
                 {isClient && availableBacks.map(back => (
                     <div key={back.id}>
                          <RadioGroupItem value={back.id} id={`back-${back.id}`} className="peer sr-only" />
                          <Label htmlFor={`back-${back.id}`} className={cn("rounded-md border-2 border-muted bg-popover p-2 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary",
-                            localStorage.getItem('cardBackImage') === back.url && 'border-primary'
+                            currentBackUrl === back.url && 'border-primary'
                          )}>
                            <Image src={back.url} alt={back.name} width={100} height={140} className="w-full h-auto rounded-sm" />
                            <p className="text-xs text-center mt-1">{back.name}</p>
