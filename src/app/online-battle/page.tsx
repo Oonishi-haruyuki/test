@@ -53,6 +53,7 @@ interface GameState {
 
 function GameLobby() {
   const firestore = useFirestore();
+  const auth = useAuth();
   const { user, isUserLoading: userLoading } = useUser();
   const [isCreating, setIsCreating] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
@@ -134,10 +135,10 @@ function GameLobby() {
           <CardTitle>ログインが必要です</CardTitle>
         </CardHeader>
         <CardContent>
-          <p>
+          <p className="mb-4">
             オンライン対戦をプレイするには、匿名ログインが必要です。
           </p>
-          {/* We'll add a sign-in button here later */}
+          <Button onClick={() => signInAnonymously(auth)}>匿名でログイン</Button>
         </CardContent>
       </Card>
     );
@@ -282,7 +283,8 @@ export default function OnlineBattlePage() {
 
   useEffect(() => {
     if (!user && !userLoading && auth) {
-      signInAnonymously(auth).catch(console.error);
+      // We no longer automatically sign in. User must click the button.
+      // signInAnonymously(auth).catch(console.error);
     }
   }, [user, userLoading, auth]);
 
@@ -329,7 +331,7 @@ export default function OnlineBattlePage() {
   return (
     <div>
       {activeGameId ? (
-        <GameComponent gameId={activeGameMId} />
+        <GameComponent gameId={activeGameId} />
       ) : (
         <GameLobby />
       )}
