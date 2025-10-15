@@ -1,315 +1,168 @@
+
 {
   "entities": {
     "Card": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Card",
+      "description": "Represents a single card in the trading card game.",
       "type": "object",
-      "description": "Represents a card in the card game.",
       "properties": {
         "id": {
           "type": "string",
-          "description": "Unique identifier for the Card entity."
+          "description": "Unique identifier for the card."
+        },
+        "theme": {
+          "type": "string",
+          "description": "The theme of the card (e.g., fantasy, sci-fi).",
+          "enum": ["fantasy", "sci-fi", "modern", "custom"]
         },
         "name": {
           "type": "string",
           "description": "The name of the card."
         },
-        "ability": {
-          "type": "string",
-          "description": "Description of the card's ability."
-        },
-        "flavorText": {
-          "type": "string",
-          "description": "Flavor text associated with the card."
+        "manaCost": {
+          "type": "number",
+          "description": "The mana cost to play the card."
         },
         "attack": {
           "type": "number",
-          "description": "Attack power of the card."
+          "description": "The attack power of the card (for creatures)."
         },
         "defense": {
           "type": "number",
-          "description": "Defense value of the card."
-        },
-        "manaCost": {
-          "type": "number",
-          "description": "Mana cost to play the card."
+          "description": "The defense/health of the card (for creatures)."
         },
         "cardType": {
           "type": "string",
-          "description": "Type of the card (e.g., creature, spell)."
+          "description": "The type of the card.",
+          "enum": ["creature", "spell", "artifact", "land"]
         },
         "rarity": {
           "type": "string",
-          "description": "Rarity of the card (e.g., common, rare, epic)."
+          "description": "The rarity of the card.",
+          "enum": ["common", "uncommon", "rare", "mythic"]
         },
-        "theme": {
+        "abilities": {
           "type": "string",
-          "description": "Theme of the card."
+          "description": "The special abilities or rules text of the card."
         },
-        "imagePlaceholder": {
+        "flavorText": {
           "type": "string",
-          "description": "Placeholder for the card image (e.g., filename)."
+          "description": "The thematic or story text of the card."
+        },
+        "imageUrl": {
+          "type": "string",
+          "format": "uri",
+          "description": "The URL for the card's artwork."
+        },
+        "imageHint": {
+          "type": "string",
+          "description": "A hint for generating the card's image."
+        },
+        "frameImageUrl": {
+          "type": "string",
+          "format": "uri",
+          "description": "The URL for the card's custom frame."
         }
       },
-      "required": [
-        "id",
-        "name",
-        "ability",
-        "flavorText",
-        "attack",
-        "defense",
-        "manaCost",
-        "cardType",
-        "rarity",
-        "theme",
-        "imagePlaceholder"
-      ]
-    },
-    "User": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "User",
-      "type": "object",
-      "description": "Represents a user of the application.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the User entity."
-        },
-        "username": {
-          "type": "string",
-          "description": "Username of the user."
-        },
-        "email": {
-          "type": "string",
-          "description": "Email address of the user.",
-          "format": "email"
-        },
-        "createdCards": {
-          "type": "array",
-          "description": "References to Cards created by the User. (Relationship: User 1:N Card)",
-          "items": {
-            "type": "string"
-          }
-        },
-        "games": {
-          "type": "array",
-          "description": "References to Games played by the User. (Relationship: User 1:N Game)",
-          "items": {
-            "type": "string"
-          }
-        }
-      },
-      "required": [
-        "id",
-        "username",
-        "email",
-        "createdCards",
-        "games"
-      ]
+      "required": ["name", "manaCost", "cardType", "rarity", "imageUrl"]
     },
     "Game": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Game",
+      "description": "Represents the state of an online card game session.",
       "type": "object",
-      "description": "Represents a game session.",
       "properties": {
-        "id": {
+        "status": {
           "type": "string",
-          "description": "Unique identifier for the Game entity."
+          "enum": ["waiting", "active", "finished"],
+          "description": "The current status of the game."
         },
         "player1Id": {
           "type": "string",
-          "description": "Reference to Player 1. (Relationship: User 1:N Game)"
+          "description": "The UID of the first player."
         },
         "player2Id": {
           "type": "string",
-          "description": "Reference to Player 2. (Relationship: User 1:N Game)"
+          "description": "The UID of the second player."
         },
-        "startTime": {
-          "type": "string",
-          "description": "Timestamp of when the game started.",
-          "format": "date-time"
+        "player1Health": {
+          "type": "number",
+          "description": "The current health of player 1."
         },
-        "endTime": {
-          "type": "string",
-          "description": "Timestamp of when the game ended.",
-          "format": "date-time"
+        "player2Health": {
+          "type": "number",
+          "description": "The current health of player 2."
         },
-        "winnerId": {
-          "type": "string",
-          "description": "Reference to the User ID of the winner, if applicable."
+        "turn": {
+          "type": "number",
+          "description": "The current turn number."
         },
-        "gameState": {
+        "isPlayer1Turn": {
+          "type": "boolean",
+          "description": "True if it is currently player 1's turn."
+        },
+        "winner": {
           "type": "string",
-          "description": "Current state of the game (e.g., in progress, finished)."
+          "description": "The UID of the winning player, if the game is finished."
+        },
+        "lastAction": {
+          "type": "string",
+          "description": "A description of the last action taken."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The timestamp when the game was created."
+        },
+        "player1Board": {
+          "type": "array",
+          "items": { "$ref": "#/entities/Card" },
+          "description": "The cards on player 1's board."
+        },
+        "player2Board": {
+          "type": "array",
+          "items": { "$ref": "#/entities/Card" },
+          "description": "The cards on player 2's board."
+        },
+         "player1Hand": {
+          "type": "array",
+          "items": { "$ref": "#/entities/Card" },
+          "description": "The cards in player 1's hand."
+        },
+        "player2Hand": {
+          "type": "array",
+          "items": { "$ref": "#/entities/Card" },
+          "description": "The cards in player 2's hand."
+        },
+        "player1DeckCount": {
+          "type": "number",
+          "description": "The number of cards left in player 1's deck."
+        },
+        "player2DeckCount": {
+          "type": "number",
+          "description": "The number of cards left in player 2's deck."
+        },
+        "player1Mana": {
+            "type": "number",
+            "description": "Current mana for player 1."
+        },
+        "player2Mana": {
+            "type": "number",
+            "description": "Current mana for player 2."
         }
       },
-      "required": [
-        "id",
-        "player1Id",
-        "player2Id",
-        "startTime",
-        "gameState"
-      ]
-    },
-    "Match": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Match",
-      "type": "object",
-      "description": "Represents a match between two players.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the Match entity."
-        },
-        "player1Id": {
-          "type": "string",
-          "description": "Reference to Player 1. (Relationship: User 1:N Match)"
-        },
-        "player2Id": {
-          "type": "string",
-          "description": "Reference to Player 2. (Relationship: User 1:N Match)"
-        },
-        "winnerId": {
-          "type": "string",
-          "description": "Reference to User ID of the winner, if applicable."
-        },
-        "startTime": {
-          "type": "string",
-          "description": "Timestamp of when the match started.",
-          "format": "date-time"
-        },
-        "endTime": {
-          "type": "string",
-          "description": "Timestamp of when the match ended.",
-          "format": "date-time"
-        }
-      },
-      "required": [
-        "id",
-        "player1Id",
-        "player2Id",
-        "startTime"
-      ]
-    },
-    "ChatMessage": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "ChatMessage",
-      "type": "object",
-      "description": "Represents a chat message within a game session.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the ChatMessage entity."
-        },
-        "gameId": {
-          "type": "string",
-          "description": "Reference to the Game the message belongs to. (Relationship: Game 1:N ChatMessage)"
-        },
-        "userId": {
-          "type": "string",
-          "description": "Reference to the User who sent the message. (Relationship: User 1:N ChatMessage)"
-        },
-        "timestamp": {
-          "type": "string",
-          "description": "Timestamp of when the message was sent.",
-          "format": "date-time"
-        },
-        "messageText": {
-          "type": "string",
-          "description": "The text content of the chat message."
-        }
-      },
-      "required": [
-        "id",
-        "gameId",
-        "userId",
-        "timestamp",
-        "messageText"
-      ]
+      "required": ["status", "player1Id", "player1Health", "player2Health", "turn", "isPlayer1Turn", "createdAt"]
     }
   },
   "auth": {
-    "providers": [
-      "password",
-      "anonymous"
-    ]
+    "providers": ["anonymous"]
   },
   "firestore": {
-    "structure": [
-      {
-        "path": "/users/{userId}",
-        "definition": {
-          "entityName": "User",
-          "schema": {
-            "$ref": "#/backend/entities/User"
-          },
-          "description": "Stores user profile information. The 'userId' parameter identifies the user's document. It is used for storing user-specific data and preferences.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique identifier for the user."
-            }
-          ]
-        }
+    "/games/{gameId}": {
+      "schema": {
+        "$ref": "#/entities/Game"
       },
-      {
-        "path": "/users/{userId}/cards/{cardId}",
-        "definition": {
-          "entityName": "Card",
-          "schema": {
-            "$ref": "#/backend/entities/Card"
-          },
-          "description": "Stores cards created by each user. The 'userId' parameter identifies the owner, ensuring that only the user can manage these cards. Includes denormalized 'userId' field for simplified security rules.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique identifier for the user (card owner)."
-            },
-            {
-              "name": "cardId",
-              "description": "The unique identifier for the card."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/matches/{matchId}",
-        "definition": {
-          "entityName": "Match",
-          "schema": {
-            "$ref": "#/backend/entities/Match"
-          },
-          "description": "Stores match data. Contains 'player1Id' and 'player2Id' to define the participants. These Ids are duplicated on the chat messages for easy rule definition. ",
-          "params": [
-            {
-              "name": "matchId",
-              "description": "The unique identifier for the match."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/matches/{matchId}/chatMessages/{chatMessageId}",
-        "definition": {
-          "entityName": "ChatMessage",
-          "schema": {
-            "$ref": "#/backend/entities/ChatMessage"
-          },
-          "description": "Stores chat messages for each match. Includes denormalized 'matchId', 'player1Id', and 'player2Id' from the parent 'match' document for authorization independence.",
-          "params": [
-            {
-              "name": "matchId",
-              "description": "The unique identifier for the match."
-            },
-            {
-              "name": "chatMessageId",
-              "description": "The unique identifier for the chat message."
-            }
-          ]
-        }
-      }
-    ],
-    "reasoning": "The Firestore structure is designed to support the CardCrafter application, focusing on card creation, online matches, and user profiles. It emphasizes authorization independence by denormalizing necessary authorization data and employs structural segregation to ensure clear security postures for each collection. The online match feature is implemented using a `matches` collection and associated `chatMessages` subcollection, which stores real-time communication. User-generated cards are stored within user-specific subcollections to maintain ownership and simplify access control. The design adheres to the principles of Authorization Independence (CRITICAL) and DBAC (No Custom Claims), making security rules simple and debuggable. All list operations are secured through appropriate data segregation."
+      "description": "Stores individual game sessions for online battles."
+    }
   }
 }
+    

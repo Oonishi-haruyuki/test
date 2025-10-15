@@ -57,7 +57,10 @@ export default function RootLayout({
                         <Link href="/deck-builder">デッキ構築</Link>
                       </Button>
                       <Button variant="outline" asChild className="ml-4">
-                        <Link href="/battle">対戦</Link>
+                        <Link href="/battle">AI対戦</Link>
+                      </Button>
+                      <Button variant="outline" asChild className="ml-4">
+                        <Link href="/online-battle">オンライン対戦</Link>
                       </Button>
                       <Button variant="outline" asChild className="ml-4">
                         <Link href="/minigame">ミニゲーム</Link>
@@ -76,3 +79,5 @@ export default function RootLayout({
     </html>
   );
 }
+
+    

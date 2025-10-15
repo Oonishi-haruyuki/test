@@ -177,7 +177,6 @@ export default function BattlePage() {
     const [gamePhase, setGamePhase] = useState<'main' | 'attack'>('main');
 
     const shuffleDeck = (deck: CardData[]) => {
-        if (!isClient) return deck;
         return [...deck].sort(() => Math.random() - 0.5);
     }
 
@@ -313,7 +312,9 @@ export default function BattlePage() {
 
     const handleSelectDeck = (choice: string) => {
         setDeckChoice(choice);
-        loadAndSetPlayerDeck(choice);
+        if (isClient) {
+            loadAndSetPlayerDeck(choice);
+        }
     };
 
     const resetGame = () => {
@@ -761,7 +762,7 @@ export default function BattlePage() {
                     {opponentHand.map((card, i) => (
                         <div key={card.id ? card.id + i.toString() : i} className="w-24">
                            {cardBackImage ? (
-                                <Image src={cardBackImage} alt="Card Back" width={96} height={134} className="rounded-lg shadow-md" />
+                                <Image src={cardBackImage} alt="Card Back" width={96} height={134} className="rounded-lg shadow-md" unoptimized />
                            ) : (
                                 <Card className="h-full flex items-center justify-center text-center p-2 bg-slate-700 text-white">裏向きのカード</Card>
                            )}
@@ -847,3 +848,5 @@ export default function BattlePage() {
     </main>
   );
 }
+
+    
