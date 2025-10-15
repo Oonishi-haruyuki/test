@@ -25,6 +25,7 @@ export default function GachaPage() {
   const { updateMissionProgress } = useMissions();
   const [isClient, setIsClient] = useState(false);
   const [cardBackImage, setCardBackImage] = useState<string | null>(null);
+  const [gachaAnimation, setGachaAnimation] = useState('anim-flip');
 
   useEffect(() => {
     setIsClient(true);
@@ -32,6 +33,8 @@ export default function GachaPage() {
     if (savedCardBack) {
         setCardBackImage(savedCardBack);
     }
+    const savedAnimation = localStorage.getItem('selectedGachaAnimation') || 'anim-flip';
+    setGachaAnimation(savedAnimation.replace('anim-', ''));
   }, []);
 
   const handlePullGacha = async (pullCount: number) => {
@@ -172,7 +175,10 @@ export default function GachaPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
             {pulledCards.map((card, index) => (
                 <div key={card.id} className="[perspective:1000px]">
-                    <div className="relative h-full w-full transition-transform duration-700 [transform-style:preserve-3d]" style={{ animation: `flip 0.8s ${index * 0.1}s 1 ease-in-out forwards` }}>
+                    <div 
+                        className="relative h-full w-full transition-transform duration-700 [transform-style:preserve-3d]" 
+                        style={{ animation: `${gachaAnimation} 1s ${index * 0.1}s 1 ease-in-out forwards`, animationName: gachaAnimation === 'flip' ? 'flip' : 'shake-and-flip' }}
+                    >
                          <div className="absolute [backface-visibility:hidden]">
                              <CardBack />
                          </div>

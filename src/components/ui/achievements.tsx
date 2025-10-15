@@ -11,6 +11,7 @@ import {
     SelectValue,
 } from "@/components/ui/select"
 import { Coins, Trophy } from 'lucide-react';
+import type { ReactNode } from 'react';
 
 export type Achievement = {
   id: string;
@@ -21,7 +22,7 @@ export type Achievement = {
   claimed: boolean;
 };
 
-export function AchievementsUI({ achievements, onTitleChange, onClaimRewards }: { achievements: Achievement[], onTitleChange: (title: string) => void, onClaimRewards: (reward: number) => void }) {
+export function AchievementsUI({ achievements, onTitleChange, onClaimRewards, children }: { achievements: Achievement[], onTitleChange: (title: string) => void, onClaimRewards: (reward: number) => void, children?: ReactNode }) {
     
     const unlockedAchievements = achievements.filter(ach => ach.unlocked);
     const claimableAchievements = unlockedAchievements.filter(ach => !ach.claimed);
@@ -56,6 +57,7 @@ export function AchievementsUI({ achievements, onTitleChange, onClaimRewards }: 
                             </SelectContent>
                         </Select>
                     </div>
+                    {children}
                     <div>
                         <h4 className="font-semibold mb-2">報酬の受け取り</h4>
                         <div className="flex items-center gap-4 p-4 border rounded-lg bg-secondary/50">

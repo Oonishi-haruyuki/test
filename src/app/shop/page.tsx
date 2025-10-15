@@ -10,7 +10,7 @@ import { Coins, CheckCircle2 } from 'lucide-react';
 import { shopItems, ShopItem } from '@/lib/shop-items';
 import Image from 'next/image';
 
-type ItemType = 'frames' | 'backs' | 'artifacts';
+type ItemType = 'frames' | 'backs' | 'artifacts' | 'animations';
 
 export default function ShopPage() {
     const { currency, spendCurrency } = useCurrency();
@@ -18,6 +18,7 @@ export default function ShopPage() {
     const [purchasedFrames, setPurchasedFrames] = useState<string[]>([]);
     const [purchasedBacks, setPurchasedBacks] = useState<string[]>([]);
     const [purchasedArtifacts, setPurchasedArtifacts] = useState<string[]>([]);
+    const [purchasedAnimations, setPurchasedAnimations] = useState<string[]>([]);
     const [isClient, setIsClient] = useState(false);
 
     useEffect(() => {
@@ -26,9 +27,11 @@ export default function ShopPage() {
             const savedFrames = JSON.parse(localStorage.getItem('purchasedCardFrames') || '[]');
             const savedBacks = JSON.parse(localStorage.getItem('purchasedCardBacks') || '[]');
             const savedArtifacts = JSON.parse(localStorage.getItem('purchasedArtifacts') || '[]');
+            const savedAnimations = JSON.parse(localStorage.getItem('purchasedGachaAnimations') || '[]');
             setPurchasedFrames(savedFrames);
             setPurchasedBacks(savedBacks);
             setPurchasedArtifacts(savedArtifacts);
+            setPurchasedAnimations(savedAnimations);
         } catch (error) {
             console.error("Failed to load purchased items from localStorage", error);
         }
@@ -62,11 +65,16 @@ export default function ShopPage() {
             purchasedItems = [...purchasedBacks, item.id];
             setPurchasedBacks(purchasedItems);
             storageKey = 'purchasedCardBacks';
-        } else { // artifacts
+        } else if (type === 'artifacts') {
             purchasedItems = [...purchasedArtifacts, item.id];
             setPurchasedArtifacts(purchasedItems);
             storageKey = 'purchasedArtifacts';
+        } else { // animations
+            purchasedItems = [...purchasedAnimations, item.id];
+            setPurchasedAnimations(purchasedItems);
+            storageKey = 'purchasedGachaAnimations';
         }
+
 
         try {
             localStorage.setItem(storageKey, JSON.stringify(purchasedItems));
@@ -136,10 +144,9 @@ export default function ShopPage() {
                 <p className="text-muted-foreground">Gコインを使って、カードの新しい見た目や便利なアイテムを手に入れよう！</p>
             </div>
             {renderShopSection('アーティファクト', shopItems.artifacts, purchasedArtifacts, 'artifacts')}
+            {renderShopSection('ガチャアニメーション', shopItems.animations, purchasedAnimations, 'animations')}
             {renderShopSection('カードフレーム', shopItems.frames, purchasedFrames, 'frames')}
             {renderShopSection('カード裏面デザイン', shopItems.backs, purchasedBacks, 'backs')}
         </main>
     );
 }
-
-    

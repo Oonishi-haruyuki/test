@@ -22,6 +22,8 @@ import { Label } from '@/components/ui/label';
 import { useMissions } from '@/hooks/use-missions';
 import { MissionsUI } from '@/components/ui/missions-ui';
 import { allMissions } from '@/lib/missions';
+import { shopItems } from '@/lib/shop-items';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const loginSchema = z.object({
     loginId: z.string().min(1, { message: 'ログインIDを入力してください。' }),
@@ -50,20 +52,26 @@ export default function MyPage() {
     const [selectedTitle, setSelectedTitle] = useState('未設定');
     const [claimedRewards, setClaimedRewards] = useState<string[]>([]);
     const [isClient, setIsClient] = useState(false);
+    const [purchasedAnimations, setPurchasedAnimations] = useState<string[]>([]);
+    const [selectedAnimation, setSelectedAnimation] = useState('anim-flip');
 
     // Load data from localStorage when profile changes
     useEffect(() => {
         setIsClient(true);
         if (!activeProfile) return;
         try {
-            const savedCollection = JSON.parse(localStorage.getItem(`${activeProfile}-cardCollection`) || '[]');
-            const savedDecks = JSON.parse(localStorage.getItem(`${activeProfile}-decks`) || '[]');
-            const savedTitle = localStorage.getItem(`${activeProfile}-selectedTitle`) || '未設定';
-            const savedClaimedRewards = JSON.parse(localStorage.getItem(`${activeProfile}-claimedRewards`) || '[]');
+            const savedCollection = JSON.parse(localStorage.getItem(`cardCollection`) || '[]');
+            const savedDecks = JSON.parse(localStorage.getItem(`decks`) || '[]');
+            const savedTitle = localStorage.getItem(`selectedTitle`) || '未設定';
+            const savedClaimedRewards = JSON.parse(localStorage.getItem(`claimedRewards`) || '[]');
+            const savedAnimations = JSON.parse(localStorage.getItem(`purchasedGachaAnimations`) || '["anim-flip"]');
+            const savedSelectedAnimation = localStorage.getItem(`selectedGachaAnimation`) || 'anim-flip';
             setCollection(savedCollection);
             setDecks(savedDecks);
             setSelectedTitle(savedTitle);
             setClaimedRewards(savedClaimedRewards);
+            setPurchasedAnimations(savedAnimations);
+            setSelectedAnimation(savedSelectedAnimation);
         } catch (error) {
             console.error("Failed to load data from localStorage", error);
         }
@@ -72,13 +80,18 @@ export default function MyPage() {
     // Save data when it changes
     useEffect(() => {
         if (!isClient || !activeProfile) return;
-        localStorage.setItem(`${activeProfile}-selectedTitle`, selectedTitle);
+        localStorage.setItem(`selectedTitle`, selectedTitle);
     }, [selectedTitle, activeProfile, isClient]);
 
     useEffect(() => {
         if (!isClient || !activeProfile) return;
-        localStorage.setItem(`${activeProfile}-claimedRewards`, JSON.stringify(claimedRewards));
+        localStorage.setItem(`claimedRewards`, JSON.stringify(claimedRewards));
     }, [claimedRewards, activeProfile, isClient]);
+
+    useEffect(() => {
+        if (!isClient || !activeProfile) return;
+        localStorage.setItem(`selectedGachaAnimation`, selectedAnimation);
+    }, [selectedAnimation, activeProfile, isClient]);
 
 
     const getUniqueCardCount = (cards: CardData[]) => {
@@ -95,6 +108,14 @@ export default function MyPage() {
 
     const handleTitleChange = (title: string) => {
         setSelectedTitle(title);
+    }
+    
+    const handleAnimationChange = (animationId: string) => {
+        setSelectedAnimation(animationId);
+        toast({
+            title: "アニメーションを設定しました",
+            description: `ガチャの演出が変更されました。`,
+        });
     }
 
     const handleClaimRewards = (reward: number) => {
@@ -203,6 +224,9 @@ export default function MyPage() {
             </Card>
         )
     }
+    
+    const availableAnimations = shopItems.animations.filter(anim => purchasedAnimations.includes(anim.id));
+
 
     if (!isClient || isUserLoading) {
         return (
@@ -360,7 +384,21 @@ export default function MyPage() {
                     achievements={achievements}
                     onTitleChange={handleTitleChange}
                     onClaimRewards={handleClaimRewards}
-                />
+                >
+                    <div className="space-y-2">
+                        <h4 className="font-semibold">ガチャアニメーション設定</h4>
+                         <Select onValueChange={handleAnimationChange} defaultValue={selectedAnimation}>
+                            <SelectTrigger className="w-full md:w-[280px]">
+                                <SelectValue placeholder="アニメーションを選択" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {availableAnimations.map(anim => (
+                                    <SelectItem key={anim.id} value={anim.id}>{anim.name}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                </AchievementsUI>
             </div>
 
             <Card className="mt-8">

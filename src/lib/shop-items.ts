@@ -11,6 +11,7 @@ interface ShopItems {
     frames: ShopItem[];
     backs: ShopItem[];
     artifacts: ShopItem[];
+    animations: ShopItem[];
 }
 
 export const shopItems: ShopItems = {
@@ -105,7 +106,21 @@ export const shopItems: ShopItems = {
             url: 'https://storage.googleapis.com/card-crafter-studio.appspot.com/artifacts/crystal.png',
             price: 7500,
         },
+    ],
+    animations: [
+        {
+            id: 'anim-flip',
+            name: 'ノーマルフリップ',
+            description: 'カードが裏から表に回転します。',
+            url: 'https://storage.googleapis.com/card-crafter-studio.appspot.com/animations/anim_flip.gif',
+            price: 0,
+        },
+        {
+            id: 'anim-shake-flip',
+            name: 'シェイクフリップ',
+            description: 'カードが揺れながらダイナミックに回転します。',
+            url: 'https://storage.googleapis.com/card-crafter-studio.appspot.com/animations/anim_shake.gif',
+            price: 2000,
+        }
     ]
 };
-
-    
