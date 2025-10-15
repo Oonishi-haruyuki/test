@@ -1,11 +1,12 @@
 
 'use client';
-    
+
 import { useState, useEffect } from 'react';
 import { User, onAuthStateChanged, Auth } from 'firebase/auth';
 import { doc, onSnapshot, DocumentData, Firestore } from 'firebase/firestore';
 
 interface UserProfile {
+  name?: string;
   // Add other profile fields here
 }
 
@@ -29,19 +30,19 @@ export function useUser(auth: Auth, firestore: Firestore): UserAuthHookResult {
   const [userError, setUserError] = useState<Error | null>(null);
 
   useEffect(() => {
-    // Wait until auth is initialized
     if (!auth) {
+        setIsUserLoading(false);
         return;
     }
-    // Listener for authentication state changes
     const unsubscribeAuth = onAuthStateChanged(auth,
       (firebaseUser) => {
         setUser(firebaseUser);
         if (!firebaseUser) {
-          // If user logs out, clear profile and finish loading
+          // User is logged out
           setProfile(null);
           setIsUserLoading(false);
         }
+        // If user is logged in, the other useEffect will handle profile loading.
       },
       (error) => {
         console.error("Auth state change error:", error);
@@ -55,15 +56,19 @@ export function useUser(auth: Auth, firestore: Firestore): UserAuthHookResult {
 
   useEffect(() => {
     if (!user) {
-      // No user, no profile to fetch. isUserLoading will be handled by auth listener.
-      // If auth listener is done and there's no user, isUserLoading is already false.
+      // No user, no profile to fetch. Loading state is managed by the auth listener.
       return;
     }
 
-    // We have a user, start loading their profile.
+    // Auth state is known, but profile is not yet loaded.
+    // This is part of the overall loading state.
     setIsUserLoading(true);
     
-    // Listener for user profile changes in Firestore
+    if (!firestore) {
+        setIsUserLoading(false);
+        return;
+    }
+
     const profileRef = doc(firestore, 'users', user.uid);
     const unsubscribeProfile = onSnapshot(profileRef, 
       (docSnap) => {
@@ -73,7 +78,7 @@ export function useUser(auth: Auth, firestore: Firestore): UserAuthHookResult {
           // User document doesn't exist. This might be a new user.
           setProfile(null);
         }
-        setIsUserLoading(false); // Finished loading profile
+        setIsUserLoading(false); // Finished loading profile, so overall user loading is done.
       },
       (error) => {
         console.error("User profile snapshot error:", error);
@@ -88,4 +93,3 @@ export function useUser(auth: Auth, firestore: Firestore): UserAuthHookResult {
 
   return { user, profile, isUserLoading, userError };
 }
-

@@ -15,7 +15,7 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 
 export default function MyPage() {
-  const { addCurrency } = useCurrency();
+  const { currency, addCurrency } = useCurrency();
   const { wins, losses } = useStats();
   const { user, profile, isUserLoading } = useUser();
   const [collection, setCollection] = useState<CardData[]>([]);
@@ -59,9 +59,10 @@ export default function MyPage() {
     addCurrency(reward);
 
     // This logic now happens inside the AchievementsUI component, we just need to update our state here.
+    const achievementsToClaim = achievements.filter(ach => ach.unlocked && !claimedRewards.includes(ach.id));
     const newClaimedRewards = [
         ...claimedRewards,
-        ...achievements.filter(ach => ach.unlocked && !ach.claimed).map(ach => ach.id)
+        ...achievementsToClaim.map(ach => ach.id)
     ];
 
     setClaimedRewards(newClaimedRewards);
@@ -197,11 +198,9 @@ export default function MyPage() {
 
         <div className="mt-8">
             <AchievementsUI 
-                wins={wins} 
-                uniqueCardCount={uniqueCardCount} 
+                achievements={achievements} 
                 onTitleChange={handleTitleChange} 
-                onClaimRewards={handleClaimRewards} 
-                claimedRewards={claimedRewards} 
+                onClaimRewards={handleClaimRewards}
             />
         </div>
 

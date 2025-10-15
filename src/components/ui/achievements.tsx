@@ -21,35 +21,8 @@ export type Achievement = {
   claimed: boolean;
 };
 
-export type Title = {
-  id: string;
-  name: string;
-};
-
-const achievementsList: Omit<Achievement, 'unlocked' | 'claimed'>[] = [
-    { id: 'wins-1', name: '初勝利', description: '初めてAIに勝利する', reward: 100 },
-    { id: 'wins-10', name: 'ベテラン', description: 'AIに10回勝利する', reward: 500 },
-    { id: 'wins-50', name: 'エキスパート', description: 'AIに50回勝利する', reward: 1000 },
-    { id: 'wins-100', name: 'マスター', description: 'AIに100回勝利する', reward: 5000 },
-    { id: 'collection-10', name: 'コレクター', description: '10種類のカードを集める', reward: 200 },
-    { id: 'collection-50', name: 'マスターコレクター', description: '50種類のカードを集める', reward: 1000 },
-    { id: 'collection-100', name: 'コンプリート', description: '100種類のカードを集める', reward: 10000 },
-];
-
-export function AchievementsUI({ wins, uniqueCardCount, onTitleChange, onClaimRewards, claimedRewards }: { wins: number, uniqueCardCount: number, onTitleChange: (title: string) => void, onClaimRewards: (reward: number) => void, claimedRewards: string[] }) {
-    const achievements: Achievement[] = achievementsList.map(ach => {
-        let unlocked = false;
-        if (ach.id.startsWith('wins-')) {
-            const requiredWins = parseInt(ach.id.split('-')[1]);
-            unlocked = wins >= requiredWins;
-        } else if (ach.id.startsWith('collection-')) {
-            const requiredCount = parseInt(ach.id.split('-')[1]);
-            unlocked = uniqueCardCount >= requiredCount;
-        }
-        const claimed = claimedRewards.includes(ach.id);
-        return { ...ach, unlocked, claimed };
-    });
-
+export function AchievementsUI({ achievements, onTitleChange, onClaimRewards }: { achievements: Achievement[], onTitleChange: (title: string) => void, onClaimRewards: (reward: number) => void }) {
+    
     const unlockedAchievements = achievements.filter(ach => ach.unlocked);
     const claimableAchievements = unlockedAchievements.filter(ach => !ach.claimed);
 
