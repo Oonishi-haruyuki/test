@@ -5,12 +5,7 @@
       "title": "User Profile",
       "description": "Represents a user's public profile information.",
       "type": "object",
-      "properties": {
-        "name": {
-          "type": "string",
-          "description": "The user's display name."
-        }
-      }
+      "properties": {}
     },
     "Card": {
       "title": "Card",
@@ -165,7 +160,7 @@
     }
   },
   "auth": {
-    "providers": ["email"]
+    "providers": ["email", "google"]
   },
   "firestore": {
     "/users/{userId}": {

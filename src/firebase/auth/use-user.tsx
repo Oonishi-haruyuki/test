@@ -6,7 +6,7 @@ import { User, onAuthStateChanged, Auth } from 'firebase/auth';
 import { doc, onSnapshot, DocumentData, Firestore } from 'firebase/firestore';
 
 interface UserProfile {
-  // Add other profile fields here
+  name?: string;
 }
 
 export interface UserAuthHookResult {
