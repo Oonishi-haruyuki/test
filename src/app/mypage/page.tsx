@@ -16,7 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { useProfile, PROFILES, type ProfileId } from '@/hooks/use-profile';
 import { cn } from '@/lib/utils';
-import { useUser, loginWithId, signUpWithId, loginWithGoogle } from '@/firebase/auth/use-user';
+import { useUser, loginWithId, signUpWithId, loginWithGoogle } from '@/firebase';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
@@ -32,18 +32,22 @@ export default function MyPage() {
     const { activeProfile, setActiveProfile } = useProfile();
     const { currency, addCurrency } = useCurrency();
     const { wins, losses } = useStats();
-
-    const [collection, setCollection] = useState<CardData[]>([]);
-    const [decks, setDecks] = useState<{ id: string, name: string, cards: CardData[] }[]>([]);
-    const [isClient, setIsClient] = useState(false);
-    const [selectedTitle, setSelectedTitle] = useState<string>('未設定');
-    const [claimedRewards, setClaimedRewards] = useState<string[]>([]);
     const { toast } = useToast();
-
-    const { register, handleSubmit, formState: { errors } } = useForm<LoginSchema>({
+    const {
+        register,
+        handleSubmit,
+        formState: { errors },
+    } = useForm<LoginSchema>({
         resolver: zodResolver(loginSchema),
     });
 
+    const [collection, setCollection] = useState<CardData[]>([]);
+    const [decks, setDecks] = useState<{ id: string, name: string, cards: CardData[] }[]>([]);
+    const [selectedTitle, setSelectedTitle] = useState('未設定');
+    const [claimedRewards, setClaimedRewards] = useState<string[]>([]);
+    const [isClient, setIsClient] = useState(false);
+
+    // Load data from localStorage when profile changes
     useEffect(() => {
         setIsClient(true);
         if (!activeProfile) return;
@@ -132,20 +136,34 @@ export default function MyPage() {
 
     const onLoginSubmit: SubmitHandler<LoginSchema> = async (data) => {
         try {
+            // Try to sign in. If it fails, try to sign up.
             await loginWithId(data.loginId, data.password);
             toast({ title: 'ログインしました。' });
-            // The useUser hook will trigger a re-render on successful login
         } catch (error: any) {
-            console.error('Login failed:', error);
-            let description = '時間をおいて再度お試しください。';
-            if (error.code === 'auth/invalid-credential') {
-                description = 'ログインIDまたはパスワードが正しくありません。';
+            if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found') {
+                try {
+                    await signUpWithId(data.loginId, data.password);
+                    toast({ title: 'アカウントを新規登録し、ログインしました。' });
+                } catch (signUpError: any) {
+                    console.error('Sign up failed after login failed:', signUpError);
+                    let description = '時間をおいて再度お試しください。';
+                    if (signUpError.code === 'auth/email-already-in-use') { // This logic might need adjustment based on how login IDs are handled
+                        description = 'このログインIDは既に使用されています。';
+                    }
+                    toast({
+                        variant: 'destructive',
+                        title: '新規登録に失敗しました',
+                        description: description,
+                    });
+                }
+            } else {
+                 console.error('Login failed:', error);
+                toast({
+                    variant: 'destructive',
+                    title: 'ログインに失敗しました',
+                    description: 'ログインIDまたはパスワードが正しくありません。',
+                });
             }
-            toast({
-                variant: 'destructive',
-                title: 'ログインに失敗しました',
-                description: description,
-            });
         }
     };
     
@@ -225,7 +243,7 @@ export default function MyPage() {
                                 {errors.password && <p className="text-sm text-destructive">{errors.password.message}</p>}
                             </div>
                              <Button type="submit" className="w-full">
-                                <LogIn className="mr-2 h-4 w-4" /> ログイン
+                                <LogIn className="mr-2 h-4 w-4" /> ログインまたは新規登録
                             </Button>
                         </form>
                         <div className="relative my-4">
@@ -242,9 +260,6 @@ export default function MyPage() {
                              <svg className="mr-2 h-4 w-4" aria-hidden="true" focusable="false" data-prefix="fab" data-icon="google" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 488 512"><path fill="currentColor" d="M488 261.8C488 403.3 391.1 504 248 504 110.8 504 0 393.2 0 256S110.8 8 248 8c66.8 0 126 23.4 172.9 61.9l-76.2 74.9C309.2 104.5 280.4 96 248 96c-84.3 0-152.3 68.4-152.3 160s68 160 152.3 160c92.2 0 131.3-64.4 135.2-97.4H248v-85.3h236.1c2.3 12.7 3.9 24.9 3.9 41.2z"></path></svg>
                              Googleでログイン
                         </Button>
-                        <p className="mt-4 text-xs text-center text-muted-foreground">
-                            アカウントをお持ちでないですか？ 新しいログインIDとパスワードでログインすると、自動的にアカウントが作成されます。
-                        </p>
                     </CardContent>
                 </Card>
             </main>
