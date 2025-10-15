@@ -63,5 +63,29 @@ export const shopItems: ShopItems = {
             url: 'https://storage.googleapis.com/card-crafter-studio.appspot.com/backs/back_green_spirit.png',
             price: 500,
         },
+        {
+            id: 'back-rich-red',
+            name: 'リッチレッド',
+            url: 'https://via.placeholder.com/400x560/b91c1c/FFFFFF?text=%20',
+            price: 500,
+        },
+        {
+            id: 'back-ocean-blue',
+            name: 'オーシャンブルー',
+            url: 'https://via.placeholder.com/400x560/0d9488/FFFFFF?text=%20',
+            price: 500,
+        },
+        {
+            id: 'back-mystic-purple',
+            name: 'ミスティックパープル',
+            url: 'https://via.placeholder.com/400x560/7e22ce/FFFFFF?text=%20',
+            price: 500,
+        },
+        {
+            id: 'back-slate-gray',
+            name: 'スレートグレー',
+            url: 'https://via.placeholder.com/400x560/475569/FFFFFF?text=%20',
+            price: 500,
+        },
     ],
 };
