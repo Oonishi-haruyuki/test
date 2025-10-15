@@ -79,21 +79,11 @@ export default function LoginPage() {
       router.push('/mypage');
     } catch (error: any) {
       console.error('Login failed:', error);
-      // Handle user not found by trying to sign up
-      if (error.code === AuthErrorCodes.USER_DELETED) {
-        toast({
-          variant: 'destructive',
-          title: 'ログインに失敗しました。',
-          description: 'このユーザーは存在しません。新規登録をお試しください。',
-        });
-        await handleSignUp({ email: values.email, password: values.password });
-      } else {
-        toast({
-          variant: 'destructive',
-          title: 'ログインに失敗しました。',
-          description: 'メールアドレスまたはパスワードが正しくありません。',
-        });
-      }
+      toast({
+        variant: 'destructive',
+        title: 'ログインに失敗しました。',
+        description: 'メールアドレスまたはパスワードが正しくありません。',
+      });
     } finally {
       setIsLoading(false);
     }
@@ -120,9 +110,7 @@ export default function LoginPage() {
       console.error('Sign up failed:', error);
       let description = '時間をおいて再度お試しください。';
       if (error.code === 'auth/email-already-in-use') {
-        // If user already exists, just log them in.
-        await handleLogin(values);
-        return;
+        description = 'このメールアドレスは既に使用されています。';
       }
       toast({
         variant: 'destructive',
@@ -133,43 +121,6 @@ export default function LoginPage() {
       setIsLoading(false);
     }
   };
-
-  const handleEasyLogin = async (email: string) => {
-    const password = 'password';
-    setIsLoading(true);
-    try {
-        await signInWithEmailAndPassword(auth, email, password);
-        toast({ title: 'ログインしました。' });
-        router.push('/mypage');
-    } catch (error: any) {
-        // If user not found, create account
-        if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
-            try {
-                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-                const user = userCredential.user;
-                if (firestore) {
-                    await setDoc(doc(firestore, 'users', user.uid), {});
-                }
-                toast({ title: 'テストアカウントを新規作成し、ログインしました。' });
-                router.push('/mypage');
-            } catch (signupError: any) {
-                toast({
-                    variant: 'destructive',
-                    title: 'アカウント作成に失敗しました。',
-                    description: '時間をおいて再度お試しください。'
-                });
-            }
-        } else {
-            toast({
-                variant: 'destructive',
-                title: 'ログインに失敗しました。',
-                description: '予期せぬエラーが発生しました。',
-            });
-        }
-    } finally {
-        setIsLoading(false);
-    }
-};
 
   return (
     <div className="flex justify-center items-start pt-10">
@@ -231,20 +182,6 @@ export default function LoginPage() {
                 </form>
               </Form>
             </CardContent>
-            <CardFooter className="flex flex-col gap-4">
-                <p className="text-sm text-muted-foreground">または</p>
-                <div className="w-full space-y-2">
-                    <Button onClick={() => handleEasyLogin('test@example.com')} variant="outline" className="w-full" disabled={isLoading}>
-                       {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null} テスト用アカウントでログイン
-                    </Button>
-                    <Button onClick={() => handleEasyLogin('player1@example.com')} variant="outline" className="w-full" disabled={isLoading}>
-                        {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null} プレイ用アカウント1でログイン
-                    </Button>
-                    <Button onClick={() => handleEasyLogin('player2@example.com')} variant="outline" className="w-full" disabled={isLoading}>
-                        {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null} プレイ用アカウント2でログイン
-                    </Button>
-                </div>
-            </CardFooter>
           </Card>
         </TabsContent>
         <TabsContent value="signup">
