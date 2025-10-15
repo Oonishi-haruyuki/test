@@ -91,7 +91,7 @@ export default function ShopPage() {
                                 </CardHeader>
                                 <CardContent>
                                     <div className="bg-muted rounded-md aspect-[3/4] flex items-center justify-center p-4">
-                                        <Image src={item.url} alt={item.name} width={200} height={280} className="w-full h-auto rounded-lg shadow-md" />
+                                        <Image src={item.url} alt={item.name} width={200} height={280} className="w-full h-auto rounded-lg shadow-md" unoptimized />
                                     </div>
                                 </CardContent>
                                 <CardFooter className="flex flex-col items-stretch gap-2">
