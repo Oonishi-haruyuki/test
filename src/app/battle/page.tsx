@@ -219,8 +219,10 @@ export default function BattlePage() {
         // Artifact Effects
         const hasHpBoost = purchasedArtifacts.includes('artifact-hp-boost');
         const hasHandBoost = purchasedArtifacts.includes('artifact-hand-boost');
+        const hasManaBoost = purchasedArtifacts.includes('artifact-mana-boost');
         const initialPlayerHealth = hasHpBoost ? 25 : 20;
         const initialHandSize = hasHandBoost ? 6 : 5;
+        const initialPlayerMaxMana = hasManaBoost ? 2 : 1;
 
         const initialPlayerHand = pDeck.splice(0, initialHandSize);
         const initialOpponentHand = oDeck.splice(0, 5);
@@ -229,8 +231,8 @@ export default function BattlePage() {
         setPlayerHand(initialPlayerHand);
         setPlayerBoard([]);
         setPlayerHealth(initialPlayerHealth);
-        setPlayerMana(1);
-        setPlayerMaxMana(1);
+        setPlayerMana(initialPlayerMaxMana);
+        setPlayerMaxMana(initialPlayerMaxMana);
 
         setOpponentDeck(oDeck);
         setOpponentHand(initialOpponentHand);
@@ -251,6 +253,7 @@ export default function BattlePage() {
         
         if (hasHpBoost) addToLog('生命のアミュレットの効果で、あなたの初期HPが25になった！');
         if (hasHandBoost) addToLog('マナの水晶の効果で、あなたの初期手札が6枚になった！');
+        if (hasManaBoost) addToLog('マナの指輪の効果で、あなたの初期最大マナが2になった！');
 
         if (!playerGoesFirst) {
             setTimeout(aiTurn, 1000);

@@ -106,6 +106,13 @@ export const shopItems: ShopItems = {
             url: 'https://storage.googleapis.com/card-crafter-studio.appspot.com/artifacts/crystal.png',
             price: 7500,
         },
+        {
+            id: 'artifact-mana-boost',
+            name: 'マナの指輪',
+            description: 'AI対戦開始時の最大マナが+1される。(2からスタート)',
+            url: 'https://storage.googleapis.com/card-crafter-studio.appspot.com/artifacts/ring.png',
+            price: 10000,
+        },
     ],
     animations: [
         {
