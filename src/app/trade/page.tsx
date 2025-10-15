@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Send, ArrowRightLeft, Check, X, Inbox, CornerUpLeft } from 'lucide-react';
-import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { createTradeOffer, respondToTradeOffer } from '@/lib/trade-actions';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -85,17 +85,23 @@ export default function TradePage() {
         if (!user || !firestore) return;
 
         // Incoming offers
-        const incomingQuery = query(collection(firestore, 'trades'), where('offereeId', '==', user.uid), orderBy('createdAt', 'desc'));
+        const incomingQuery = query(collection(firestore, 'trades'), where('offereeId', '==', user.uid));
         const unsubIncoming = onSnapshot(incomingQuery, (snapshot) => {
-            const offers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as TradeOffer));
+            const offers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as TradeOffer))
+                .sort((a, b) => b.createdAt?.toDate() - a.createdAt?.toDate());
             setIncomingOffers(offers);
+        }, (error) => {
+            console.error("Error fetching incoming trades:", error);
         });
 
         // Outgoing offers
-        const outgoingQuery = query(collection(firestore, 'trades'), where('offerorId', '==', user.uid), orderBy('createdAt', 'desc'));
+        const outgoingQuery = query(collection(firestore, 'trades'), where('offerorId', '==', user.uid));
         const unsubOutgoing = onSnapshot(outgoingQuery, (snapshot) => {
-            const offers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as TradeOffer));
+            const offers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as TradeOffer))
+                .sort((a, b) => b.createdAt?.toDate() - a.createdAt?.toDate());
             setOutgoingOffers(offers);
+        }, (error) => {
+            console.error("Error fetching outgoing trades:", error);
         });
 
         return () => {
@@ -266,7 +272,7 @@ export default function TradePage() {
                                     offer.status === 'accepted' ? 'secondary' : 'destructive'
                                 }>{offer.status}</Badge>
                             </CardTitle>
-                             <CardDescription>{new Date(offer.createdAt?.toDate()).toLocaleString()}</CardDescription>
+                             <CardDescription>{offer.createdAt?.toDate ? new Date(offer.createdAt.toDate()).toLocaleString() : '日付不明'}</CardDescription>
                         </CardHeader>
                         <CardContent className="grid grid-cols-3 items-center gap-4">
                             {/* Offered Cards */}
@@ -390,3 +396,5 @@ export default function TradePage() {
         </main>
     )
 }
+
+    
