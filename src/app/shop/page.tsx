@@ -10,13 +10,14 @@ import { Coins, CheckCircle2 } from 'lucide-react';
 import { shopItems, ShopItem } from '@/lib/shop-items';
 import Image from 'next/image';
 
-type ItemType = 'frames' | 'backs';
+type ItemType = 'frames' | 'backs' | 'artifacts';
 
 export default function ShopPage() {
     const { currency, spendCurrency } = useCurrency();
     const { toast } = useToast();
     const [purchasedFrames, setPurchasedFrames] = useState<string[]>([]);
     const [purchasedBacks, setPurchasedBacks] = useState<string[]>([]);
+    const [purchasedArtifacts, setPurchasedArtifacts] = useState<string[]>([]);
     const [isClient, setIsClient] = useState(false);
 
     useEffect(() => {
@@ -24,8 +25,10 @@ export default function ShopPage() {
         try {
             const savedFrames = JSON.parse(localStorage.getItem('purchasedCardFrames') || '[]');
             const savedBacks = JSON.parse(localStorage.getItem('purchasedCardBacks') || '[]');
+            const savedArtifacts = JSON.parse(localStorage.getItem('purchasedArtifacts') || '[]');
             setPurchasedFrames(savedFrames);
             setPurchasedBacks(savedBacks);
+            setPurchasedArtifacts(savedArtifacts);
         } catch (error) {
             console.error("Failed to load purchased items from localStorage", error);
         }
@@ -55,10 +58,14 @@ export default function ShopPage() {
             purchasedItems = [...purchasedFrames, item.id];
             setPurchasedFrames(purchasedItems);
             storageKey = 'purchasedCardFrames';
-        } else {
+        } else if (type === 'backs') {
             purchasedItems = [...purchasedBacks, item.id];
             setPurchasedBacks(purchasedItems);
             storageKey = 'purchasedCardBacks';
+        } else { // artifacts
+            purchasedItems = [...purchasedArtifacts, item.id];
+            setPurchasedArtifacts(purchasedItems);
+            storageKey = 'purchasedArtifacts';
         }
 
         try {
@@ -85,13 +92,14 @@ export default function ShopPage() {
                     {items.map(item => {
                         const isPurchased = purchasedIds.includes(item.id);
                         return (
-                            <Card key={item.id}>
+                            <Card key={item.id} className="flex flex-col">
                                 <CardHeader>
                                     <CardTitle>{item.name}</CardTitle>
+                                    {item.description && <CardDescription>{item.description}</CardDescription>}
                                 </CardHeader>
-                                <CardContent>
-                                    <div className="bg-muted rounded-md aspect-[3/4] flex items-center justify-center p-4">
-                                        <Image src={item.url} alt={item.name} width={200} height={280} className="w-full h-auto rounded-lg shadow-md" unoptimized />
+                                <CardContent className="flex-grow">
+                                    <div className="bg-muted rounded-md aspect-square flex items-center justify-center p-4">
+                                        <Image src={item.url} alt={item.name} width={200} height={200} className="w-full h-auto rounded-lg" unoptimized />
                                     </div>
                                 </CardContent>
                                 <CardFooter className="flex flex-col items-stretch gap-2">
@@ -125,10 +133,13 @@ export default function ShopPage() {
         <main>
             <div className="mb-8">
                 <h1 className="text-3xl font-bold">ショップ</h1>
-                <p className="text-muted-foreground">Gコインを使って、カードの新しい見た目を手に入れよう！</p>
+                <p className="text-muted-foreground">Gコインを使って、カードの新しい見た目や便利なアイテムを手に入れよう！</p>
             </div>
+            {renderShopSection('アーティファクト', shopItems.artifacts, purchasedArtifacts, 'artifacts')}
             {renderShopSection('カードフレーム', shopItems.frames, purchasedFrames, 'frames')}
             {renderShopSection('カード裏面デザイン', shopItems.backs, purchasedBacks, 'backs')}
         </main>
     );
 }
+
+    

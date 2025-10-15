@@ -2,6 +2,7 @@
 export interface ShopItem {
     id: string;
     name: string;
+    description?: string;
     url: string;
     price: number;
 }
@@ -9,6 +10,7 @@ export interface ShopItem {
 interface ShopItems {
     frames: ShopItem[];
     backs: ShopItem[];
+    artifacts: ShopItem[];
 }
 
 export const shopItems: ShopItems = {
@@ -88,4 +90,22 @@ export const shopItems: ShopItems = {
             price: 500,
         },
     ],
+    artifacts: [
+        {
+            id: 'artifact-hp-boost',
+            name: '生命のアミュレット',
+            description: 'AI対戦開始時のHPが+5される。(合計25)',
+            url: 'https://storage.googleapis.com/card-crafter-studio.appspot.com/artifacts/amulet.png',
+            price: 5000,
+        },
+        {
+            id: 'artifact-hand-boost',
+            name: 'マナの水晶',
+            description: 'AI対戦開始時の手札が+1枚される。(合計6枚)',
+            url: 'https://storage.googleapis.com/card-crafter-studio.appspot.com/artifacts/crystal.png',
+            price: 7500,
+        },
+    ]
 };
+
+    

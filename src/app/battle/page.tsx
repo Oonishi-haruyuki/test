@@ -14,8 +14,8 @@ import { cn } from '@/lib/utils';
 import Image from 'next/image';
 import { useCurrency } from '@/hooks/use-currency';
 import { useStats } from '@/hooks/use-stats';
+import { shopItems } from '@/lib/shop-items';
 
-const HAND_LIMIT = 5;
 const DECK_SIZE = 30;
 const MAX_MANA = 10;
 const BOARD_LIMIT = 5;
@@ -154,6 +154,7 @@ export default function BattlePage() {
     const [deckChoice, setDeckChoice] = useState<string | null>(null);
     const [savedDecks, setSavedDecks] = useState<Deck[]>([]);
     const [cardBackImage, setCardBackImage] = useState<string | null>(null);
+    const [purchasedArtifacts, setPurchasedArtifacts] = useState<string[]>([]);
 
     // Game State
     const [playerDeck, setPlayerDeck] = useState<CardData[]>([]);
@@ -188,13 +189,19 @@ export default function BattlePage() {
         const pDeck = shuffleDeck([...playerDeckData]);
         const oDeck = shuffleDeck([...opponentDeckData]);
 
-        const initialPlayerHand = pDeck.splice(0, HAND_LIMIT);
-        const initialOpponentHand = oDeck.splice(0, HAND_LIMIT);
+        // Artifact Effects
+        const hasHpBoost = purchasedArtifacts.includes('artifact-hp-boost');
+        const hasHandBoost = purchasedArtifacts.includes('artifact-hand-boost');
+        const initialPlayerHealth = hasHpBoost ? 25 : 20;
+        const initialHandSize = hasHandBoost ? 6 : 5;
+
+        const initialPlayerHand = pDeck.splice(0, initialHandSize);
+        const initialOpponentHand = oDeck.splice(0, 5);
 
         setPlayerDeck(pDeck);
         setPlayerHand(initialPlayerHand);
         setPlayerBoard([]);
-        setPlayerHealth(20);
+        setPlayerHealth(initialPlayerHealth);
         setPlayerMana(1);
         setPlayerMaxMana(1);
 
@@ -213,6 +220,9 @@ export default function BattlePage() {
         setGameOver('');
         const firstTurnMessage = playerGoesFirst ? 'あなたが先攻です。' : '相手が先攻です。';
         setGameLog([`--- ターン 1: ${playerGoesFirst ? 'あなた' : '相手'}のターン ---`, firstTurnMessage, 'ゲーム開始！']);
+        
+        if (hasHpBoost) addToLog('生命のアミュレットの効果で、あなたの初期HPが25になった！');
+        if (hasHandBoost) addToLog('マナの水晶の効果で、あなたの初期手札が6枚になった！');
 
         if (!playerGoesFirst) {
             setTimeout(aiTurn, 1000);
@@ -312,6 +322,9 @@ export default function BattlePage() {
             if (savedCardBack) {
                 setCardBackImage(savedCardBack);
             }
+            const savedArtifacts = JSON.parse(localStorage.getItem('purchasedArtifacts') || '[]');
+            setPurchasedArtifacts(savedArtifacts);
+
         } catch (error) {
             console.error("Failed to check for saved data", error);
         }
@@ -341,7 +354,7 @@ export default function BattlePage() {
             const drawnCard = deck.shift();
             setPlayerDeck(deck);
             if (drawnCard) {
-                if (playerHand.length < HAND_LIMIT) {
+                if (playerHand.length < 6) { // Hand limit can be 6 due to artifact
                     setPlayerHand(prev => [...prev, drawnCard]);
                     addToLog('あなたはカードを1枚引いた。');
                 } else {
@@ -357,7 +370,7 @@ export default function BattlePage() {
             const drawnCard = deck.shift();
             setOpponentDeck(deck);
             if (drawnCard) {
-                if (opponentHand.length < HAND_LIMIT) {
+                if (opponentHand.length < 5) {
                     setOpponentHand(prev => [...prev, drawnCard]);
                     addToLog('相手はカードを1枚引いた。');
                 } else {
