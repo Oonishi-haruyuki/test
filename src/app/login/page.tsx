@@ -147,9 +147,11 @@ export default function LoginPage() {
   };
 
   const handleGoogleSignIn = async () => {
+    const provider = new GoogleAuthProvider();
     setIsLoading(true);
+    
     try {
-      const provider = new GoogleAuthProvider();
+      // Immediately attempt the popup sign-in to avoid being blocked.
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
 
@@ -170,11 +172,15 @@ export default function LoginPage() {
       router.push('/mypage');
     } catch (error: any) {
       console.error('Google Sign-In failed:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Googleログインに失敗しました。',
-        description: '時間をおいて再度お試しください。',
-      });
+      if (error.code !== 'auth/popup-closed-by-user') {
+          toast({
+            variant: 'destructive',
+            title: 'Googleログインに失敗しました。',
+            description: error.code === 'auth/popup-blocked' 
+                ? 'ポップアップがブロックされました。ブラウザの設定を確認してください。'
+                : '時間をおいて再度お試しください。',
+          });
+      }
     } finally {
       setIsLoading(false);
     }
@@ -326,3 +332,5 @@ export default function LoginPage() {
     </div>
   );
 }
+
+    
