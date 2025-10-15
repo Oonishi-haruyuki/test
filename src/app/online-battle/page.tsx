@@ -21,6 +21,7 @@ import {
   orderBy,
   limit,
 } from 'firebase/firestore';
+import { signInAnonymously } from 'firebase/auth';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Loader2, Swords, User, Users } from 'lucide-react';
@@ -52,7 +53,7 @@ interface GameState {
 
 function GameLobby() {
   const firestore = useFirestore();
-  const { user, loading: userLoading } = useUser();
+  const { user, isUserLoading: userLoading } = useUser();
   const [isCreating, setIsCreating] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
 
@@ -274,7 +275,7 @@ function GameComponent({ gameId }: { gameId: string }) {
 }
 
 export default function OnlineBattlePage() {
-  const { user, loading: userLoading } = useUser();
+  const { user, isUserLoading: userLoading } = useUser();
   const auth = useAuth();
   const firestore = useFirestore();
   const [activeGameId, setActiveGameId] = useState<string | null>(null);
@@ -328,7 +329,7 @@ export default function OnlineBattlePage() {
   return (
     <div>
       {activeGameId ? (
-        <GameComponent gameId={activeGameId} />
+        <GameComponent gameId={activeGameMId} />
       ) : (
         <GameLobby />
       )}
