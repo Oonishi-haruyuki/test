@@ -5,7 +5,12 @@
       "title": "User Profile",
       "description": "Represents a user's public profile information.",
       "type": "object",
-      "properties": {}
+      "properties": {
+        "loginId": {
+          "type": "string",
+          "description": "The user's unique login identifier."
+        }
+      }
     },
     "Card": {
       "title": "Card",

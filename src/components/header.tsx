@@ -39,6 +39,12 @@ export function AppHeader() {
   const handleLogout = async () => {
     await signOut(auth);
   };
+  
+  const getDisplayName = () => {
+    if (profile?.loginId) return profile.loginId;
+    if (user?.email) return user.email.split('@')[0];
+    return 'ゲスト';
+  }
 
   const UserMenu = () => {
     if (isUserLoading) {
@@ -58,9 +64,9 @@ export function AppHeader() {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-10 w-10 rounded-full">
                 <Avatar className="h-10 w-10">
-                  <AvatarImage src={user.photoURL || undefined} alt={profile?.name || user.email || ''} />
+                  <AvatarImage src={user.photoURL || undefined} alt={getDisplayName()} />
                   <AvatarFallback>
-                    {profile?.name ? profile.name.charAt(0).toUpperCase() : <UserIcon />}
+                    {getDisplayName().charAt(0).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
               </Button>
@@ -68,10 +74,12 @@ export function AppHeader() {
             <DropdownMenuContent className="w-56" align="end" forceMount>
               <DropdownMenuLabel className="font-normal">
                 <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium leading-none">{profile?.name || user.email}</p>
-                  <p className="text-xs leading-none text-muted-foreground">
-                    {user.email}
-                  </p>
+                  <p className="text-sm font-medium leading-none">{getDisplayName()}</p>
+                  {user.email && !user.email.endsWith('cardcrafter.app') && (
+                     <p className="text-xs leading-none text-muted-foreground">
+                        {user.email}
+                     </p>
+                  )}
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />

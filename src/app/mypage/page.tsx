@@ -47,6 +47,12 @@ export default function MyPage() {
     return ids.size;
   };
 
+  const getDisplayName = () => {
+    if (profile?.loginId) return profile.loginId;
+    if (user?.email) return user.email.split('@')[0];
+    return 'ゲスト';
+  }
+
   const uniqueCardCount = getUniqueCardCount(collection);
 
   const handleTitleChange = (title: string) => {
@@ -147,7 +153,7 @@ export default function MyPage() {
   return (
     <main>
         <div className="mb-8">
-            <h1 className="text-3xl font-bold">{profile?.name || user.email}のマイページ</h1>
+            <h1 className="text-3xl font-bold">{getDisplayName()}のマイページ</h1>
             <p className="text-muted-foreground">あなたの活動記録です。</p>
         </div>
 

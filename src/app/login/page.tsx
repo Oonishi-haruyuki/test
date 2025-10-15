@@ -11,7 +11,7 @@ import {
   GoogleAuthProvider,
   signInWithPopup,
 } from 'firebase/auth';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -23,7 +23,6 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  CardFooter,
 } from '@/components/ui/card';
 import {
   Tabs,
@@ -44,13 +43,15 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 
+const DUMMY_EMAIL_DOMAIN = 'cardcrafter.app';
+
 const loginSchema = z.object({
-  email: z.string().email({ message: '無効なメールアドレスです。' }),
+  loginId: z.string().min(1, { message: 'ログインIDを入力してください。' }),
   password: z.string().min(1, { message: 'パスワードを入力してください。' }),
 });
 
 const signUpSchema = z.object({
-  email: z.string().email({ message: '無効なメールアドレスです。' }),
+    loginId: z.string().min(3, { message: 'ログインIDは3文字以上で入力してください。' }).regex(/^[a-zA-Z0-9_]+$/, { message: 'ログインIDは半角英数字とアンダースコア(_)のみ使用できます。'}),
   password: z
     .string()
     .min(6, { message: 'パスワードは6文字以上で入力してください。' }),
@@ -66,18 +67,26 @@ export default function LoginPage() {
 
   const loginForm = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
-    defaultValues: { email: '', password: '' },
+    defaultValues: { loginId: '', password: '' },
   });
 
   const signUpForm = useForm<z.infer<typeof signUpSchema>>({
     resolver: zodResolver(signUpSchema),
-    defaultValues: { email: '', password: '' },
+    defaultValues: { loginId: '', password: '' },
   });
+  
+  const isLoginIdTaken = async (loginId: string): Promise<boolean> => {
+    if (!firestore) return false;
+    const q = query(collection(firestore, 'users'), where('loginId', '==', loginId));
+    const querySnapshot = await getDocs(q);
+    return !querySnapshot.empty;
+  }
 
   const handleLogin = async (values: z.infer<typeof loginSchema>) => {
     setIsLoading(true);
     try {
-      await signInWithEmailAndPassword(auth, values.email, values.password);
+      const email = `${values.loginId}@${DUMMY_EMAIL_DOMAIN}`;
+      await signInWithEmailAndPassword(auth, email, values.password);
       toast({ title: 'ログインしました。' });
       router.push('/mypage');
     } catch (error: any) {
@@ -85,7 +94,7 @@ export default function LoginPage() {
       toast({
         variant: 'destructive',
         title: 'ログインに失敗しました。',
-        description: 'メールアドレスまたはパスワードが正しくありません。',
+        description: 'ログインIDまたはパスワードが正しくありません。',
       });
     } finally {
       setIsLoading(false);
@@ -95,30 +104,43 @@ export default function LoginPage() {
   const handleSignUp = async (values: z.infer<typeof signUpSchema>) => {
     setIsLoading(true);
     try {
+        const idTaken = await isLoginIdTaken(values.loginId);
+        if (idTaken) {
+            toast({
+                variant: 'destructive',
+                title: '登録に失敗しました。',
+                description: 'このログインIDは既に使用されています。',
+              });
+              setIsLoading(false);
+              return;
+        }
+
+      const email = `${values.loginId}@${DUMMY_EMAIL_DOMAIN}`;
       const userCredential = await createUserWithEmailAndPassword(
         auth,
-        values.email,
+        email,
         values.password
       );
       const user = userCredential.user;
 
       if (firestore) {
-        await setDoc(doc(firestore, 'users', user.uid), {});
+        await setDoc(doc(firestore, 'users', user.uid), {
+            loginId: values.loginId,
+        });
       }
 
       toast({ title: 'アカウントを登録しました。' });
       router.push('/mypage');
     } catch (error: any) {
-      console.error('Sign up failed:', error);
-      let description = '時間をおいて再度お試しください。';
-      if (error.code === AuthErrorCodes.EMAIL_EXISTS) {
-        description = 'このメールアドレスは既に使用されています。';
-      }
-      toast({
-        variant: 'destructive',
-        title: '登録に失敗しました。',
-        description,
-      });
+        console.error('Sign up failed:', error);
+        let description = '時間をおいて再度お試しください。';
+        // Note: Firebase will return 'auth/email-already-in-use' but we show a generic message
+        // because the user interacts with loginId, not email. The check above handles the user-facing error.
+        toast({
+            variant: 'destructive',
+            title: '登録に失敗しました。',
+            description,
+        });
     } finally {
       setIsLoading(false);
     }
@@ -135,8 +157,11 @@ export default function LoginPage() {
         const userDocRef = doc(firestore, 'users', user.uid);
         const userDoc = await getDoc(userDocRef);
         if (!userDoc.exists()) {
+          // For Google users, we might use their email prefix as a potential loginId
+          // or prompt them to create one later. For now, let's store the display name.
           await setDoc(userDocRef, {
-            name: user.displayName || '',
+            // We don't set a loginId for Google users here to avoid conflicts.
+            // They are identified by their unique Google UID.
           });
         }
       }
@@ -176,7 +201,7 @@ export default function LoginPage() {
             <CardHeader>
               <CardTitle>ログイン</CardTitle>
               <CardDescription>
-                アカウント情報を入力してログインしてください。
+                ログインIDとパスワードを入力してください。
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -187,14 +212,13 @@ export default function LoginPage() {
                 >
                   <FormField
                     control={loginForm.control}
-                    name="email"
+                    name="loginId"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>メールアドレス</FormLabel>
+                        <FormLabel>ログインID</FormLabel>
                         <FormControl>
                           <Input
-                            type="email"
-                            placeholder="mail@example.com"
+                            placeholder="your_login_id"
                             {...field}
                           />
                         </FormControl>
@@ -251,14 +275,13 @@ export default function LoginPage() {
                 >
                   <FormField
                     control={signUpForm.control}
-                    name="email"
+                    name="loginId"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>メールアドレス</FormLabel>
+                        <FormLabel>ログインID</FormLabel>
                         <FormControl>
                           <Input
-                            type="email"
-                            placeholder="mail@example.com"
+                            placeholder="your_login_id"
                             {...field}
                           />
                         </FormControl>
