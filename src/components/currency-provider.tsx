@@ -4,6 +4,7 @@
 import React, { createContext, useState, useEffect, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { Coins } from 'lucide-react';
+import { useProfile } from '@/hooks/use-profile';
 
 interface CurrencyContextType {
   currency: number;
@@ -14,34 +15,36 @@ interface CurrencyContextType {
 
 export const CurrencyContext = createContext<CurrencyContextType | null>(null);
 
-const CURRENCY_STORAGE_KEY = 'card-crafter-currency';
-const LAST_LOGIN_DATE_KEY = 'card-crafter-last-login';
 const INITIAL_CURRENCY = 500;
 const LOGIN_BONUS = 200;
 
 export function CurrencyProvider({ children }: { children: React.ReactNode }) {
+  const { activeProfile } = useProfile();
   const [currency, setCurrency] = useState<number>(INITIAL_CURRENCY);
   const [isInitialized, setIsInitialized] = useState(false);
   const { toast } = useToast();
 
+  const getCurrencyKey = useCallback(() => `${activeProfile}-card-crafter-currency`, [activeProfile]);
+  const getLastLoginKey = useCallback(() => `${activeProfile}-card-crafter-last-login`, [activeProfile]);
+
   useEffect(() => {
+    if (!activeProfile) return;
+
     try {
-      const savedCurrency = localStorage.getItem(CURRENCY_STORAGE_KEY);
-      if (savedCurrency !== null) {
-        setCurrency(JSON.parse(savedCurrency));
-      } else {
-        localStorage.setItem(CURRENCY_STORAGE_KEY, JSON.stringify(INITIAL_CURRENCY));
-      }
+      const savedCurrency = localStorage.getItem(getCurrencyKey());
+      const initialValue = savedCurrency !== null ? JSON.parse(savedCurrency) : INITIAL_CURRENCY;
+      setCurrency(initialValue);
 
       // --- Login Bonus Logic ---
-      const lastLoginDate = localStorage.getItem(LAST_LOGIN_DATE_KEY);
-      const today = new Date().toDateString(); // "Mon Jul 29 2024"
+      const lastLoginDate = localStorage.getItem(getLastLoginKey());
+      const today = new Date().toDateString();
 
       if (lastLoginDate !== today) {
-        setCurrency(prev => {
-            const newCurrency = prev + LOGIN_BONUS;
-            localStorage.setItem(CURRENCY_STORAGE_KEY, JSON.stringify(newCurrency));
-            localStorage.setItem(LAST_LOGIN_DATE_KEY, today);
+        const newCurrency = initialValue + LOGIN_BONUS;
+        setCurrency(newCurrency);
+        localStorage.setItem(getCurrencyKey(), JSON.stringify(newCurrency));
+        localStorage.setItem(getLastLoginKey(), today);
+        if (isInitialized) { // Avoid toast on initial load for the very first time
             toast({
                 title: 'ログインボーナス！',
                 description: (
@@ -51,30 +54,28 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
                     </div>
                 )
             });
-            return newCurrency;
-        });
+        }
       }
       // --- End Login Bonus Logic ---
 
     } catch (error) {
       console.error("Failed to process currency/login bonus from localStorage", error);
     }
-    setIsInitialized(true);
-  }, [toast]);
+    if (!isInitialized) setIsInitialized(true);
+  }, [activeProfile, toast, getCurrencyKey, getLastLoginKey, isInitialized]);
 
   useEffect(() => {
-    if (isInitialized) {
+    if (isInitialized && activeProfile) {
         try {
-            // Avoid overwriting the login bonus update if it happened in the same render cycle
-            const currentStoredCurrency = localStorage.getItem(CURRENCY_STORAGE_KEY);
+            const currentStoredCurrency = localStorage.getItem(getCurrencyKey());
             if (currentStoredCurrency !== JSON.stringify(currency)) {
-                 localStorage.setItem(CURRENCY_STORAGE_KEY, JSON.stringify(currency));
+                 localStorage.setItem(getCurrencyKey(), JSON.stringify(currency));
             }
         } catch (error) {
             console.error("Failed to save currency to localStorage", error);
         }
     }
-  }, [currency, isInitialized]);
+  }, [currency, isInitialized, activeProfile, getCurrencyKey]);
 
   const addCurrency = useCallback((amount: number) => {
     if (amount > 0) {

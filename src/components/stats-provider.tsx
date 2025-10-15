@@ -2,6 +2,7 @@
 'use client';
 
 import React, { createContext, useState, useEffect, useCallback } from 'react';
+import { useProfile } from '@/hooks/use-profile';
 
 interface StatsContextType {
   wins: number;
@@ -12,55 +13,50 @@ interface StatsContextType {
 
 export const StatsContext = createContext<StatsContextType | null>(null);
 
-const WINS_STORAGE_KEY = 'card-crafter-wins';
-const LOSSES_STORAGE_KEY = 'card-crafter-losses';
-
 export function StatsProvider({ children }: { children: React.ReactNode }) {
+  const { activeProfile } = useProfile();
   const [wins, setWins] = useState<number>(0);
   const [losses, setLosses] = useState<number>(0);
   const [isInitialized, setIsInitialized] = useState(false);
 
+  const getWinsKey = useCallback(() => `${activeProfile}-card-crafter-wins`, [activeProfile]);
+  const getLossesKey = useCallback(() => `${activeProfile}-card-crafter-losses`, [activeProfile]);
+
+
   useEffect(() => {
+    if (!activeProfile) return;
     try {
-      const savedWins = localStorage.getItem(WINS_STORAGE_KEY);
-      const savedLosses = localStorage.getItem(LOSSES_STORAGE_KEY);
+      const savedWins = localStorage.getItem(getWinsKey());
+      const savedLosses = localStorage.getItem(getLossesKey());
 
-      if (savedWins !== null) {
-        setWins(JSON.parse(savedWins));
-      } else {
-        localStorage.setItem(WINS_STORAGE_KEY, JSON.stringify(0));
-      }
+      setWins(savedWins !== null ? JSON.parse(savedWins) : 0);
+      setLosses(savedLosses !== null ? JSON.parse(savedLosses) : 0);
 
-      if (savedLosses !== null) {
-        setLosses(JSON.parse(savedLosses));
-      } else {
-        localStorage.setItem(LOSSES_STORAGE_KEY, JSON.stringify(0));
-      }
     } catch (error) {
       console.error("Failed to load stats from localStorage", error);
     }
-    setIsInitialized(true);
-  }, []);
+    if (!isInitialized) setIsInitialized(true);
+  }, [activeProfile, getWinsKey, getLossesKey, isInitialized]);
 
   useEffect(() => {
-    if (isInitialized) {
+    if (isInitialized && activeProfile) {
         try {
-            localStorage.setItem(WINS_STORAGE_KEY, JSON.stringify(wins));
+            localStorage.setItem(getWinsKey(), JSON.stringify(wins));
         } catch (error) {
             console.error("Failed to save wins to localStorage", error);
         }
     }
-  }, [wins, isInitialized]);
+  }, [wins, isInitialized, activeProfile, getWinsKey]);
   
   useEffect(() => {
-    if (isInitialized) {
+    if (isInitialized && activeProfile) {
         try {
-            localStorage.setItem(LOSSES_STORAGE_KEY, JSON.stringify(losses));
+            localStorage.setItem(getLossesKey(), JSON.stringify(losses));
         } catch (error) {
             console.error("Failed to save losses to localStorage", error);
         }
     }
-  }, [losses, isInitialized]);
+  }, [losses, isInitialized, activeProfile, getLossesKey]);
 
   const addWin = useCallback(() => {
       setWins(prev => prev + 1);
@@ -84,5 +80,3 @@ export function StatsProvider({ children }: { children: React.ReactNode }) {
     </StatsContext.Provider>
   );
 }
-
-    

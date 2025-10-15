@@ -4,8 +4,8 @@ import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { CurrencyProvider } from "@/components/currency-provider";
 import { StatsProvider } from "@/components/stats-provider";
-import { FirebaseClientProvider } from "@/firebase";
 import { AppHeader } from "@/components/header";
+import { ProfileProvider } from "@/hooks/use-profile";
 
 export const metadata: Metadata = {
   title: "カードクラフター",
@@ -22,7 +22,7 @@ export default function RootLayout({
       <head>
       </head>
       <body className="antialiased">
-        <FirebaseClientProvider>
+        <ProfileProvider>
           <StatsProvider>
             <CurrencyProvider>
               <div className="min-h-screen bg-background text-foreground">
@@ -34,7 +34,7 @@ export default function RootLayout({
               <Toaster />
             </CurrencyProvider>
           </StatsProvider>
-        </FirebaseClientProvider>
+        </ProfileProvider>
       </body>
     </html>
   );
