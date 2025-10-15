@@ -136,7 +136,6 @@ export default function MyPage() {
 
     const onLoginSubmit: SubmitHandler<LoginSchema> = async (data) => {
         try {
-            // Try to sign in. If it fails, try to sign up.
             await loginWithId(data.loginId, data.password);
             toast({ title: 'ログインしました。' });
         } catch (error: any) {
@@ -289,7 +288,7 @@ export default function MyPage() {
             </Card>
 
             <div className="mb-8">
-                <h1 className="text-3xl font-bold">{profile?.loginId || user.email}のマイページ</h1>
+                <h1 className="text-3xl font-bold">{(profile?.loginId || user.email) ?? 'ようこそ'}のマイページ</h1>
                 <p className="text-muted-foreground">あなたのアクティビティと実績</p>
             </div>
 

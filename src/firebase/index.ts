@@ -1,38 +1,54 @@
 
-'use client';
-
+import { initializeApp, getApps, getApp, type FirebaseApp } from 'firebase/app';
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, type Auth } from 'firebase/auth';
+import { getFirestore, doc, setDoc, getDoc, type Firestore } from 'firebase/firestore';
 import { firebaseConfig } from '@/firebase/config';
-import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
-// Removed Auth and Firestore imports as they are no longer directly used in the simplified version
 
 // IMPORTANT: DO NOT MODIFY THIS FUNCTION
-export function initializeFirebase() {
-  if (!getApps().length) {
-    // This is a placeholder for Firebase initialization.
-    // In a real scenario, you'd use Firebase services.
-    // For this simplified version, we just create a dummy app object.
-    try {
-        return { firebaseApp: initializeApp(firebaseConfig) };
-    } catch (e) {
-        return { firebaseApp: getApp() };
-    }
-  }
-  return { firebaseApp: getApp() };
+export function initializeFirebase(): { firebaseApp: FirebaseApp, auth: Auth, firestore: Firestore } {
+  const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+  const auth = getAuth(app);
+  const firestore = getFirestore(app);
+  return { firebaseApp: app, auth, firestore };
 }
 
-export function getSdks(firebaseApp: FirebaseApp) {
-  // Returning null for auth and firestore as they are not used
-  return {
-    firebaseApp,
-    auth: null,
-    firestore: null
-  };
-}
+const { auth, firestore } = initializeFirebase();
+
+// --- Authentication Functions ---
+
+export const loginWithId = async (loginId: string, password: string): Promise<void> => {
+    const email = `${loginId}@cardcrafter.app`;
+    await signInWithEmailAndPassword(auth, email, password);
+};
+
+export const signUpWithId = async (loginId: string, password: string): Promise<void> => {
+    const userCredential = await createUserWithEmailAndPassword(auth, `${loginId}@cardcrafter.app`, password);
+    const user = userCredential.user;
+    if (user) {
+        const userDocRef = doc(firestore, 'users', user.uid);
+        await setDoc(userDocRef, { loginId: loginId });
+    }
+};
+
+export const loginWithGoogle = async (): Promise<void> => {
+    const provider = new GoogleAuthProvider();
+    try {
+        const result = await signInWithPopup(auth, provider);
+        const user = result.user;
+        const userDocRef = doc(firestore, 'users', user.uid);
+        const userDoc = await getDoc(userDocRef);
+        if (!userDoc.exists()) {
+            await setDoc(userDocRef, { loginId: user.email });
+        }
+    } catch (error: any) {
+        if (error.code === 'auth/popup-blocked') {
+            alert('ポップアップがブロックされました。ブラウザの設定でポップアップを許可してください。');
+        }
+        console.error("Google sign-in error", error);
+        throw error;
+    }
+};
+
 
 export * from './provider';
 export * from './client-provider';
-
-// Explicitly not exporting auth and firestore hooks
-// export * from './firestore/use-collection';
-// export * from './firestore/use-doc';
-// export { useUser } from './auth/use-user';
