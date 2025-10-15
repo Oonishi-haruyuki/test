@@ -11,6 +11,7 @@ import { generateGachaPull } from '@/ai/flows/generate-gacha-pull';
 import { Loader2, Save, Wand2, Coins } from 'lucide-react';
 import { useCurrency } from '@/hooks/use-currency';
 import { useMissions } from '@/hooks/use-missions';
+import Image from 'next/image';
 
 const GACHA_COST_SINGLE = 50;
 const GACHA_COST_MULTI = 500;
@@ -23,9 +24,14 @@ export default function GachaPage() {
   const { currency, spendCurrency } = useCurrency();
   const { updateMissionProgress } = useMissions();
   const [isClient, setIsClient] = useState(false);
+  const [cardBackImage, setCardBackImage] = useState<string | null>(null);
 
   useEffect(() => {
     setIsClient(true);
+    const savedCardBack = localStorage.getItem('cardBackImage');
+    if (savedCardBack) {
+        setCardBackImage(savedCardBack);
+    }
   }, []);
 
   const handlePullGacha = async (pullCount: number) => {
@@ -98,6 +104,17 @@ export default function GachaPage() {
       });
     }
   };
+  
+  const CardBack = () => (
+    <div className="w-full h-full bg-slate-800 rounded-2xl overflow-hidden shadow-2xl border-8 border-slate-700">
+        {cardBackImage ? (
+            <Image src={cardBackImage} alt="Card Back" width={400} height={560} className="w-full h-full object-cover" unoptimized />
+        ) : (
+            <div className="w-full h-full flex items-center justify-center text-white font-bold">CARD</div>
+        )}
+    </div>
+);
+
 
   if (!isClient) {
     return null;
@@ -153,9 +170,16 @@ export default function GachaPage() {
                 </Button>
             </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-            {pulledCards.map(card => (
-              <div key={card.id}>
-                <CardPreview {...card} />
+            {pulledCards.map((card, index) => (
+                <div key={card.id} className="[perspective:1000px]">
+                    <div className="relative h-full w-full transition-transform duration-700 [transform-style:preserve-3d]" style={{ animation: `flip 0.8s ${index * 0.1}s 1 ease-in-out forwards` }}>
+                         <div className="absolute [backface-visibility:hidden]">
+                             <CardBack />
+                         </div>
+                         <div className="absolute [transform:rotateY(180deg)] [backface-visibility:hidden]">
+                            <CardPreview {...card} />
+                        </div>
+                    </div>
               </div>
             ))}
           </div>
