@@ -70,6 +70,7 @@ export const CardPreview = React.forwardRef<HTMLDivElement, CardData>(({
         {'bg-stone-200/80': theme === 'fantasy' && frameImageUrl},
         {'bg-slate-900/80': theme === 'sci-fi' && frameImageUrl},
         {'bg-white/80': theme === 'modern' && frameImageUrl},
+        {'bg-transparent': !frameImageUrl },
       )}></div>
       <div className="relative z-10">
       <CardHeader className={cn(
@@ -83,9 +84,11 @@ export const CardPreview = React.forwardRef<HTMLDivElement, CardData>(({
       )}>
         <CardTitle className={cn(
             "text-lg font-bold",
-            {'text-stone-800': theme === 'fantasy'},
-            {'text-slate-100': theme === 'sci-fi'},
-            {'text-slate-900': theme === 'modern'},
+            {'text-stone-800': theme === 'fantasy' && !frameImageUrl},
+            {'text-slate-100': theme === 'sci-fi' && !frameImageUrl},
+            {'text-slate-900': theme === 'modern' && !frameImageUrl},
+            {'text-white drop-shadow-[0_1.2px_1.2px_rgba(0,0,0,0.8)]': frameImageUrl},
+
         )}>
           {name}
         </CardTitle>
@@ -115,15 +118,15 @@ export const CardPreview = React.forwardRef<HTMLDivElement, CardData>(({
         <div className="p-3 space-y-3 text-sm">
           <div className={cn(
             'flex justify-between items-center px-2 py-1 rounded-sm',
-            {'text-stone-800': theme === 'fantasy'},
-            {'text-slate-100': theme === 'sci-fi'},
-            {'text-slate-900': theme === 'modern'},
+            {'text-stone-800': theme === 'fantasy' && !frameImageUrl},
+            {'text-slate-100': theme === 'sci-fi' && !frameImageUrl},
+            {'text-slate-900': theme === 'modern' && !frameImageUrl},
             {
               'bg-stone-300/80': theme === 'fantasy',
               'bg-slate-800/80': theme === 'sci-fi',
               'bg-slate-100/80': theme === 'modern',
             },
-            frameImageUrl && 'bg-black/20'
+            frameImageUrl && 'bg-black/20 text-white'
           )}>
             <p className="font-semibold capitalize">{cardTypeJapanese[cardType]}</p>
             <div className="flex items-center gap-1.5">
@@ -134,15 +137,15 @@ export const CardPreview = React.forwardRef<HTMLDivElement, CardData>(({
 
           <div className={cn(
             'p-3 rounded-md min-h-[70px]',
-            {'text-stone-800': theme === 'fantasy'},
-            {'text-slate-100': theme === 'sci-fi'},
-            {'text-slate-900': theme === 'modern'},
+            {'text-stone-800': theme === 'fantasy' && !frameImageUrl},
+            {'text-slate-100': theme === 'sci-fi' && !frameImageUrl},
+            {'text-slate-900': theme === 'modern' && !frameImageUrl},
             {
               'bg-stone-100/80 border border-stone-300': theme === 'fantasy',
               'bg-slate-800/50 border border-slate-700 text-slate-200': theme === 'sci-fi',
               'bg-slate-50 border border-slate-200': theme === 'modern',
             },
-             frameImageUrl && 'bg-black/20 border-white/20 border'
+             frameImageUrl && 'bg-black/20 border-white/20 border text-white'
           )}>
             <p className="whitespace-pre-wrap">{abilities}</p>
           </div>
@@ -161,9 +164,9 @@ export const CardPreview = React.forwardRef<HTMLDivElement, CardData>(({
               <p className={cn(
                 'italic',
                 {
-                  'text-stone-600': theme === 'fantasy',
-                  'text-slate-400': theme === 'sci-fi',
-                  'text-slate-500': theme === 'modern',
+                  'text-stone-600': theme === 'fantasy' && !frameImageUrl,
+                  'text-slate-400': theme === 'sci-fi' && !frameImageUrl,
+                  'text-slate-500': theme === 'modern' && !frameImageUrl,
                 },
                 frameImageUrl && 'text-white/80'
               )}>

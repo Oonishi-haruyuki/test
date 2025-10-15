@@ -14,7 +14,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Download, Loader2, Save, Wand2, Upload, Sparkles, Coins } from 'lucide-react';
 import type React from 'react';
-import { useState, useTransition, useCallback, useMemo } from 'react';
+import { useState, useTransition, useCallback, useMemo, useEffect } from 'react';
 import { toPng } from 'html-to-image';
 import { useCurrency } from '@/hooks/use-currency';
 import {
@@ -28,10 +28,13 @@ import {
     AlertDialogTitle,
     AlertDialogTrigger,
   } from "@/components/ui/alert-dialog"
+import { shopItems } from '@/lib/shop-items';
+import Image from 'next/image';
+import { cn } from '@/lib/utils';
 
 
 // Type definitions
-export type Theme = 'fantasy' | 'sci-fi' | 'modern';
+export type Theme = 'fantasy' | 'sci-fi' | 'modern' | 'custom';
 export type CardType = 'creature' | 'spell' | 'artifact' | 'land';
 export type Rarity = 'common' | 'uncommon' | 'rare' | 'mythic';
 
@@ -66,6 +69,22 @@ export function CardEditor({ cardData, setCardData, cardPreviewRef }: CardEditor
   const { toast } = useToast();
   const { currency, spendCurrency } = useCurrency();
 
+  const [purchasedFrames, setPurchasedFrames] = useState<string[]>([]);
+  const [purchasedBacks, setPurchasedBacks] = useState<string[]>([]);
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+    try {
+        const savedFrames = JSON.parse(localStorage.getItem('purchasedCardFrames') || '[]');
+        const savedBacks = JSON.parse(localStorage.getItem('purchasedCardBacks') || '[]');
+        setPurchasedFrames(savedFrames);
+        setPurchasedBacks(savedBacks);
+    } catch (e) {
+        console.error("Failed to load purchased items", e);
+    }
+  }, []);
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setCardData(prev => ({ ...prev, [name]: name === 'manaCost' || name === 'attack' || name === 'defense' ? Number(value) : value }));
@@ -76,7 +95,13 @@ export function CardEditor({ cardData, setCardData, cardPreviewRef }: CardEditor
   };
 
   const handleThemeChange = (value: string) => {
-    setCardData(prev => ({ ...prev, theme: value as Theme, frameImageUrl: undefined }));
+    // Check if it's a built-in theme or a custom frame
+    const selectedFrame = shopItems.frames.find(frame => frame.id === value);
+    if (selectedFrame) {
+      setCardData(prev => ({ ...prev, theme: 'custom', frameImageUrl: selectedFrame.url }));
+    } else {
+      setCardData(prev => ({ ...prev, theme: value as Theme, frameImageUrl: undefined }));
+    }
   };
   
   const handleFrameImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -95,6 +120,7 @@ export function CardEditor({ cardData, setCardData, cardPreviewRef }: CardEditor
             const frameImageUrl = event.target?.result as string;
             setCardData(prev => ({
                 ...prev,
+                theme: 'custom',
                 frameImageUrl: frameImageUrl,
             }));
             toast({
@@ -132,35 +158,23 @@ export function CardEditor({ cardData, setCardData, cardPreviewRef }: CardEditor
     }
   };
   
-  const handleCardBackUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-        if (!file.type.startsWith('image/')) {
-            toast({
-                variant: 'destructive',
-                title: '無効なファイルタイプ',
-                description: '画像ファイル（JPEG, PNG, GIFなど）を選択してください。',
-            });
-            return;
-        }
-        const reader = new FileReader();
-        reader.onload = (event) => {
-            const cardBackUrl = event.target?.result as string;
-            try {
-                localStorage.setItem('cardBackImage', cardBackUrl);
-                toast({
-                    title: 'カード裏面の画像が保存されました',
-                });
-            } catch (error) {
-                console.error(error);
-                toast({
-                    variant: 'destructive',
-                    title: '保存に失敗しました',
-                    description: 'カード裏面を保存できませんでした。',
-                });
-            }
-        };
-        reader.readAsDataURL(file);
+  const handleCardBackSelect = (cardBackId: string) => {
+    const cardBack = shopItems.backs.find(b => b.id === cardBackId);
+    if (!cardBack) return;
+
+    try {
+        localStorage.setItem('cardBackImage', cardBack.url);
+        toast({
+            title: 'カード裏面の画像を変更しました',
+            description: `「${cardBack.name}」が設定されました。`,
+        });
+    } catch (error) {
+        console.error(error);
+        toast({
+            variant: 'destructive',
+            title: '保存に失敗しました',
+            description: 'カード裏面を保存できませんでした。',
+        });
     }
 };
 
@@ -306,6 +320,8 @@ export function CardEditor({ cardData, setCardData, cardPreviewRef }: CardEditor
       });
   }, [cardPreviewRef, cardData.name, toast]);
 
+  const availableFrames = shopItems.frames.filter(frame => purchasedFrames.includes(frame.id));
+  const availableBacks = shopItems.backs.filter(back => purchasedBacks.includes(back.id) || back.price === 0);
 
   return (
       <div className="space-y-6">
@@ -434,7 +450,7 @@ export function CardEditor({ cardData, setCardData, cardPreviewRef }: CardEditor
             <CardDescription>カードのビジュアルスタイルを選択またはアップロードします。</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <RadioGroup value={cardData.frameImageUrl ? 'custom' : cardData.theme} onValueChange={handleThemeChange} className="grid grid-cols-3 gap-4">
+            <RadioGroup value={cardData.frameImageUrl ? shopItems.frames.find(f => f.url === cardData.frameImageUrl)?.id : cardData.theme} onValueChange={handleThemeChange} className="grid grid-cols-3 gap-4">
               <div>
                 <RadioGroupItem value="fantasy" id="fantasy" className="peer sr-only" />
                 <Label htmlFor="fantasy" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary">
@@ -453,6 +469,15 @@ export function CardEditor({ cardData, setCardData, cardPreviewRef }: CardEditor
                   モダン
                 </Label>
               </div>
+              {availableFrames.map(frame => (
+                <div key={frame.id}>
+                    <RadioGroupItem value={frame.id} id={frame.id} className="peer sr-only" />
+                    <Label htmlFor={frame.id} className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary">
+                       <Image src={frame.url} alt={frame.name} width={50} height={70} className="w-full h-auto rounded-sm mb-2" />
+                       <span className="text-xs text-center">{frame.name}</span>
+                    </Label>
+                </div>
+              ))}
             </RadioGroup>
             <div className="relative">
                 <div className="absolute inset-0 flex items-center">
@@ -472,15 +497,20 @@ export function CardEditor({ cardData, setCardData, cardPreviewRef }: CardEditor
                 <Input id="frame-image-upload" type="file" className="sr-only" accept="image/*" onChange={handleFrameImageUpload} />
             </Label>
             <Separator />
-            <Label htmlFor="card-back-upload" className="w-full">
-                <Button asChild variant="outline" className="w-full cursor-pointer">
-                    <div>
-                        <Upload className="mr-2" />
-                        カード裏面をアップロード
+            <Label>カード裏面のデザイン</Label>
+            <RadioGroup onValueChange={handleCardBackSelect} className="grid grid-cols-3 gap-4">
+                {isClient && availableBacks.map(back => (
+                    <div key={back.id}>
+                         <RadioGroupItem value={back.id} id={`back-${back.id}`} className="peer sr-only" />
+                         <Label htmlFor={`back-${back.id}`} className={cn("rounded-md border-2 border-muted bg-popover p-2 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary",
+                            localStorage.getItem('cardBackImage') === back.url && 'border-primary'
+                         )}>
+                           <Image src={back.url} alt={back.name} width={100} height={140} className="w-full h-auto rounded-sm" />
+                           <p className="text-xs text-center mt-1">{back.name}</p>
+                        </Label>
                     </div>
-                </Button>
-                <Input id="card-back-upload" type="file" className="sr-only" accept="image/*" onChange={handleCardBackUpload} />
-            </Label>
+                ))}
+            </RadioGroup>
           </CardContent>
         </Card>
 

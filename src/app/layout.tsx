@@ -51,6 +51,9 @@ export default function RootLayout({
                         <Link href="/gacha">ガチャ</Link>
                       </Button>
                       <Button variant="outline" asChild className="ml-4">
+                        <Link href="/shop">ショップ</Link>
+                      </Button>
+                      <Button variant="outline" asChild className="ml-4">
                         <Link href="/deck-builder">デッキ構築</Link>
                       </Button>
                       <Button variant="outline" asChild className="ml-4">
