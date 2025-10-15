@@ -6,7 +6,6 @@ import { User, onAuthStateChanged, Auth } from 'firebase/auth';
 import { doc, onSnapshot, DocumentData, Firestore } from 'firebase/firestore';
 
 interface UserProfile {
-  name?: string;
   // Add other profile fields here
 }
 
@@ -56,18 +55,13 @@ export function useUser(auth: Auth, firestore: Firestore): UserAuthHookResult {
 
   useEffect(() => {
     if (!user) {
-      // No user, no profile to fetch. Set loading to false if not already.
-       if (isUserLoading) {
-           setIsUserLoading(false);
-       }
+      // No user, no profile to fetch. isUserLoading will be handled by auth listener.
+      // If auth listener is done and there's no user, isUserLoading is already false.
       return;
     }
 
-    // We have a user, but we're not loading their profile yet.
-    // Set loading to true unless it's already true from the auth listener.
-    if (!isUserLoading) {
-      setIsUserLoading(true);
-    }
+    // We have a user, start loading their profile.
+    setIsUserLoading(true);
     
     // Listener for user profile changes in Firestore
     const profileRef = doc(firestore, 'users', user.uid);
@@ -90,7 +84,8 @@ export function useUser(auth: Auth, firestore: Firestore): UserAuthHookResult {
     );
     
     return () => unsubscribeProfile();
-  }, [user, firestore, isUserLoading]);
+  }, [user, firestore]);
 
   return { user, profile, isUserLoading, userError };
 }
+
