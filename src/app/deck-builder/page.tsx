@@ -220,7 +220,7 @@ export default function DeckBuilderPage() {
 
   return (
     <main>
-      <div className="flex justify-between items-center mb-4">
+      <div className="flex flex-col md:flex-row justify-between items-center mb-4 gap-4">
         <h1 className="text-3xl font-bold">デッキ構築</h1>
       </div>
       <Card className="mb-8">
@@ -239,7 +239,7 @@ export default function DeckBuilderPage() {
                 </Select>
             </div>
             
-            <div className="flex items-end gap-2 w-full md:w-auto">
+            <div className="flex items-end gap-2 w-full md:w-auto flex-wrap justify-end">
                 <Dialog>
                     <DialogTrigger asChild>
                         <Button variant="outline"><FilePlus className="mr-2" />新規</Button>
@@ -382,5 +382,3 @@ export default function DeckBuilderPage() {
     </main>
   );
 }
-
-    

@@ -295,28 +295,8 @@ export default function MyPage() {
 
     return (
         <main>
-            <Card className="mb-8">
-                <CardHeader>
-                    <CardTitle>アカウント切り替え</CardTitle>
-                    <CardDescription>テストプレイ用のアカウントを切り替えます。データは各アカウントごとに保存されます。</CardDescription>
-                </CardHeader>
-                <CardContent className="flex gap-4">
-                    {(Object.keys(PROFILES) as ProfileId[]).map(profileId => (
-                        <Button
-                            key={profileId}
-                            variant={activeProfile === profileId ? 'default' : 'outline'}
-                            onClick={() => setActiveProfile(profileId)}
-                            className="flex-1"
-                        >
-                            <User className="mr-2" />
-                            {PROFILES[profileId].name}
-                        </Button>
-                    ))}
-                </CardContent>
-            </Card>
-
             <div className="mb-8">
-                <h1 className="text-3xl font-bold">{(profile?.loginId || user.email) ?? 'ようこそ'}のマイページ</h1>
+                <h1 className="text-3xl font-bold truncate">{(profile?.loginId || user.email) ?? 'ようこそ'}のマイページ</h1>
                 <p className="text-muted-foreground">あなたのアクティビティと実績</p>
             </div>
 

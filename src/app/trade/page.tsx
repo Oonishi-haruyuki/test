@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Send, ArrowRightLeft, Check, X, Inbox, CornerUpLeft } from 'lucide-react';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
 import { createTradeOffer, respondToTradeOffer } from '@/lib/trade-actions';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -31,13 +31,13 @@ interface TradeOffer {
 
 
 const OfferCard = ({ card, onRemove, context }: { card: CardData, onRemove?: (cardId: string) => void, context: 'offer' | 'request' }) => (
-    <div className="relative">
-        <p className="text-sm font-semibold truncate">{card.name}</p>
+    <div className="relative border p-2 rounded-md bg-background">
+        <p className="text-sm font-semibold truncate pr-6">{card.name}</p>
         <p className="text-xs text-muted-foreground">{card.cardType} / {card.rarity}</p>
          {onRemove && (
             <Button
                 variant="destructive" size="icon"
-                className="absolute -top-2 -right-2 h-5 w-5"
+                className="absolute top-1 right-1 h-5 w-5"
                 onClick={() => onRemove(card.id!)}
             >
                 <X className="h-3 w-3" />
@@ -84,12 +84,19 @@ export default function TradePage() {
     useEffect(() => {
         if (!user || !firestore) return;
 
+        const sortOffers = (offers: TradeOffer[]) => {
+            return offers.sort((a, b) => {
+                const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : 0;
+                const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : 0;
+                return dateB - dateA;
+            });
+        };
+
         // Incoming offers
         const incomingQuery = query(collection(firestore, 'trades'), where('offereeId', '==', user.uid));
         const unsubIncoming = onSnapshot(incomingQuery, (snapshot) => {
-            const offers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as TradeOffer))
-                .sort((a, b) => b.createdAt?.toDate() - a.createdAt?.toDate());
-            setIncomingOffers(offers);
+            const offers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as TradeOffer));
+            setIncomingOffers(sortOffers(offers));
         }, (error) => {
             console.error("Error fetching incoming trades:", error);
         });
@@ -97,12 +104,12 @@ export default function TradePage() {
         // Outgoing offers
         const outgoingQuery = query(collection(firestore, 'trades'), where('offerorId', '==', user.uid));
         const unsubOutgoing = onSnapshot(outgoingQuery, (snapshot) => {
-            const offers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as TradeOffer))
-                .sort((a, b) => b.createdAt?.toDate() - a.createdAt?.toDate());
-            setOutgoingOffers(offers);
+            const offers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as TradeOffer));
+            setOutgoingOffers(sortOffers(offers));
         }, (error) => {
             console.error("Error fetching outgoing trades:", error);
         });
+
 
         return () => {
             unsubIncoming();
@@ -274,14 +281,14 @@ export default function TradePage() {
                             </CardTitle>
                              <CardDescription>{offer.createdAt?.toDate ? new Date(offer.createdAt.toDate()).toLocaleString() : '日付不明'}</CardDescription>
                         </CardHeader>
-                        <CardContent className="grid grid-cols-3 items-center gap-4">
+                        <CardContent className="grid grid-cols-1 md:grid-cols-3 items-center gap-4">
                             {/* Offered Cards */}
                             <div className="col-span-1 space-y-2">
                                 <h4 className="font-semibold text-sm">{type === 'incoming' ? '相手の提示カード' : 'あなたの提示カード'}</h4>
                                 {offer.offeredCards.map(c => <OfferCard key={c.id} card={c} context="offer" />)}
                             </div>
                             
-                            <ArrowRightLeft className="text-muted-foreground justify-self-center" />
+                            <ArrowRightLeft className="text-muted-foreground justify-self-center hidden md:block" />
 
                             {/* Requested Cards */}
                              <div className="col-span-1 space-y-2">
@@ -339,15 +346,15 @@ export default function TradePage() {
                                 <div className="space-y-4">
                                     <h3 className="font-bold text-lg">あなたのコレクション</h3>
                                     <Card>
+                                        <CardHeader className="p-2 border-b"><h4 className="text-sm font-semibold">提示するカード (最大5枚)</h4></CardHeader>
                                         <CardContent className="p-2 space-y-2 h-40 overflow-y-auto">
                                             {offeredCards.map(c => <OfferCard key={c.id} card={c} context="offer" onRemove={handleRemoveFromOffer}/>)}
                                         </CardContent>
-                                        <CardHeader className="p-2 border-t"><h4 className="text-sm font-semibold">提示するカード (最大5枚)</h4></CardHeader>
                                     </Card>
                                     <ScrollArea className="h-64 border rounded-md">
                                         <div className="p-4 space-y-2">
                                         {myCollection.map(card => (
-                                            <div key={card.id} className="flex items-center justify-between text-sm">
+                                            <div key={card.id} className="flex items-center justify-between text-sm p-1 rounded-md hover:bg-muted">
                                                 <span>{card.name}</span>
                                                 <Button size="sm" variant="outline" onClick={() => handleAddToOffer(card)}>追加</Button>
                                             </div>
@@ -359,16 +366,16 @@ export default function TradePage() {
                                 <div className="space-y-4">
                                      <h3 className="font-bold text-lg">相手のコレクション</h3>
                                       <Card>
+                                        <CardHeader className="p-2 border-b"><h4 className="text-sm font-semibold">要求するカード (最大5枚)</h4></CardHeader>
                                         <CardContent className="p-2 space-y-2 h-40 overflow-y-auto">
                                              {requestedCards.map(c => <OfferCard key={c.id} card={c} context="request" onRemove={handleRemoveFromRequest} />)}
                                         </CardContent>
-                                        <CardHeader className="p-2 border-t"><h4 className="text-sm font-semibold">要求するカード (最大5枚)</h4></CardHeader>
                                     </Card>
                                     <ScrollArea className="h-64 border rounded-md">
                                         <div className="p-4 space-y-2">
                                         {isFetchingCollection ? <Loader2 className="animate-spin mx-auto"/> : offereeCollection.length === 0 ? <p className="text-xs text-muted-foreground text-center">相手を検索してください。</p> : null}
                                         {offereeCollection.map(card => (
-                                            <div key={card.id} className="flex items-center justify-between text-sm">
+                                            <div key={card.id} className="flex items-center justify-between text-sm p-1 rounded-md hover:bg-muted">
                                                 <span>{card.name}</span>
                                                 <Button size="sm" variant="outline" onClick={() => handleAddToRequest(card)}>要求</Button>
                                             </div>
@@ -396,5 +403,3 @@ export default function TradePage() {
         </main>
     )
 }
-
-    

@@ -706,12 +706,12 @@ export default function BattlePage() {
     };
     
     if (!isClient) {
-        return <main className="text-center p-10"><Loader2 className="animate-spin inline-block mr-2" />ロード中...</main>;
+        return <main className="text-center p-4 md:p-10"><Loader2 className="animate-spin inline-block mr-2" />ロード中...</main>;
     }
     
     if (isGeneratingDeck) {
         return (
-            <main className="text-center p-10">
+            <main className="text-center p-4 md:p-10">
                 <div className="flex flex-col items-center justify-center gap-4">
                     <Loader2 className="animate-spin h-10 w-10 text-primary" />
                     <p className="text-lg text-muted-foreground">デッキを準備しています...</p>
@@ -724,7 +724,7 @@ export default function BattlePage() {
     if (!difficulty) {
         const dailyDeckInfo = starterDecks[dailyChallengeDeckId];
         return (
-            <main className="text-center p-10 space-y-8">
+            <main className="text-center p-4 md:p-10 space-y-8">
                 <Card className="max-w-md mx-auto">
                     <CardHeader>
                         <CardTitle className="text-2xl">難易度を選択してください</CardTitle>
@@ -760,7 +760,7 @@ export default function BattlePage() {
     if (difficulty && !deckChoice) {
         const validDecks = savedDecks.filter(d => d.cards.length === DECK_SIZE);
         return (
-             <main className="text-center p-10">
+             <main className="text-center p-4 md:p-10">
                 <Card className="max-w-3xl mx-auto">
                     <CardHeader>
                         <CardTitle className="text-2xl">使用するデッキを選択してください</CardTitle>
@@ -820,39 +820,40 @@ export default function BattlePage() {
 
     return (
     <main
-        className="flex flex-col gap-2 min-h-screen bg-cover bg-center bg-fixed p-4"
+        className="flex flex-col gap-4 min-h-screen bg-cover bg-center bg-fixed p-2 md:p-4"
         style={{ backgroundImage: "url('https://picsum.photos/seed/battleground/1920/1080')" }}
     >
-        <div className="absolute inset-0 bg-black/30 z-0"></div>
-        <div className="relative z-10 flex flex-col gap-2 flex-grow">
+        <div className="absolute inset-0 bg-black/50 z-0"></div>
+        <div className="relative z-10 flex flex-col gap-4 flex-grow">
+        
         {/* Opponent's Area */}
         <div className="flex flex-col items-center gap-2">
-            <div className="flex items-center gap-4">
-                <Card className="p-2 text-center w-40 bg-black/70 text-white border-slate-700">
+            <div className="flex flex-col md:flex-row items-center gap-2 md:gap-4 w-full">
+                <Card className="p-2 text-center w-40 bg-black/70 text-white border-slate-700 order-2 md:order-1">
                     <p className="font-bold">相手 ({difficultyText})</p>
                     <p className="flex items-center justify-center gap-2 text-red-400 font-bold text-xl"><Heart /> {opponentHealth}</p>
                     <p className="flex items-center justify-center gap-2 text-blue-400 font-bold"><Dices /> {opponentMana}/{opponentMaxMana}</p>
                 </Card>
-                <div className="flex gap-2 min-h-[180px]">
+                <div className="flex gap-1 min-h-[100px] md:min-h-[140px] order-1 md:order-2 flex-grow justify-center">
                     {opponentHand.map((card, i) => (
-                        <div key={card.id ? card.id + i.toString() : i} className="w-24">
+                        <div key={card.id ? card.id + i.toString() : i} className="w-16 md:w-24">
                            {cardBackImage ? (
                                 <Image src={cardBackImage} alt="Card Back" width={96} height={134} className="rounded-lg shadow-md" unoptimized />
                            ) : (
-                                <Card className="h-full flex items-center justify-center text-center p-2 bg-slate-700 text-white">裏向きのカード</Card>
+                                <Card className="h-full flex items-center justify-center text-center p-2 bg-slate-700 text-white">裏</Card>
                            )}
                         </div>
                     ))}
                 </div>
-                <Card className="p-2 text-center w-28 bg-black/70 text-white border-slate-700">
+                <Card className="p-2 text-center w-28 bg-black/70 text-white border-slate-700 order-3">
                      <p className="font-bold">山札</p>
-                     <p className="text-2xl">{opponentDeck.length}</p>
+                     <p className="text-xl md:text-2xl">{opponentDeck.length}</p>
                 </Card>
             </div>
             {/* Opponent's Board */}
-            <div className="flex items-center justify-center gap-2 bg-black/40 p-2 rounded-lg min-h-[160px] w-full max-w-4xl border border-slate-700">
+            <div className="flex items-center justify-center gap-2 bg-black/40 p-2 rounded-lg min-h-[120px] md:min-h-[160px] w-full max-w-4xl border border-slate-700 overflow-x-auto">
                 {opponentBoard.map((card, i) => (
-                    <div key={card.id + i.toString()} className="w-[110px]">
+                    <div key={card.id + i.toString()} className="w-[80px] md:w-[110px] shrink-0">
                         <CardPreview {...card} />
                     </div>
                 ))}
@@ -862,19 +863,19 @@ export default function BattlePage() {
         {/* Game Log / Result */}
         <div className="flex justify-center my-2">
             {gameOver ? (
-                 <Card className="p-6 my-4 max-w-2xl text-center bg-yellow-200/90 text-slate-800">
-                    <p className="text-2xl font-semibold mb-2">{gameOver}</p>
+                 <Card className="p-4 md:p-6 my-4 max-w-2xl text-center bg-yellow-200/90 text-slate-800">
+                    <p className="text-xl md:text-2xl font-semibold mb-2">{gameOver}</p>
                     {gameOver === 'あなたの勝利！' ? (
-                        <p className="flex items-center justify-center gap-2 text-lg font-medium text-yellow-700 mb-2">
+                        <p className="flex items-center justify-center gap-2 text-md md:text-lg font-medium text-yellow-700 mb-2">
                             <Coins className="h-6 w-6" /> +{winReward}G
                         </p>
                     ) : (
-                        <p className="flex items-center justify-center gap-2 text-lg font-medium text-red-600 mb-2">
+                        <p className="flex items-center justify-center gap-2 text-md md:text-lg font-medium text-red-600 mb-2">
                             <Coins className="h-6 w-6" /> -{losePenalty}G
                         </p>
                     )}
                     {ratingChange !== null && (
-                        <p className={cn("flex items-center justify-center gap-2 text-lg font-medium mb-4", ratingChange >= 0 ? "text-green-600" : "text-red-600")}>
+                        <p className={cn("flex items-center justify-center gap-2 text-md md:text-lg font-medium mb-4", ratingChange >= 0 ? "text-green-600" : "text-red-600")}>
                            <BarChart className="h-6 w-6" /> レーティング: {ratingChange > 0 ? '+' : ''}{ratingChange}
                         </p>
                     )}
@@ -891,9 +892,9 @@ export default function BattlePage() {
         </div>
         
         {/* Player's Board */}
-         <div className="flex items-center justify-center gap-2 bg-black/40 p-2 rounded-lg min-h-[160px] w-full max-w-4xl mx-auto border border-slate-700">
+         <div className="flex items-center justify-center gap-2 bg-black/40 p-2 rounded-lg min-h-[120px] md:min-h-[160px] w-full max-w-4xl mx-auto border border-slate-700 overflow-x-auto">
             {playerBoard.map((card, i) => (
-                <div key={card.id + i.toString()} className={cn("w-[110px] transform transition-transform", card.canAttack ? "border-4 border-green-500 rounded-2xl hover:scale-105" : "opacity-70")}>
+                <div key={card.id + i.toString()} className={cn("w-[80px] md:w-[110px] shrink-0 transform transition-transform", card.canAttack ? "border-4 border-green-500 rounded-2xl hover:scale-105" : "opacity-70")}>
                     <CardPreview {...card} />
                 </div>
             ))}
@@ -901,23 +902,23 @@ export default function BattlePage() {
 
         {/* Player's Area */}
         <div className="flex flex-col items-center gap-2 mt-2">
-            <div className="flex items-center gap-4">
-                <Card className="p-2 text-center w-40 bg-black/70 text-white border-slate-700">
+            <div className="flex flex-col md:flex-row items-center gap-2 md:gap-4 w-full">
+                <Card className="p-2 text-center w-40 bg-black/70 text-white border-slate-700 order-2 md:order-1">
                     <p className="font-bold">あなた</p>
                     <p className="flex items-center justify-center gap-2 text-red-400 font-bold text-xl"><Heart /> {playerHealth}</p>
                     <p className="flex items-center justify-center gap-2 text-blue-400 font-bold"><Dices /> {playerMana}/{playerMaxMana}</p>
-                    <p className="mt-2 text-sm">ターン: {Math.ceil(turn/2)}</p>
+                    <p className="mt-1 text-xs">ターン: {Math.ceil(turn/2)}</p>
                 </Card>
-                <div className="flex gap-2 min-h-[180px]">
+                <div className="flex gap-1 min-h-[140px] md:min-h-[180px] order-1 md:order-2 flex-grow justify-center overflow-x-auto w-full px-2">
                     {playerHand.map((card, i) => (
-                        <div key={card.id + i.toString()} className={cn("w-[130px] transition-transform", (isPlayerTurn && gamePhase === 'main' && playerMana >= card.manaCost) ? "cursor-pointer hover:scale-105 hover:-translate-y-2" : "opacity-70" )} onClick={() => playCard(card, i)}>
+                        <div key={card.id + i.toString()} className={cn("w-[95px] md:w-[130px] shrink-0 transition-transform", (isPlayerTurn && gamePhase === 'main' && playerMana >= card.manaCost) ? "cursor-pointer hover:scale-105 hover:-translate-y-2" : "opacity-70" )} onClick={() => playCard(card, i)}>
                            <CardPreview {...card} />
                         </div>
                     ))}
                 </div>
-                 <Card className="p-2 text-center w-28 bg-black/70 text-white border-slate-700">
+                 <Card className="p-2 text-center w-28 bg-black/70 text-white border-slate-700 order-3">
                      <p className="font-bold">山札</p>
-                     <p className="text-2xl">{playerDeck.length}</p>
+                     <p className="text-xl md:text-2xl">{playerDeck.length}</p>
                 </Card>
             </div>
             <Button onClick={handleAttackPhase} size="lg" disabled={!isPlayerTurn || !!gameOver || gamePhase !== 'main'} className="mt-4">
@@ -928,5 +929,3 @@ export default function BattlePage() {
     </main>
   );
 }
-
-    

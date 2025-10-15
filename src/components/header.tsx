@@ -6,8 +6,10 @@ import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { CurrencyDisplay } from './currency-display';
 import { cn } from '@/lib/utils';
-import { useProfile } from '@/hooks/use-profile';
-import { User } from 'lucide-react';
+import { useUser } from '@/firebase';
+import { User, Menu } from 'lucide-react';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import React from 'react';
 
 
 const navLinks = [
@@ -23,54 +25,79 @@ const navLinks = [
     { href: '/ranking', label: 'ランキング' },
     { href: '/shop', label: 'ショップ' },
     { href: '/minigame', label: 'ミニゲーム' },
+    { href: '/mypage', label: 'マイページ' },
 ];
 
 export function AppHeader() {
   const pathname = usePathname();
-  const { activeProfile, PROFILES } = useProfile();
+  const { user } = useUser();
+  const [isSheetOpen, setSheetOpen] = React.useState(false);
 
 
   return (
     <header className="mb-8">
       <div className="text-center mb-6">
-        <h1 className="text-5xl font-bold text-primary">
+        <h1 className="text-4xl md:text-5xl font-bold text-primary">
           <Link href="/">カードクラフター</Link>
         </h1>
-        <p className="text-muted-foreground mt-2 text-lg">
+        <p className="text-muted-foreground mt-2 text-md md:text-lg">
           AIの力で、あなたのカードゲームのアイデアを形に
         </p>
       </div>
       <div className="flex justify-between items-center mt-4 border-b pb-4">
-        <nav className="flex items-center space-x-2 lg:space-x-4 overflow-x-auto">
+        {/* Desktop Navigation */}
+        <nav className="hidden md:flex items-center space-x-1 lg:space-x-2 overflow-x-auto">
           {navLinks.map((link) => (
             <Button
               key={link.href}
               variant="ghost"
               asChild
               className={cn(
-                'text-sm font-medium transition-colors hover:text-primary shrink-0',
+                'text-xs lg:text-sm font-medium transition-colors hover:text-primary shrink-0',
                 pathname === link.href ? 'text-primary' : 'text-muted-foreground'
               )}
             >
               <Link href={link.href}>{link.label}</Link>
             </Button>
           ))}
-            <Button
-              variant="ghost"
-              asChild
-              className={cn(
-                'text-sm font-medium transition-colors hover:text-primary shrink-0',
-                pathname === '/mypage' ? 'text-primary' : 'text-muted-foreground'
-              )}
-            >
-              <Link href="/mypage">マイページ</Link>
-            </Button>
         </nav>
-        <div className="flex items-center gap-4">
-            <div className="hidden sm:flex items-center gap-2 text-sm font-medium text-muted-foreground">
-              <User className="h-5 w-5"/>
-              <span>{PROFILES[activeProfile].name}</span>
-            </div>
+
+        {/* Mobile Navigation */}
+         <div className="md:hidden">
+            <Sheet open={isSheetOpen} onOpenChange={setSheetOpen}>
+                <SheetTrigger asChild>
+                    <Button variant="outline" size="icon">
+                        <Menu />
+                    </Button>
+                </SheetTrigger>
+                <SheetContent side="left">
+                     <nav className="flex flex-col space-y-2 mt-8">
+                        {navLinks.map((link) => (
+                        <Button
+                            key={link.href}
+                            variant="ghost"
+                            asChild
+                            onClick={() => setSheetOpen(false)}
+                            className={cn(
+                            'justify-start text-lg',
+                            pathname === link.href ? 'text-primary' : 'text-muted-foreground'
+                            )}
+                        >
+                            <Link href={link.href}>{link.label}</Link>
+                        </Button>
+                        ))}
+                    </nav>
+                </SheetContent>
+            </Sheet>
+        </div>
+        
+        <div className="flex items-center gap-2 md:gap-4">
+            {user && (
+                 <div className="hidden sm:flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                    <User className="h-5 w-5"/>
+                    <span className="truncate max-w-[100px]">{user.email?.split('@')[0] || 'User'}</span>
+                </div>
+            )}
             <CurrencyDisplay />
         </div>
       </div>
