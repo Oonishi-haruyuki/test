@@ -10,8 +10,7 @@
           "type": "string",
           "description": "The user's display name."
         }
-      },
-      "required": ["name"]
+      }
     },
     "Card": {
       "title": "Card",

@@ -45,7 +45,6 @@ const loginSchema = z.object({
 });
 
 const signUpSchema = z.object({
-  name: z.string().min(1, { message: '名前を入力してください。' }),
   email: z.string().email({ message: '無効なメールアドレスです。' }),
   password: z
     .string()
@@ -67,7 +66,7 @@ export default function LoginPage() {
 
   const signUpForm = useForm<z.infer<typeof signUpSchema>>({
     resolver: zodResolver(signUpSchema),
-    defaultValues: { name: '', email: '', password: '' },
+    defaultValues: { email: '', password: '' },
   });
 
   const handleLogin = async (values: z.infer<typeof loginSchema>) => {
@@ -101,9 +100,7 @@ export default function LoginPage() {
 
       // Create user profile in Firestore
       if (firestore) {
-        await setDoc(doc(firestore, 'users', user.uid), {
-          name: values.name,
-        });
+        await setDoc(doc(firestore, 'users', user.uid), {});
       }
 
       toast({ title: 'アカウントを登録しました。' });
@@ -200,19 +197,6 @@ export default function LoginPage() {
                   onSubmit={signUpForm.handleSubmit(handleSignUp)}
                   className="space-y-4"
                 >
-                  <FormField
-                    control={signUpForm.control}
-                    name="name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>名前</FormLabel>
-                        <FormControl>
-                          <Input placeholder="山田 太郎" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
                   <FormField
                     control={signUpForm.control}
                     name="email"
