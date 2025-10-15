@@ -1,7 +1,8 @@
 
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import {
   useAuth,
   useUser,
@@ -23,7 +24,6 @@ import {
   DocumentData,
   User as FirebaseUser,
 } from 'firebase/firestore';
-import { signInAnonymously } from 'firebase/auth';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Loader2, Swords, User, Users } from 'lucide-react';
@@ -207,7 +207,7 @@ function GameComponent({ gameId, user }: { gameId: string, user: FirebaseUser })
     });
   };
 
-  if (loading) return <Loader2 className="animate-spin" />;
+  if (loading) return <div className="flex justify-center p-8"><Loader2 className="animate-spin" /></div>;
   if (!gameState) return <p>ゲームが見つかりません。</p>;
 
   const isPlayer1 = user.uid === gameState.player1Id;
@@ -218,6 +218,15 @@ function GameComponent({ gameId, user }: { gameId: string, user: FirebaseUser })
       <div>
         <h2>ゲーム終了！</h2>
         <p>勝者: {gameState.winner}</p>
+      </div>
+    );
+  }
+   if (gameState.status === 'waiting') {
+    return (
+      <div className="text-center p-8">
+        <Loader2 className="animate-spin mx-auto mb-4" />
+        <p className="text-muted-foreground">対戦相手を待っています...</p>
+        <p className="text-xs text-muted-foreground mt-2">ゲームID: {gameId}</p>
       </div>
     );
   }
@@ -258,20 +267,20 @@ function ActiveGameFinder({ user }: { user: FirebaseUser }) {
     const [isLoading, setIsLoading] = useState(true);
 
     const gamesAsPlayer1Query = useMemoFirebase(
-        () => query(
+        () => firestore ? query(
             collection(firestore, 'games'),
             where('status', 'in', ['active', 'waiting']),
             where('player1Id', '==', user.uid)
-        ),
+        ) : null,
         [firestore, user.uid]
     );
 
     const gamesAsPlayer2Query = useMemoFirebase(
-        () => query(
+        () => firestore ? query(
             collection(firestore, 'games'),
             where('status', '==', 'active'),
             where('player2Id', '==', user.uid)
-        ),
+        ) : null,
         [firestore, user.uid]
     );
 
@@ -301,7 +310,6 @@ function ActiveGameFinder({ user }: { user: FirebaseUser }) {
 
 export default function OnlineBattlePage() {
   const { user, isUserLoading } = useUser();
-  const auth = useAuth();
   
   if (isUserLoading) {
     return <div className="flex justify-center p-8"><Loader2 className="animate-spin" /></div>;
@@ -309,15 +317,17 @@ export default function OnlineBattlePage() {
 
   if (!user) {
     return (
-      <Card className="max-w-2xl mx-auto">
+      <Card className="max-w-2xl mx-auto text-center">
         <CardHeader>
           <CardTitle>ログインが必要です</CardTitle>
         </CardHeader>
         <CardContent>
           <p className="mb-4">
-            オンライン対戦をプレイするには、匿名ログインが必要です。
+            オンライン対戦をプレイするには、ログインまたは新規登録が必要です。
           </p>
-          <Button onClick={() => signInAnonymously(auth)}>匿名でログイン</Button>
+          <Button asChild>
+            <Link href="/login">ログイン / 新規登録</Link>
+          </Button>
         </CardContent>
       </Card>
     );
@@ -325,5 +335,3 @@ export default function OnlineBattlePage() {
 
   return <ActiveGameFinder user={user} />;
 }
-
-    

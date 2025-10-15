@@ -4,16 +4,20 @@
 import { useState, useEffect } from 'react';
 import { useCurrency } from '@/hooks/use-currency';
 import { useStats } from '@/hooks/use-stats';
+import { useUser } from '@/firebase';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Coins, Trophy, Star, Library, Users, Skull } from 'lucide-react';
+import { Coins, Trophy, Star, Library, Users, Skull, LogIn } from 'lucide-react';
 import type { CardData } from '@/components/card-editor';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AchievementsUI, type Achievement } from '@/components/ui/achievements';
 import { useToast } from '@/hooks/use-toast';
+import { Button } from '@/components/ui/button';
+import Link from 'next/link';
 
 export default function MyPage() {
-  const { currency, addCurrency } = useCurrency();
+  const { addCurrency } = useCurrency();
   const { wins, losses } = useStats();
+  const { user, profile, isUserLoading } = useUser();
   const [collection, setCollection] = useState<CardData[]>([]);
   const [decks, setDecks] = useState<{id: string, name: string, cards: CardData[]}[]>([]);
   const [isClient, setIsClient] = useState(false);
@@ -107,10 +111,42 @@ export default function MyPage() {
     )
   }
 
+  if (isUserLoading) {
+    return (
+        <main>
+            <div className="mb-8">
+                <Skeleton className="h-10 w-48" />
+                <Skeleton className="h-4 w-64 mt-2" />
+            </div>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-28 w-full" />)}
+            </div>
+        </main>
+    )
+  }
+
+  if (!user) {
+    return (
+        <main className="text-center">
+            <Card className="max-w-md mx-auto">
+                <CardHeader>
+                    <CardTitle>ログインが必要です</CardTitle>
+                    <CardDescription>マイページの情報を表示するには、ログインしてください。</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Button asChild>
+                        <Link href="/login"><LogIn className="mr-2"/>ログインページへ</Link>
+                    </Button>
+                </CardContent>
+            </Card>
+        </main>
+    )
+  }
+
   return (
     <main>
         <div className="mb-8">
-            <h1 className="text-3xl font-bold">マイページ</h1>
+            <h1 className="text-3xl font-bold">{profile?.name || user.email}のマイページ</h1>
             <p className="text-muted-foreground">あなたの活動記録です。</p>
         </div>
 

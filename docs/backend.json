@@ -1,6 +1,18 @@
 
 {
   "entities": {
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "Represents a user's public profile information.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The user's display name."
+        }
+      },
+      "required": ["name"]
+    },
     "Card": {
       "title": "Card",
       "description": "Represents a single card in the trading card game.",
@@ -154,9 +166,15 @@
     }
   },
   "auth": {
-    "providers": ["anonymous"]
+    "providers": ["email"]
   },
   "firestore": {
+    "/users/{userId}": {
+      "schema": {
+        "$ref": "#/entities/UserProfile"
+      },
+      "description": "Stores public information about a user, like their display name."
+    },
     "/games/{gameId}": {
       "schema": {
         "$ref": "#/entities/Game"
