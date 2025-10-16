@@ -16,6 +16,7 @@ interface MissionsUIProps {
 export function MissionsUI({ missions, onClaimReward }: MissionsUIProps) {
     const dailyMissions = missions.filter(m => m.type === 'daily');
     const weeklyMissions = missions.filter(m => m.type === 'weekly');
+    const monthlyMissions = missions.filter(m => m.type === 'monthly');
     
     const MissionItem = ({ mission }: { mission: Mission }) => {
         const isComplete = mission.progress >= mission.goal;
@@ -58,9 +59,10 @@ export function MissionsUI({ missions, onClaimReward }: MissionsUIProps) {
             </CardHeader>
             <CardContent>
                 <Tabs defaultValue="daily">
-                    <TabsList className="grid w-full grid-cols-2">
+                    <TabsList className="grid w-full grid-cols-3">
                         <TabsTrigger value="daily">デイリー</TabsTrigger>
                         <TabsTrigger value="weekly">ウィークリー</TabsTrigger>
+                        <TabsTrigger value="monthly">マンスリー</TabsTrigger>
                     </TabsList>
                     <TabsContent value="daily" className="pt-4">
                         <ul className="space-y-3">
@@ -70,6 +72,11 @@ export function MissionsUI({ missions, onClaimReward }: MissionsUIProps) {
                      <TabsContent value="weekly" className="pt-4">
                         <ul className="space-y-3">
                             {weeklyMissions.map(m => <MissionItem key={m.id} mission={m} />)}
+                        </ul>
+                    </TabsContent>
+                     <TabsContent value="monthly" className="pt-4">
+                        <ul className="space-y-3">
+                            {monthlyMissions.map(m => <MissionItem key={m.id} mission={m} />)}
                         </ul>
                     </TabsContent>
                 </Tabs>

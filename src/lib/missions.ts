@@ -1,5 +1,5 @@
 
-export type MissionType = 'daily' | 'weekly';
+export type MissionType = 'daily' | 'weekly' | 'monthly';
 
 export interface Mission {
     id: string;
@@ -93,6 +93,38 @@ export const allMissions: Mission[] = [
         progress: 0,
         claimed: false,
     },
+    // Monthly
+    {
+        id: 'monthly-win-20',
+        type: 'monthly',
+        title: 'AI対戦で20回勝利する',
+        description: '1ヶ月でAIに20回勝利しよう。',
+        action: 'win-game',
+        goal: 20,
+        reward: 1000,
+        progress: 0,
+        claimed: false,
+    },
+    {
+        id: 'monthly-create-50',
+        type: 'monthly',
+        title: 'カードを50枚作成する',
+        description: '1ヶ月で新しいカードを50枚作成しよう。',
+        action: 'create-cards',
+        goal: 50,
+        reward: 750,
+        progress: 0,
+        claimed: false,
+    },
+    {
+        id: 'monthly-gacha-50',
+        type: 'monthly',
+        title: 'ガチャを50回引く',
+        description: '1ヶ月でカードガチャを50回以上引いてみよう。',
+        action: 'pull-gacha',
+        goal: 50,
+        reward: 500,
+        progress: 0,
+        claimed: false,
+    },
 ];
-
-    
