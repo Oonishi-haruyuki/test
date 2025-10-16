@@ -388,14 +388,17 @@ export default function MyPage() {
                 </CardHeader>
                 <CardContent>
                     <ul className="list-disc pl-5 space-y-2 text-sm text-muted-foreground">
-                        <li>ギルド機能（チャット、ギルド対戦）</li>
-                        <li>ドラフトモード（ランダムなカードでデッキを構築して対戦）</li>
-                        <li>カードの進化・強化システム</li>
-                        <li>リプレイ機能（過去の対戦を再生・分析）</li>
-                        <li>観戦モード（他のプレイヤーの対戦をリアルタイムで観戦）</li>
-                        <li>パズルモード（特定の盤面から勝利を目指す詰めカードパズル）</li>
-                        <li>カスタムトーナメント機能</li>
-                        <li>2v2タッグバトルモード</li>
+                        <li>**ギルド機能**:
+                            <ul className="list-disc pl-5 space-y-1">
+                                <li>チャット機能</li>
+                                <li>ギルド交流戦</li>
+                                <li>ギルド対決</li>
+                                <li>ギルドショップ</li>
+                                <li>ギルド取引所</li>
+                                <li>ギルドトーナメント</li>
+                                <li>ギルド訓練所</li>
+                            </ul>
+                        </li>
                     </ul>
                 </CardContent>
             </Card>
