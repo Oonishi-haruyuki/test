@@ -97,29 +97,33 @@ export default function StoryModePage() {
         setInBattle(false);
         setActiveChapter(null);
     }
+
+    const handleLoseBattle = () => {
+        toast({
+            variant: 'destructive',
+            title: '敗北…',
+            description: '再挑戦して勝利を目指そう！'
+        });
+        setInBattle(false);
+        // We don't reset the active chapter so the user can see the prologue again.
+    }
     
     if (!isClient) return null;
 
     if (inBattle && activeChapter?.battle) {
-        // This is a simplified integration. For a real app, the BattlePage component
-        // would need to be refactored to accept story-specific props and callbacks.
-        // For this demo, we'll just show a message and a button to simulate the win.
         return (
-            <main className="container mx-auto text-center">
-                <Card>
-                    <CardHeader>
-                        <CardTitle>対戦中: {activeChapter.title}</CardTitle>
-                        <CardDescription>VS {activeChapter.battle.opponentName}</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="mb-4">ストーリーモード専用の対戦が開始されました。</p>
-                        <p className="text-muted-foreground mb-6">(デモ：ここでは実際の対戦の代わりに、勝利したと仮定して進めます)</p>
-                        <Button onClick={handleWinBattle} size="lg">
-                            対戦に勝利する
-                        </Button>
-                    </CardContent>
-                </Card>
-            </main>
+           <BattlePage
+                initialPlayerDeck={activeChapter.battle.playerDeck}
+                initialOpponentDeck={activeChapter.battle.opponentDeck}
+                forcedDifficulty="beginner" // Story mode battles are not rated
+                onGameEnd={(result) => {
+                    if (result === 'win') {
+                        handleWinBattle();
+                    } else {
+                        handleLoseBattle();
+                    }
+                }}
+            />
         );
     }
 

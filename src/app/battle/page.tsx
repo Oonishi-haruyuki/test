@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import type { CardData } from '@/components/card-editor';
 import { CardPreview } from '@/components/card-preview';
 import { Button } from '@/components/ui/button';
@@ -37,8 +37,15 @@ interface Deck {
     cards: CardData[];
 }
 
-type Difficulty = 'beginner' | 'advanced' | 'super';
+export type Difficulty = 'beginner' | 'advanced' | 'super';
 type DeckChoice = 'my-deck' | 'starter-goblin' | 'starter-elemental' | 'starter-undead' | 'starter-dragon' | 'starter-ninja' | 'ai-fantasy' | 'ai-scifi';
+
+export interface BattleProps {
+  initialPlayerDeck?: CardData[];
+  initialOpponentDeck?: CardData[];
+  forcedDifficulty?: Difficulty;
+  onGameEnd?: (result: 'win' | 'loss') => void;
+}
 
 export const goblinDeck: CardData[] = [
     { id: 'starter-gob-1', theme: 'fantasy', name: 'ゴブリンの突撃兵', manaCost: 1, attack: 2, defense: 1, cardType: 'creature', rarity: 'common', abilities: '', flavorText: '考えるより先に足が動く。', imageUrl: 'https://picsum.photos/seed/sg1/400/300', imageHint: 'goblin warrior' },
@@ -160,21 +167,25 @@ const starterDecks = {
 type StarterDeckId = keyof typeof starterDecks;
 
 
-export default function BattlePage() {
+function BattleGame({
+  playerDeck: initialPlayerDeck,
+  opponentDeck: initialOpponentDeck,
+  difficulty,
+  onGameEnd,
+  isDailyChallenge = false,
+}: {
+  playerDeck: CardData[];
+  opponentDeck: CardData[];
+  difficulty: Difficulty;
+  onGameEnd: (result: 'win' | 'loss') => void;
+  isDailyChallenge?: boolean;
+}) {
     const { toast } = useToast();
     const { addCurrency, spendCurrency } = useCurrency();
     const { addWin, addLoss } = useStats();
     const { updateMissionProgress } = useMissions();
     const { user } = useUser();
-    const [isClient, setIsClient] = useState(false);
-    const [isGeneratingDeck, setIsGeneratingDeck] = useState(false);
-    const [difficulty, setDifficulty] = useState<Difficulty | null>(null);
-    const [deckChoice, setDeckChoice] = useState<string | null>(null);
-    const [savedDecks, setSavedDecks] = useState<Deck[]>([]);
-    const [cardBackImage, setCardBackImage] = useState<string | null>(null);
-    const [purchasedArtifacts, setPurchasedArtifacts] = useState<string[]>([]);
     const [ratingChange, setRatingChange] = useState<number | null>(null);
-    const [isDailyChallenge, setIsDailyChallenge] = useState(false);
 
     // Game State
     const [playerDeck, setPlayerDeck] = useState<CardData[]>([]);
@@ -197,12 +208,21 @@ export default function BattlePage() {
     const [gameOver, setGameOver] = useState('');
     const [gamePhase, setGamePhase] = useState<'main' | 'attack'>('main');
 
-    const dailyChallengeDeckId = useMemo<StarterDeckId>(() => {
-        if (!isClient) return 'starter-goblin';
-        const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / (1000 * 60 * 60 * 24));
-        const deckIds = Object.keys(starterDecks) as StarterDeckId[];
-        return deckIds[dayOfYear % deckIds.length];
-    }, [isClient]);
+    const [cardBackImage, setCardBackImage] = useState<string | null>(null);
+    const [purchasedArtifacts, setPurchasedArtifacts] = useState<string[]>([]);
+
+    useEffect(() => {
+        try {
+            const savedCardBack = localStorage.getItem('cardBackImage');
+            if (savedCardBack) {
+                setCardBackImage(savedCardBack);
+            }
+            const savedArtifacts = JSON.parse(localStorage.getItem('purchasedArtifacts') || '[]');
+            setPurchasedArtifacts(savedArtifacts);
+        } catch (error) {
+            console.error("Failed to check for saved data", error);
+        }
+    }, []);
 
     const shuffleDeck = (deck: CardData[]) => {
         return [...deck].sort(() => Math.random() - 0.5);
@@ -212,11 +232,10 @@ export default function BattlePage() {
         setGameLog(prev => [`[T${Math.ceil(turn/2)}] ${message}`, ...prev]);
     }
 
-    const startGame = (playerDeckData: CardData[], opponentDeckData: CardData[]) => {
+    const startGame = useCallback((playerDeckData: CardData[], opponentDeckData: CardData[]) => {
         const pDeck = shuffleDeck([...playerDeckData]);
         const oDeck = shuffleDeck([...opponentDeckData]);
 
-        // Artifact Effects
         const hasHpBoost = purchasedArtifacts.includes('artifact-hp-boost');
         const hasHandBoost = purchasedArtifacts.includes('artifact-hand-boost');
         const hasManaBoost = purchasedArtifacts.includes('artifact-mana-boost');
@@ -258,118 +277,13 @@ export default function BattlePage() {
         if (!playerGoesFirst) {
             setTimeout(aiTurn, 1000);
         }
-    };
-    
-    const loadAndSetPlayerDeck = async (choice: string) => {
-        setIsGeneratingDeck(true);
-        addToLog('対戦の準備をしています...');
-        let deckToLoad: CardData[] = [];
-        let toastMessage = '';
+    }, [purchasedArtifacts]);
 
-        try {
-            const starterDeck = starterDecks[choice as StarterDeckId];
-            if (starterDeck) {
-                deckToLoad = starterDeck.deck;
-                toastMessage = `スターターデッキ「${starterDeck.name}」で開始します。`;
-            } else if (choice === 'ai-fantasy' || choice === 'ai-scifi') {
-                const theme = choice === 'ai-fantasy' ? 'ファンタジー' : 'SF';
-                const result = await generateDeck({ theme, cardCount: DECK_SIZE });
-                deckToLoad = result.deck.map((card, index) => ({
-                    ...card,
-                    id: `player-ai-${index}`,
-                    theme: choice === 'ai-fantasy' ? 'fantasy' : 'sci-fi',
-                    imageUrl: `https://picsum.photos/seed/p-ai${index}/${400}/${300}`,
-                }));
-                toastMessage = `AIが生成した「${theme}」デッキで開始します。`;
-            } else { // Handle saved decks
-                const selectedDeck = savedDecks.find(d => d.id === choice);
-                if (selectedDeck && selectedDeck.cards.length === DECK_SIZE) {
-                    deckToLoad = selectedDeck.cards;
-                    toastMessage = `デッキ「${selectedDeck.name}」で開始します。`;
-                } else if (savedDecks.length > 0) {
-                    deckToLoad = savedDecks[0].cards;
-                    toastMessage = `選択したデッキが不正です。保存された最初のデッキ「${savedDecks[0].name}」で開始します。`;
-                } else {
-                    deckToLoad = goblinDeck; // Fallback
-                    toastMessage = '保存されたデッキが見つかりません。ゴブリンデッキで開始します。';
-                }
-            }
-            
-            const aiDeck = await createAiDeck(deckToLoad);
-            
-            toast({ title: toastMessage });
-            startGame(deckToLoad, aiDeck);
-
-        } catch (error) {
-            console.error("Failed to prepare player deck", error);
-            toast({ variant: 'destructive', title: 'デッキの準備に失敗しました。'});
-            const fallbackAiDeck = await createAiDeck(goblinDeck);
-            startGame(goblinDeck, fallbackAiDeck);
-        } finally {
-            setIsGeneratingDeck(false);
+     useEffect(() => {
+        if (initialPlayerDeck && initialOpponentDeck) {
+            startGame(initialPlayerDeck, initialOpponentDeck);
         }
-    };
-    
-    const createAiDeck = async (playerDeckData: CardData[]): Promise<CardData[]> => {
-        addToLog('AIが対戦相手のデッキを準備しています...');
-        try {
-            const playerTheme = playerDeckData[0]?.theme || 'fantasy';
-            const aiTheme = playerTheme === 'fantasy' ? 'SF' : 'ファンタジー';
-
-            const result = await generateDeck({ theme: aiTheme, cardCount: DECK_SIZE });
-            const aiGeneratedDeck: CardData[] = result.deck.map((card, index) => ({
-                ...card,
-                id: `ai-${index}`,
-                theme: aiTheme === 'SF' ? 'sci-fi' : 'fantasy',
-                imageUrl: `https://picsum.photos/seed/ai${index}/${400}/${300}`,
-            }));
-            addToLog('AIのデッキが完成しました！');
-            return aiGeneratedDeck;
-        } catch (error) {
-            console.error("Failed to generate AI deck", error);
-            toast({ variant: 'destructive', title: 'AIデッキの生成に失敗しました。'});
-            return elementalDeck; // Fallback
-        }
-    };
-
-    useEffect(() => {
-        setIsClient(true);
-        try {
-            const decksFromStorage: Deck[] = JSON.parse(localStorage.getItem('decks') || '[]');
-            setSavedDecks(decksFromStorage);
-            
-            const savedCardBack = localStorage.getItem('cardBackImage');
-            if (savedCardBack) {
-                setCardBackImage(savedCardBack);
-            }
-            const savedArtifacts = JSON.parse(localStorage.getItem('purchasedArtifacts') || '[]');
-            setPurchasedArtifacts(savedArtifacts);
-
-        } catch (error) {
-            console.error("Failed to check for saved data", error);
-        }
-    }, []);
-
-    const handleSelectDeck = (choice: string) => {
-        setDeckChoice(choice);
-        if (isClient) {
-            loadAndSetPlayerDeck(choice);
-        }
-    };
-
-    const startDailyChallenge = () => {
-        setDifficulty('advanced'); // Daily challenge is always advanced
-        setIsDailyChallenge(true);
-        handleSelectDeck(dailyChallengeDeckId);
-    }
-
-    const resetGame = () => {
-        setDifficulty(null);
-        setDeckChoice(null);
-        setGameOver('');
-        setGameLog([]);
-        setIsDailyChallenge(false);
-    }
+    }, [initialPlayerDeck, initialOpponentDeck, startGame]);
 
     const drawCard = (isPlayer: boolean) => {
         if (isPlayer) {
@@ -449,8 +363,11 @@ export default function BattlePage() {
         if (!effectApplied) addToLog(`「${card.name}」は何の効果ももたらさなかった。`);
     };
 
-    const handleEndGame = async (result: 'win' | 'loss') => {
-        if (!difficulty || !user) return;
+    const handleEndGame = useCallback(async (result: 'win' | 'loss') => {
+        if (!difficulty || !user) {
+            if (onGameEnd) onGameEnd(result);
+            return;
+        }
     
         const winRewardMap = { 'beginner': BEGINNER_WIN_REWARD, 'advanced': ADVANCED_WIN_REWARD, 'super': SUPER_WIN_REWARD };
         const losePenaltyMap = { 'beginner': BEGINNER_LOSE_PENALTY, 'advanced': ADVANCED_LOSE_PENALTY, 'super': SUPER_LOSE_PENALTY };
@@ -491,7 +408,6 @@ export default function BattlePage() {
         } catch (error) {
             console.error("Rating update failed", error);
             toast({ variant: 'destructive', title: 'レーティングの更新に失敗しました。'});
-            // Still process game end without rating change
             if (result === 'win') {
                 setGameOver('あなたの勝利！');
                 addCurrency(winReward);
@@ -501,18 +417,19 @@ export default function BattlePage() {
                 spendCurrency(losePenalty);
                 addLoss();
             }
+        } finally {
+            if (onGameEnd) onGameEnd(result);
         }
-    };
+    }, [difficulty, user, addCurrency, addLoss, addWin, spendCurrency, toast, updateMissionProgress, isDailyChallenge, onGameEnd]);
 
     useEffect(() => {
         if (gameOver) return;
-
         if (playerHealth <= 0) {
             handleEndGame('loss');
         } else if (opponentHealth <= 0) {
             handleEndGame('win');
         }
-    }, [playerHealth, opponentHealth, gameOver]);
+    }, [playerHealth, opponentHealth, gameOver, handleEndGame]);
 
     const playCard = (card: CardData, cardIndex: number) => {
         if (!isPlayerTurn || gameOver || gamePhase !== 'main') return;
@@ -577,23 +494,18 @@ export default function BattlePage() {
             return playableCards.sort((a,b) => b.manaCost - a.manaCost)[0];
         }
 
-        // Advanced & Super AI
         const creatureCards = playableCards.filter(c => c.cardType === 'creature');
         const spellCards = playableCards.filter(c => c.cardType !== 'creature');
         const damageSpells = spellCards.filter(s => s.abilities.includes('ダメージ'));
 
-        // Super AI specific logic
         if (difficulty === 'super') {
-             // If player is low on health, prioritize direct damage
             if (damageSpells.length > 0 && playerHealth <= 10) {
                 const lethalSpell = damageSpells.find(s => (parseInt(s.abilities.match(/(\d+)ダメージ/)?.[1] || '0', 10)) >= playerHealth);
                 if (lethalSpell) return lethalSpell;
-                // Return strongest damage spell if lethal is not available
                 return damageSpells.sort((a, b) => (parseInt(b.abilities.match(/(\d+)ダメージ/)?.[1] || '0', 10)) - (parseInt(a.abilities.match(/(\d+)ダメージ/)?.[1] || '0', 10)))[0];
             }
         }
 
-        // Advanced AI
         if (creatureCards.length > 0 && myBoard.length < BOARD_LIMIT) {
              const bestCreature = creatureCards.reduce((best, current) => {
                 const bestScore = (best.attack + best.defense) / (best.manaCost + 1);
@@ -635,7 +547,6 @@ export default function BattlePage() {
         let tempMana = newOpponentMaxMana;
         let tempBoard = [...opponentBoard];
 
-        // AI Main Phase
         setTimeout(() => {
             const playCardLoop = () => {
                 const cardToPlay = aiChooseCard(tempHand, tempMana, tempBoard);
@@ -705,10 +616,257 @@ export default function BattlePage() {
         }
     };
     
+    if (gameOver) {
+        const winReward = difficulty === 'beginner' ? BEGINNER_WIN_REWARD : difficulty === 'advanced' ? ADVANCED_WIN_REWARD : SUPER_WIN_REWARD;
+        const losePenalty = difficulty === 'beginner' ? BEGINNER_LOSE_PENALTY : difficulty === 'advanced' ? ADVANCED_LOSE_PENALTY : SUPER_LOSE_PENALTY;
+        
+        return (
+            <Card className="p-4 md:p-6 my-4 max-w-2xl text-center bg-yellow-200/90 text-slate-800 mx-auto">
+                <p className="text-xl md:text-2xl font-semibold mb-2">{gameOver}</p>
+                {gameOver === 'あなたの勝利！' ? (
+                    <p className="flex items-center justify-center gap-2 text-md md:text-lg font-medium text-yellow-700 mb-2">
+                        <Coins className="h-6 w-6" /> +{winReward}G
+                    </p>
+                ) : (
+                    <p className="flex items-center justify-center gap-2 text-md md:text-lg font-medium text-red-600 mb-2">
+                        <Coins className="h-6 w-6" /> -{losePenalty}G
+                    </p>
+                )}
+                {ratingChange !== null && (
+                    <p className={cn("flex items-center justify-center gap-2 text-md md:text-lg font-medium mb-4", ratingChange >= 0 ? "text-green-600" : "text-red-600")}>
+                       <BarChart className="h-6 w-6" /> レーティング: {ratingChange > 0 ? '+' : ''}{ratingChange}
+                    </p>
+                )}
+                <Button onClick={onGameEnd ? () => onGameEnd(gameOver === 'あなたの勝利！' ? 'win' : 'loss') : () => {}}>
+                    <RotateCcw className="mr-2" />
+                    終了
+                </Button>
+            </Card>
+        );
+    }
+    
+    const difficultyText = difficulty === 'beginner' ? '初級' : difficulty === 'advanced' ? '上級' : '超級';
+    
+    return (
+        <div className="relative z-10 flex flex-col gap-4 flex-grow">
+            <div className="flex flex-col items-center gap-2">
+                <div className="flex flex-col md:flex-row items-center gap-2 md:gap-4 w-full">
+                    <Card className="p-2 text-center w-40 bg-black/70 text-white border-slate-700 order-2 md:order-1">
+                        <p className="font-bold">相手 ({difficultyText})</p>
+                        <p className="flex items-center justify-center gap-2 text-red-400 font-bold text-xl"><Heart /> {opponentHealth}</p>
+                        <p className="flex items-center justify-center gap-2 text-blue-400 font-bold"><Dices /> {opponentMana}/{opponentMaxMana}</p>
+                    </Card>
+                    <div className="flex gap-1 min-h-[100px] md:min-h-[140px] order-1 md:order-2 flex-grow justify-center">
+                        {opponentHand.map((card, i) => (
+                            <div key={card.id ? card.id + i.toString() : i} className="w-16 md:w-24">
+                               {cardBackImage ? (
+                                    <Image src={cardBackImage} alt="Card Back" width={96} height={134} className="rounded-lg shadow-md" unoptimized />
+                               ) : (
+                                    <Card className="h-full flex items-center justify-center text-center p-2 bg-slate-700 text-white">裏</Card>
+                               )}
+                            </div>
+                        ))}
+                    </div>
+                    <Card className="p-2 text-center w-28 bg-black/70 text-white border-slate-700 order-3">
+                         <p className="font-bold">山札</p>
+                         <p className="text-xl md:text-2xl">{opponentDeck.length}</p>
+                    </Card>
+                </div>
+                <div className="flex items-center justify-center gap-2 bg-black/40 p-2 rounded-lg min-h-[120px] md:min-h-[160px] w-full max-w-4xl mx-auto border border-slate-700 overflow-x-auto">
+                    {opponentBoard.map((card, i) => (
+                        <div key={card.id + i.toString()} className="w-[80px] md:w-[110px] shrink-0">
+                            <CardPreview {...card} />
+                        </div>
+                    ))}
+                </div>
+            </div>
+            <div className="flex justify-center my-2">
+                 <Card className="p-2 w-full max-w-lg h-24 overflow-y-auto text-sm bg-black/70 text-white border-slate-700">
+                   {gameLog.map((log, i) => <p key={i}>{log}</p>)}
+                </Card>
+            </div>
+             <div className="flex items-center justify-center gap-2 bg-black/40 p-2 rounded-lg min-h-[120px] md:min-h-[160px] w-full max-w-4xl mx-auto border border-slate-700 overflow-x-auto">
+                {playerBoard.map((card, i) => (
+                    <div key={card.id + i.toString()} className={cn("w-[80px] md:w-[110px] shrink-0 transform transition-transform", card.canAttack ? "border-4 border-green-500 rounded-2xl hover:scale-105" : "opacity-70")}>
+                        <CardPreview {...card} />
+                    </div>
+                ))}
+            </div>
+            <div className="flex flex-col items-center gap-2 mt-2">
+                <div className="flex flex-col md:flex-row items-center gap-2 md:gap-4 w-full">
+                    <Card className="p-2 text-center w-40 bg-black/70 text-white border-slate-700 order-2 md:order-1">
+                        <p className="font-bold">あなた</p>
+                        <p className="flex items-center justify-center gap-2 text-red-400 font-bold text-xl"><Heart /> {playerHealth}</p>
+                        <p className="flex items-center justify-center gap-2 text-blue-400 font-bold"><Dices /> {playerMana}/{playerMaxMana}</p>
+                        <p className="mt-1 text-xs">ターン: {Math.ceil(turn/2)}</p>
+                    </Card>
+                    <div className="flex gap-1 min-h-[140px] md:min-h-[180px] order-1 md:order-2 flex-grow justify-center overflow-x-auto w-full px-2">
+                        {playerHand.map((card, i) => (
+                            <div key={card.id + i.toString()} className={cn("w-[95px] md:w-[130px] shrink-0 transition-transform", (isPlayerTurn && gamePhase === 'main' && playerMana >= card.manaCost) ? "cursor-pointer hover:scale-105 hover:-translate-y-2" : "opacity-70" )} onClick={() => playCard(card, i)}>
+                               <CardPreview {...card} />
+                            </div>
+                        ))}
+                    </div>
+                     <Card className="p-2 text-center w-28 bg-black/70 text-white border-slate-700 order-3">
+                         <p className="font-bold">山札</p>
+                         <p className="text-xl md:text-2xl">{playerDeck.length}</p>
+                    </Card>
+                </div>
+                <Button onClick={handleAttackPhase} size="lg" disabled={!isPlayerTurn || !!gameOver || gamePhase !== 'main'} className="mt-4">
+                    攻撃フェーズへ
+                </Button>
+            </div>
+        </div>
+    );
+}
+
+
+export default function BattlePage(props: BattleProps) {
+    const { toast } = useToast();
+    const [isClient, setIsClient] = useState(false);
+    const [isGeneratingDeck, setIsGeneratingDeck] = useState(false);
+    const [gameState, setGameState] = useState<'setup' | 'battle' | 'finished'>('setup');
+
+    const [difficulty, setDifficulty] = useState<Difficulty | null>(props.forcedDifficulty || null);
+    const [deckChoice, setDeckChoice] = useState<string | null>(null);
+    const [savedDecks, setSavedDecks] = useState<Deck[]>([]);
+    
+    const [playerDeck, setPlayerDeck] = useState<CardData[] | null>(props.initialPlayerDeck || null);
+    const [opponentDeck, setOpponentDeck] = useState<CardData[] | null>(props.initialOpponentDeck || null);
+    
+    const [isDailyChallenge, setIsDailyChallenge] = useState(false);
+
+    const dailyChallengeDeckId = useMemo<StarterDeckId>(() => {
+        if (!isClient) return 'starter-goblin';
+        const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / (1000 * 60 * 60 * 24));
+        const deckIds = Object.keys(starterDecks) as StarterDeckId[];
+        return deckIds[dayOfYear % deckIds.length];
+    }, [isClient]);
+    
+    useEffect(() => {
+        setIsClient(true);
+        try {
+            const decksFromStorage: Deck[] = JSON.parse(localStorage.getItem('decks') || '[]');
+            setSavedDecks(decksFromStorage);
+        } catch (error) {
+            console.error("Failed to check for saved data", error);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (props.initialPlayerDeck && props.initialOpponentDeck && props.forcedDifficulty) {
+            setPlayerDeck(props.initialPlayerDeck);
+            setOpponentDeck(props.initialOpponentDeck);
+            setDifficulty(props.forcedDifficulty);
+            setGameState('battle');
+        }
+    }, [props.initialPlayerDeck, props.initialOpponentDeck, props.forcedDifficulty]);
+    
+    const createAiDeck = useCallback(async (playerDeckData: CardData[]): Promise<CardData[]> => {
+        setIsGeneratingDeck(true);
+        try {
+            const playerTheme = playerDeckData[0]?.theme || 'fantasy';
+            const aiTheme = playerTheme === 'fantasy' ? 'SF' : 'ファンタジー';
+
+            const result = await generateDeck({ theme: aiTheme, cardCount: DECK_SIZE });
+            return result.deck.map((card, index) => ({
+                ...card,
+                id: `ai-${index}`,
+                theme: aiTheme === 'SF' ? 'sci-fi' : 'fantasy',
+                imageUrl: `https://picsum.photos/seed/ai${index}/${400}/${300}`,
+            }));
+        } catch (error) {
+            console.error("Failed to generate AI deck", error);
+            toast({ variant: 'destructive', title: 'AIデッキの生成に失敗しました。'});
+            return elementalDeck;
+        } finally {
+            setIsGeneratingDeck(false);
+        }
+    }, [toast]);
+    
+    const handleSelectDeck = useCallback(async (choice: string) => {
+        setDeckChoice(choice);
+        setIsGeneratingDeck(true);
+        let deckToLoad: CardData[] = [];
+        let toastMessage = '';
+
+        try {
+            const starterDeck = starterDecks[choice as StarterDeckId];
+            if (starterDeck) {
+                deckToLoad = starterDeck.deck;
+                toastMessage = `スターターデッキ「${starterDeck.name}」で開始します。`;
+            } else if (choice === 'ai-fantasy' || choice === 'ai-scifi') {
+                const theme = choice === 'ai-fantasy' ? 'ファンタジー' : 'SF';
+                const result = await generateDeck({ theme, cardCount: DECK_SIZE });
+                deckToLoad = result.deck.map((card, index) => ({
+                    ...card,
+                    id: `player-ai-${index}`,
+                    theme: choice === 'ai-fantasy' ? 'fantasy' : 'sci-fi',
+                    imageUrl: `https://picsum.photos/seed/p-ai${index}/${400}/${300}`,
+                }));
+                toastMessage = `AIが生成した「${theme}」デッキで開始します。`;
+            } else {
+                const selectedDeck = savedDecks.find(d => d.id === choice);
+                if (selectedDeck && selectedDeck.cards.length === DECK_SIZE) {
+                    deckToLoad = selectedDeck.cards;
+                    toastMessage = `デッキ「${selectedDeck.name}」で開始します。`;
+                } else {
+                    deckToLoad = goblinDeck;
+                    toastMessage = '選択したデッキが不正か見つかりません。ゴブリンデッキで開始します。';
+                }
+            }
+            
+            const aiDeck = await createAiDeck(deckToLoad);
+            setPlayerDeck(deckToLoad);
+            setOpponentDeck(aiDeck);
+            setGameState('battle');
+            toast({ title: toastMessage });
+
+        } catch (error) {
+            console.error("Failed to prepare player deck", error);
+            toast({ variant: 'destructive', title: 'デッキの準備に失敗しました。'});
+        } finally {
+            setIsGeneratingDeck(false);
+        }
+    }, [savedDecks, createAiDeck, toast]);
+
+    const startDailyChallenge = () => {
+        setDifficulty('advanced');
+        setIsDailyChallenge(true);
+        handleSelectDeck(dailyChallengeDeckId);
+    }
+
+    const resetGame = () => {
+        setGameState('setup');
+        setDifficulty(props.forcedDifficulty || null);
+        setDeckChoice(null);
+        setPlayerDeck(props.initialPlayerDeck || null);
+        setOpponentDeck(props.initialOpponentDeck || null);
+        setIsDailyChallenge(false);
+    }
+    
     if (!isClient) {
         return <main className="text-center p-4 md:p-10"><Loader2 className="animate-spin inline-block mr-2" />ロード中...</main>;
     }
     
+    if (gameState === 'battle' && playerDeck && opponentDeck && difficulty) {
+        return (
+             <main
+                className="flex flex-col gap-4 min-h-screen bg-cover bg-center bg-fixed p-2 md:p-4"
+                style={{ backgroundImage: "url('https://picsum.photos/seed/battleground/1920/1080')" }}
+            >
+                <div className="absolute inset-0 bg-black/50 z-0"></div>
+                <BattleGame
+                    playerDeck={playerDeck}
+                    opponentDeck={opponentDeck}
+                    difficulty={difficulty}
+                    onGameEnd={() => props.onGameEnd ? props.onGameEnd : resetGame()}
+                    isDailyChallenge={isDailyChallenge}
+                />
+            </main>
+        )
+    }
+
     if (isGeneratingDeck) {
         return (
             <main className="text-center p-4 md:p-10">
@@ -813,119 +971,5 @@ export default function BattlePage() {
         )
     }
 
-
-    const winReward = difficulty === 'beginner' ? BEGINNER_WIN_REWARD : difficulty === 'advanced' ? ADVANCED_WIN_REWARD : SUPER_WIN_REWARD;
-    const losePenalty = difficulty === 'beginner' ? BEGINNER_LOSE_PENALTY : difficulty === 'advanced' ? ADVANCED_LOSE_PENALTY : SUPER_LOSE_PENALTY;
-    const difficultyText = difficulty === 'beginner' ? '初級' : difficulty === 'advanced' ? '上級' : '超級';
-
-    return (
-    <main
-        className="flex flex-col gap-4 min-h-screen bg-cover bg-center bg-fixed p-2 md:p-4"
-        style={{ backgroundImage: "url('https://picsum.photos/seed/battleground/1920/1080')" }}
-    >
-        <div className="absolute inset-0 bg-black/50 z-0"></div>
-        <div className="relative z-10 flex flex-col gap-4 flex-grow">
-        
-        {/* Opponent's Area */}
-        <div className="flex flex-col items-center gap-2">
-            <div className="flex flex-col md:flex-row items-center gap-2 md:gap-4 w-full">
-                <Card className="p-2 text-center w-40 bg-black/70 text-white border-slate-700 order-2 md:order-1">
-                    <p className="font-bold">相手 ({difficultyText})</p>
-                    <p className="flex items-center justify-center gap-2 text-red-400 font-bold text-xl"><Heart /> {opponentHealth}</p>
-                    <p className="flex items-center justify-center gap-2 text-blue-400 font-bold"><Dices /> {opponentMana}/{opponentMaxMana}</p>
-                </Card>
-                <div className="flex gap-1 min-h-[100px] md:min-h-[140px] order-1 md:order-2 flex-grow justify-center">
-                    {opponentHand.map((card, i) => (
-                        <div key={card.id ? card.id + i.toString() : i} className="w-16 md:w-24">
-                           {cardBackImage ? (
-                                <Image src={cardBackImage} alt="Card Back" width={96} height={134} className="rounded-lg shadow-md" unoptimized />
-                           ) : (
-                                <Card className="h-full flex items-center justify-center text-center p-2 bg-slate-700 text-white">裏</Card>
-                           )}
-                        </div>
-                    ))}
-                </div>
-                <Card className="p-2 text-center w-28 bg-black/70 text-white border-slate-700 order-3">
-                     <p className="font-bold">山札</p>
-                     <p className="text-xl md:text-2xl">{opponentDeck.length}</p>
-                </Card>
-            </div>
-            {/* Opponent's Board */}
-            <div className="flex items-center justify-center gap-2 bg-black/40 p-2 rounded-lg min-h-[120px] md:min-h-[160px] w-full max-w-4xl border border-slate-700 overflow-x-auto">
-                {opponentBoard.map((card, i) => (
-                    <div key={card.id + i.toString()} className="w-[80px] md:w-[110px] shrink-0">
-                        <CardPreview {...card} />
-                    </div>
-                ))}
-            </div>
-        </div>
-
-        {/* Game Log / Result */}
-        <div className="flex justify-center my-2">
-            {gameOver ? (
-                 <Card className="p-4 md:p-6 my-4 max-w-2xl text-center bg-yellow-200/90 text-slate-800">
-                    <p className="text-xl md:text-2xl font-semibold mb-2">{gameOver}</p>
-                    {gameOver === 'あなたの勝利！' ? (
-                        <p className="flex items-center justify-center gap-2 text-md md:text-lg font-medium text-yellow-700 mb-2">
-                            <Coins className="h-6 w-6" /> +{winReward}G
-                        </p>
-                    ) : (
-                        <p className="flex items-center justify-center gap-2 text-md md:text-lg font-medium text-red-600 mb-2">
-                            <Coins className="h-6 w-6" /> -{losePenalty}G
-                        </p>
-                    )}
-                    {ratingChange !== null && (
-                        <p className={cn("flex items-center justify-center gap-2 text-md md:text-lg font-medium mb-4", ratingChange >= 0 ? "text-green-600" : "text-red-600")}>
-                           <BarChart className="h-6 w-6" /> レーティング: {ratingChange > 0 ? '+' : ''}{ratingChange}
-                        </p>
-                    )}
-                    <Button onClick={resetGame}>
-                        <RotateCcw className="mr-2" />
-                        難易度選択に戻る
-                    </Button>
-                </Card>
-            ) : (
-                <Card className="p-2 w-full max-w-lg h-24 overflow-y-auto text-sm bg-black/70 text-white border-slate-700">
-                   {gameLog.map((log, i) => <p key={i}>{log}</p>)}
-                </Card>
-            )}
-        </div>
-        
-        {/* Player's Board */}
-         <div className="flex items-center justify-center gap-2 bg-black/40 p-2 rounded-lg min-h-[120px] md:min-h-[160px] w-full max-w-4xl mx-auto border border-slate-700 overflow-x-auto">
-            {playerBoard.map((card, i) => (
-                <div key={card.id + i.toString()} className={cn("w-[80px] md:w-[110px] shrink-0 transform transition-transform", card.canAttack ? "border-4 border-green-500 rounded-2xl hover:scale-105" : "opacity-70")}>
-                    <CardPreview {...card} />
-                </div>
-            ))}
-        </div>
-
-        {/* Player's Area */}
-        <div className="flex flex-col items-center gap-2 mt-2">
-            <div className="flex flex-col md:flex-row items-center gap-2 md:gap-4 w-full">
-                <Card className="p-2 text-center w-40 bg-black/70 text-white border-slate-700 order-2 md:order-1">
-                    <p className="font-bold">あなた</p>
-                    <p className="flex items-center justify-center gap-2 text-red-400 font-bold text-xl"><Heart /> {playerHealth}</p>
-                    <p className="flex items-center justify-center gap-2 text-blue-400 font-bold"><Dices /> {playerMana}/{playerMaxMana}</p>
-                    <p className="mt-1 text-xs">ターン: {Math.ceil(turn/2)}</p>
-                </Card>
-                <div className="flex gap-1 min-h-[140px] md:min-h-[180px] order-1 md:order-2 flex-grow justify-center overflow-x-auto w-full px-2">
-                    {playerHand.map((card, i) => (
-                        <div key={card.id + i.toString()} className={cn("w-[95px] md:w-[130px] shrink-0 transition-transform", (isPlayerTurn && gamePhase === 'main' && playerMana >= card.manaCost) ? "cursor-pointer hover:scale-105 hover:-translate-y-2" : "opacity-70" )} onClick={() => playCard(card, i)}>
-                           <CardPreview {...card} />
-                        </div>
-                    ))}
-                </div>
-                 <Card className="p-2 text-center w-28 bg-black/70 text-white border-slate-700 order-3">
-                     <p className="font-bold">山札</p>
-                     <p className="text-xl md:text-2xl">{playerDeck.length}</p>
-                </Card>
-            </div>
-            <Button onClick={handleAttackPhase} size="lg" disabled={!isPlayerTurn || !!gameOver || gamePhase !== 'main'} className="mt-4">
-                攻撃フェーズへ
-            </Button>
-        </div>
-        </div>
-    </main>
-  );
+    return null;
 }

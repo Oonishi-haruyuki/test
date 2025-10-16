@@ -11,6 +11,7 @@ import { Loader2, Wand2, Swords } from 'lucide-react';
 import { CardPreview } from '@/components/card-preview';
 import { Progress } from '@/components/ui/progress';
 import BattlePage from '@/app/battle/page';
+import { elementalDeck } from '@/app/battle/page';
 
 type DraftTheme = 'ファンタジー' | 'SF' | 'ニンジャ' | 'ドラゴン';
 const DRAFT_DECK_SIZE = 30;
@@ -23,6 +24,7 @@ export default function DraftPage() {
     const [cardChoices, setCardChoices] = useState<CardData[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [isBattleStarted, setIsBattleStarted] = useState(false);
+    const [opponentDeck, setOpponentDeck] = useState<CardData[]>([]);
     const { toast } = useToast();
 
     const fetchChoices = async (currentTheme: DraftTheme) => {
@@ -39,7 +41,6 @@ export default function DraftPage() {
         } catch (error) {
             console.error('Failed to generate card choices:', error);
             toast({ variant: 'destructive', title: 'カード選択肢の生成に失敗しました。' });
-            // Retry logic
             setTimeout(() => fetchChoices(currentTheme), 2000);
         } finally {
             setIsLoading(false);
@@ -51,11 +52,34 @@ export default function DraftPage() {
     }, []);
     
     useEffect(() => {
+        const startBattle = async () => {
+            if (draftedDeck.length >= DRAFT_DECK_SIZE) {
+                toast({ title: 'デッキが完成しました！', description: 'AIとの対戦を開始します。' });
+                setIsLoading(true);
+                try {
+                    const result = await generateDeck({ theme: 'SF', cardCount: 30 });
+                    const aiDeck = result.deck.map((card, index) => ({
+                        ...card,
+                        id: `ai-draft-${index}`,
+                        theme: 'sci-fi',
+                        imageUrl: `https://picsum.photos/seed/aidraft${index}/${400}/${300}`,
+                    }));
+                    setOpponentDeck(aiDeck);
+                    setIsBattleStarted(true);
+                } catch {
+                    toast({ variant: 'destructive', title: 'AIデッキ生成に失敗' });
+                    setOpponentDeck(elementalDeck);
+                    setIsBattleStarted(true);
+                } finally {
+                    setIsLoading(false);
+                }
+            }
+        };
+
         if (theme && draftedDeck.length < DRAFT_DECK_SIZE) {
             fetchChoices(theme);
-        } else if (draftedDeck.length >= DRAFT_DECK_SIZE) {
-            toast({ title: 'デッキが完成しました！', description: 'AIとの対戦を開始します。'});
-            setIsBattleStarted(true);
+        } else {
+            startBattle();
         }
     }, [theme, draftedDeck.length]);
 
@@ -66,10 +90,17 @@ export default function DraftPage() {
     };
 
     const handleSelectCard = (selectedCard: CardData) => {
-        // Since we pick 1 card from 2 choices to make a 30 card deck, we add 2 copies.
         const newCards = [...draftedDeck, selectedCard, { ...selectedCard, id: self.crypto.randomUUID() }];
         setDraftedDeck(newCards);
         setCardChoices([]);
+    };
+    
+    const resetDraft = () => {
+        setTheme(null);
+        setDraftedDeck([]);
+        setCardChoices([]);
+        setIsBattleStarted(false);
+        setOpponentDeck([]);
     };
 
     if (!isClient) {
@@ -77,12 +108,14 @@ export default function DraftPage() {
     }
     
     if (isBattleStarted) {
-        // A bit of a hack: re-using the BattlePage component state.
-        // For a real app, this would be refactored to take initial state as props.
-        // We'll hijack the localStorage saving to inject our drafted deck.
-        const battleDeck = { id: 'draft-deck', name: `ドラフトデッキ (${theme})`, cards: draftedDeck };
-        localStorage.setItem('decks', JSON.stringify([battleDeck]));
-        return <BattlePage />;
+        return (
+            <BattlePage
+                initialPlayerDeck={draftedDeck}
+                initialOpponentDeck={opponentDeck}
+                forcedDifficulty="advanced"
+                onGameEnd={resetDraft}
+            />
+        );
     }
 
     if (!theme) {
@@ -117,7 +150,7 @@ export default function DraftPage() {
                     <Loader2 className="animate-spin h-12 w-12 text-primary" />
                     <p className="text-lg text-muted-foreground">次のカードを生成中...</p>
                 </div>
-            ) : (
+            ) : cardChoices.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
                     {cardChoices.map(card => (
                         <div key={card.id} className="cursor-pointer hover:scale-105 transition-transform" onClick={() => handleSelectCard(card)}>
@@ -125,7 +158,7 @@ export default function DraftPage() {
                         </div>
                     ))}
                 </div>
-            )}
+            ) : null}
             
             <div className="mt-12">
                  <h2 className="text-2xl font-bold mb-4">構築中のデッキ ({draftedDeck.length}枚)</h2>
