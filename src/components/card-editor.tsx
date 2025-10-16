@@ -31,7 +31,7 @@ import {
 import { shopItems } from '@/lib/shop-items';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
-import { useProfile } from '@/hooks/use-profile';
+import { useUser } from '@/firebase';
 import { useMissions } from '@/hooks/use-missions';
 
 
@@ -64,7 +64,7 @@ interface CardEditorProps {
 }
 
 export function CardEditor({ cardData, setCardData, cardPreviewRef }: CardEditorProps) {
-  const { activeProfile } = useProfile();
+  const { user } = useUser();
   const { updateMissionProgress } = useMissions();
   const [isIdeaPending, startIdeaTransition] = useTransition();
   const [isImagePending, startImageTransition] = useTransition();
@@ -79,18 +79,17 @@ export function CardEditor({ cardData, setCardData, cardPreviewRef }: CardEditor
 
   useEffect(() => {
     setIsClient(true);
-    if (!activeProfile) return;
-    try {
-        const framesKey = `${activeProfile}-purchasedCardFrames`;
-        const backsKey = `${activeProfile}-purchasedCardBacks`;
-        const savedFrames = JSON.parse(localStorage.getItem(framesKey) || '["frame-default"]');
-        const savedBacks = JSON.parse(localStorage.getItem(backsKey) || '["back-default"]');
-        setPurchasedFrames(savedFrames);
-        setPurchasedBacks(savedBacks);
-    } catch (e) {
-        console.error("Failed to load purchased items", e);
+    if (user) {
+        try {
+            const savedFrames = JSON.parse(localStorage.getItem('purchasedCardFrames') || '["frame-default"]');
+            const savedBacks = JSON.parse(localStorage.getItem('purchasedCardBacks') || '["back-default"]');
+            setPurchasedFrames(savedFrames);
+            setPurchasedBacks(savedBacks);
+        } catch (e) {
+            console.error("Failed to load purchased items", e);
+        }
     }
-  }, [activeProfile]);
+  }, [user]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -166,13 +165,12 @@ export function CardEditor({ cardData, setCardData, cardPreviewRef }: CardEditor
   };
   
   const handleCardBackSelect = (cardBackId: string) => {
-    if (!activeProfile) return;
+    if (!user) return;
     const cardBack = shopItems.backs.find(b => b.id === cardBackId);
     if (!cardBack) return;
 
     try {
-        const key = `${activeProfile}-cardBackImage`;
-        localStorage.setItem(key, cardBack.url);
+        localStorage.setItem('cardBackImage', cardBack.url);
         toast({
             title: 'カード裏面の画像を変更しました',
             description: `「${cardBack.name}」が設定されました。`,
@@ -263,7 +261,14 @@ export function CardEditor({ cardData, setCardData, cardPreviewRef }: CardEditor
   }, [cardData.name, cardData.cardType, cardData.abilities]);
 
   const handleSaveToCollection = () => {
-    if (!activeProfile) return;
+    if (!user) {
+        toast({
+            variant: 'destructive',
+            title: 'ログインが必要です',
+            description: `カードを保存するにはマイページからログインしてください。`,
+        });
+        return;
+    }
 
     if (currency < creationCost) {
         toast({
@@ -283,11 +288,10 @@ export function CardEditor({ cardData, setCardData, cardPreviewRef }: CardEditor
     }
 
     try {
-      const collectionKey = `${activeProfile}-cardCollection`;
-      const collection = JSON.parse(localStorage.getItem(collectionKey) || '[]');
+      const collection = JSON.parse(localStorage.getItem('cardCollection') || '[]');
       const newCard = { ...cardData, id: self.crypto.randomUUID() };
       const newCollection = [...collection, newCard];
-      localStorage.setItem(collectionKey, JSON.stringify(newCollection));
+      localStorage.setItem('cardCollection', JSON.stringify(newCollection));
       updateMissionProgress('create-cards', 1);
       toast({
         title: 'コレクションに保存しました',
@@ -336,7 +340,7 @@ export function CardEditor({ cardData, setCardData, cardPreviewRef }: CardEditor
   const availableFrames = shopItems.frames.filter(frame => purchasedFrames.includes(frame.id) || frame.price === 0);
   const availableBacks = shopItems.backs.filter(back => purchasedBacks.includes(back.id) || back.price === 0);
   
-  const currentBackUrl = isClient && activeProfile ? localStorage.getItem(`${activeProfile}-cardBackImage`) : null;
+  const currentBackUrl = isClient ? localStorage.getItem('cardBackImage') : null;
 
 
   return (

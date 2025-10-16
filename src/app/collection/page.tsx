@@ -30,6 +30,7 @@ import { CollectionCardEditor } from '@/components/collection-card-editor';
 import { useToast } from '@/hooks/use-toast';
 import { useCurrency } from '@/hooks/use-currency';
 import { useInventory } from '@/hooks/use-inventory';
+import { useUser } from '@/firebase';
 
 // Levenshtein distance to calculate the difference between two strings
 const levenshtein = (s1: string, s2: string): number => {
@@ -74,6 +75,7 @@ const evolutions: Record<string, { to: Partial<CardData>, cost: { 'dragon-soul':
   
 
 export default function CollectionPage() {
+  const { user } = useUser();
   const [collection, setCollection] = useState<CardData[]>([]);
   const [isClient, setIsClient] = useState(false);
   const [editingCard, setEditingCard] = useState<CardData | null>(null);
@@ -84,25 +86,34 @@ export default function CollectionPage() {
 
   useEffect(() => {
     setIsClient(true);
-    try {
-      const savedCollection = JSON.parse(localStorage.getItem('cardCollection') || '[]');
-      setCollection(savedCollection);
-    } catch (error) {
-        console.error("Failed to load card collection from localStorage", error);
+    if (user) {
+        try {
+          const savedCollection = JSON.parse(localStorage.getItem('cardCollection') || '[]');
+          setCollection(savedCollection);
+        } catch (error) {
+            console.error("Failed to load card collection from localStorage", error);
+            setCollection([]);
+        }
+    } else {
         setCollection([]);
     }
-  }, []);
+  }, [user]);
+
+  const updateCollection = (newCollection: CardData[]) => {
+    setCollection(newCollection);
+    if (user) {
+        localStorage.setItem('cardCollection', JSON.stringify(newCollection));
+    }
+  }
 
   const handleDeleteCard = (cardId?: string) => {
     if (!cardId) return;
     const newCollection = collection.filter(card => card.id !== cardId);
-    setCollection(newCollection);
-    localStorage.setItem('cardCollection', JSON.stringify(newCollection));
+    updateCollection(newCollection);
   };
 
   const handleClearCollection = () => {
-    setCollection([]);
-    localStorage.removeItem('cardCollection');
+    updateCollection([]);
   };
 
   const handleSaveEdit = (originalCard: CardData, updatedCard: CardData) => {
@@ -125,8 +136,7 @@ export default function CollectionPage() {
     }
 
     const newCollection = collection.map(card => card.id === updatedCard.id ? updatedCard : card);
-    setCollection(newCollection);
-    localStorage.setItem('cardCollection', JSON.stringify(newCollection));
+    updateCollection(newCollection);
 
     toast({
         title: 'カードを更新しました',
@@ -144,7 +154,7 @@ export default function CollectionPage() {
     const userAmount = inventory[material] || 0;
     
     if (userAmount < requiredAmount) {
-        toast({ variant: 'destructive', title: '素材が足りません！', description: `進化には ${material} が ${requiredAmount}個 必要です。`});
+        toast({ variant: 'destructive', title: '素材が足りません！', description: `進化には 竜の魂 が ${requiredAmount}個 必要です。`});
         return;
     }
     
@@ -164,8 +174,7 @@ export default function CollectionPage() {
         };
         newCollection.push(evolvedCard);
 
-        setCollection(newCollection);
-        localStorage.setItem('cardCollection', JSON.stringify(newCollection));
+        updateCollection(newCollection);
 
         toast({ title: '進化した！', description: `「${cardToEvolve.name}」が「${evolvedCard.name}」に進化しました！`});
     } else {
@@ -208,10 +217,10 @@ export default function CollectionPage() {
       {collection.length === 0 ? (
         <Card className="text-center py-20">
           <CardHeader>
-            <CardTitle className="text-2xl text-muted-foreground">コレクションは空です</CardTitle>
+            <CardTitle className="text-2xl text-muted-foreground">{user ? 'コレクションは空です' : 'ログインしていません'}</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-muted-foreground">「作成」ページで新しいカードを作ってコレクションに追加しましょう！</p>
+            <p className="text-muted-foreground">{user ? '「作成」ページで新しいカードを作ってコレクションに追加しましょう！' : 'カードを保存・閲覧するには、マイページからログインしてください。'}</p>
           </CardContent>
         </Card>
       ) : (

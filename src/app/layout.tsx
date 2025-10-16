@@ -5,7 +5,6 @@ import { Toaster } from "@/components/ui/toaster";
 import { CurrencyProvider } from "@/components/currency-provider";
 import { StatsProvider } from "@/components/stats-provider";
 import { AppHeader } from "@/components/header";
-import { ProfileProvider } from "@/hooks/use-profile";
 import { FirebaseProvider } from "@/firebase/provider";
 import { MissionsProvider } from "@/components/missions-provider";
 import { InventoryProvider } from "@/components/inventory-provider";
@@ -26,7 +25,6 @@ export default function RootLayout({
       </head>
       <body className="antialiased">
         <FirebaseProvider>
-          <ProfileProvider>
             <StatsProvider>
               <CurrencyProvider>
                 <InventoryProvider>
@@ -42,9 +40,10 @@ export default function RootLayout({
                 </InventoryProvider>
               </CurrencyProvider>
             </StatsProvider>
-          </ProfileProvider>
         </FirebaseProvider>
       </body>
     </html>
   );
 }
+
+    

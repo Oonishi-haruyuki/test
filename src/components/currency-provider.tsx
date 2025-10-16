@@ -4,7 +4,7 @@
 import React, { createContext, useState, useEffect, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { Coins } from 'lucide-react';
-import { useProfile } from '@/hooks/use-profile';
+import { useUser } from '@/firebase';
 
 interface CurrencyContextType {
   currency: number;
@@ -19,16 +19,21 @@ const INITIAL_CURRENCY = 500;
 const LOGIN_BONUS = 200;
 
 export function CurrencyProvider({ children }: { children: React.ReactNode }) {
-  const { activeProfile } = useProfile();
+  const { user } = useUser();
   const [currency, setCurrency] = useState<number>(INITIAL_CURRENCY);
   const [isInitialized, setIsInitialized] = useState(false);
   const { toast } = useToast();
 
-  const getCurrencyKey = useCallback(() => `${activeProfile}-card-crafter-currency`, [activeProfile]);
-  const getLastLoginKey = useCallback(() => `${activeProfile}-card-crafter-last-login`, [activeProfile]);
+  const getCurrencyKey = useCallback(() => user ? `user-${user.uid}-currency` : 'guest-currency', [user]);
+  const getLastLoginKey = useCallback(() => user ? `user-${user.uid}-last-login` : 'guest-last-login', [user]);
 
   useEffect(() => {
-    if (!activeProfile) return;
+    if (!user) {
+        if (isInitialized) {
+            setCurrency(INITIAL_CURRENCY);
+        }
+        return;
+    };
 
     try {
       const savedCurrency = localStorage.getItem(getCurrencyKey());
@@ -62,10 +67,10 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
       console.error("Failed to process currency/login bonus from localStorage", error);
     }
     if (!isInitialized) setIsInitialized(true);
-  }, [activeProfile, toast, getCurrencyKey, getLastLoginKey, isInitialized]);
+  }, [user, toast, getCurrencyKey, getLastLoginKey, isInitialized]);
 
   useEffect(() => {
-    if (isInitialized && activeProfile) {
+    if (isInitialized) {
         try {
             const currentStoredCurrency = localStorage.getItem(getCurrencyKey());
             if (currentStoredCurrency !== JSON.stringify(currency)) {
@@ -75,7 +80,7 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
             console.error("Failed to save currency to localStorage", error);
         }
     }
-  }, [currency, isInitialized, activeProfile, getCurrencyKey]);
+  }, [currency, isInitialized, getCurrencyKey]);
 
   const addCurrency = useCallback((amount: number) => {
     if (amount > 0) {

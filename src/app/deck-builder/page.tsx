@@ -31,6 +31,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
+import { useUser } from '@/firebase';
 
 
 const DECK_SIZE = 30;
@@ -44,6 +45,7 @@ interface Deck {
 }
 
 export default function DeckBuilderPage() {
+  const { user } = useUser();
   const [collection, setCollection] = useState<CardData[]>([]);
   const [decks, setDecks] = useState<Deck[]>([]);
   const [activeDeckId, setActiveDeckId] = useState<string | null>(null);
@@ -55,28 +57,34 @@ export default function DeckBuilderPage() {
 
   useEffect(() => {
     setIsClient(true);
-    try {
-      const savedCollection = JSON.parse(localStorage.getItem('cardCollection') || '[]');
-      const savedDecks = JSON.parse(localStorage.getItem('decks') || '[]');
-      setCollection(savedCollection);
+    if (user) {
+        try {
+        const savedCollection = JSON.parse(localStorage.getItem('cardCollection') || '[]');
+        const savedDecks = JSON.parse(localStorage.getItem('decks') || '[]');
+        setCollection(savedCollection);
 
-      if (savedDecks.length > 0) {
-        setDecks(savedDecks);
-        setActiveDeckId(savedDecks[0].id);
-      } else {
-        // Create a default deck if none exist
+        if (savedDecks.length > 0) {
+            setDecks(savedDecks);
+            setActiveDeckId(savedDecks[0].id);
+        } else {
+            // Create a default deck if none exist
+            const defaultDeck: Deck = { id: self.crypto.randomUUID(), name: 'マイデッキ 1', cards: [] };
+            setDecks([defaultDeck]);
+            setActiveDeckId(defaultDeck.id);
+        }
+        } catch (error) {
+        console.error("Failed to load data from localStorage", error);
+        setCollection([]);
         const defaultDeck: Deck = { id: self.crypto.randomUUID(), name: 'マイデッキ 1', cards: [] };
         setDecks([defaultDeck]);
         setActiveDeckId(defaultDeck.id);
-      }
-    } catch (error) {
-      console.error("Failed to load data from localStorage", error);
-      setCollection([]);
-      const defaultDeck: Deck = { id: self.crypto.randomUUID(), name: 'マイデッキ 1', cards: [] };
-      setDecks([defaultDeck]);
-      setActiveDeckId(defaultDeck.id);
+        }
+    } else {
+        setCollection([]);
+        setDecks([]);
+        setActiveDeckId(null);
     }
-  }, []);
+  }, [user]);
 
   const getCardCountInDeck = (cardId?: string) => {
     if (!cardId || !activeDeck) return 0;
@@ -85,7 +93,9 @@ export default function DeckBuilderPage() {
 
   const updateDecks = (newDecks: Deck[]) => {
     setDecks(newDecks);
-    localStorage.setItem('decks', JSON.stringify(newDecks));
+    if(user) {
+        localStorage.setItem('decks', JSON.stringify(newDecks));
+    }
   }
 
   const addToDeck = (card: CardData) => {
@@ -216,6 +226,17 @@ export default function DeckBuilderPage() {
 
   if (!isClient) {
     return null; // Or a loading spinner
+  }
+
+  if (!user) {
+    return (
+        <main className="text-center p-10">
+            <Card className="max-w-md mx-auto">
+                <CardHeader><CardTitle>ログインが必要です</CardTitle></CardHeader>
+                <CardContent><p>デッキを構築するには、マイページからログインしてください。</p></CardContent>
+            </Card>
+        </main>
+    );
   }
 
   return (
@@ -382,3 +403,5 @@ export default function DeckBuilderPage() {
     </main>
   );
 }
+
+    

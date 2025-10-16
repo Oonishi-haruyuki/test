@@ -12,12 +12,14 @@ import { Loader2, Save, Wand2, Coins } from 'lucide-react';
 import { useCurrency } from '@/hooks/use-currency';
 import { useMissions } from '@/hooks/use-missions';
 import Image from 'next/image';
+import { useUser } from '@/firebase';
 
 const GACHA_COST_SINGLE = 50;
 const GACHA_COST_MULTI = 500;
 
 
 export default function GachaPage() {
+  const { user } = useUser();
   const [isPending, setIsPending] = useState(false);
   const [pulledCards, setPulledCards] = useState<CardData[]>([]);
   const { toast } = useToast();
@@ -29,15 +31,25 @@ export default function GachaPage() {
 
   useEffect(() => {
     setIsClient(true);
-    const savedCardBack = localStorage.getItem('cardBackImage');
-    if (savedCardBack) {
-        setCardBackImage(savedCardBack);
+    if (user) {
+        const savedCardBack = localStorage.getItem('cardBackImage');
+        if (savedCardBack) {
+            setCardBackImage(savedCardBack);
+        }
+        const savedAnimation = localStorage.getItem('selectedGachaAnimation') || 'anim-flip';
+        setGachaAnimation(savedAnimation.replace('anim-', ''));
     }
-    const savedAnimation = localStorage.getItem('selectedGachaAnimation') || 'anim-flip';
-    setGachaAnimation(savedAnimation.replace('anim-', ''));
-  }, []);
+  }, [user]);
 
   const handlePullGacha = async (pullCount: number) => {
+    if (!user) {
+        toast({
+            variant: 'destructive',
+            title: 'ログインが必要です',
+            description: 'ガチャを引くにはマイページからログインしてください。',
+        });
+        return;
+    }
     const cost = pullCount === 1 ? GACHA_COST_SINGLE : GACHA_COST_MULTI;
     
     if (currency < cost) {
@@ -88,7 +100,7 @@ export default function GachaPage() {
   };
 
   const handleSaveToCollection = () => {
-    if (pulledCards.length === 0) return;
+    if (pulledCards.length === 0 || !user) return;
     try {
       const collection = JSON.parse(localStorage.getItem('cardCollection') || '[]');
       const newCollection = [...collection, ...pulledCards];
@@ -194,3 +206,5 @@ export default function GachaPage() {
     </main>
   );
 }
+
+    

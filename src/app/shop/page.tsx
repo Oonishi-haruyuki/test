@@ -10,10 +10,12 @@ import { Coins, CheckCircle2 } from 'lucide-react';
 import { shopItems, ShopItem } from '@/lib/shop-items';
 import Image from 'next/image';
 import { useInventory } from '@/hooks/use-inventory';
+import { useUser } from '@/firebase';
 
 type ItemType = 'frames' | 'backs' | 'artifacts' | 'animations' | 'materials';
 
 export default function ShopPage() {
+    const { user } = useUser();
     const { currency, spendCurrency } = useCurrency();
     const { addItem } = useInventory();
     const { toast } = useToast();
@@ -25,21 +27,28 @@ export default function ShopPage() {
 
     useEffect(() => {
         setIsClient(true);
-        try {
-            const savedFrames = JSON.parse(localStorage.getItem('purchasedCardFrames') || '[]');
-            const savedBacks = JSON.parse(localStorage.getItem('purchasedCardBacks') || '[]');
-            const savedArtifacts = JSON.parse(localStorage.getItem('purchasedArtifacts') || '[]');
-            const savedAnimations = JSON.parse(localStorage.getItem('purchasedGachaAnimations') || '[]');
-            setPurchasedFrames(savedFrames);
-            setPurchasedBacks(savedBacks);
-            setPurchasedArtifacts(savedArtifacts);
-            setPurchasedAnimations(savedAnimations);
-        } catch (error) {
-            console.error("Failed to load purchased items from localStorage", error);
+        if (user) {
+            try {
+                const savedFrames = JSON.parse(localStorage.getItem('purchasedCardFrames') || '[]');
+                const savedBacks = JSON.parse(localStorage.getItem('purchasedCardBacks') || '[]');
+                const savedArtifacts = JSON.parse(localStorage.getItem('purchasedArtifacts') || '[]');
+                const savedAnimations = JSON.parse(localStorage.getItem('purchasedGachaAnimations') || '[]');
+                setPurchasedFrames(savedFrames);
+                setPurchasedBacks(savedBacks);
+                setPurchasedArtifacts(savedArtifacts);
+                setPurchasedAnimations(savedAnimations);
+            } catch (error) {
+                console.error("Failed to load purchased items from localStorage", error);
+            }
         }
-    }, []);
+    }, [user]);
 
     const handlePurchase = (item: ShopItem, type: ItemType) => {
+        if (!user) {
+            toast({ variant: 'destructive', title: 'ログインが必要です。'});
+            return;
+        }
+
         if (currency < item.price) {
             toast({
                 variant: 'destructive',
@@ -131,7 +140,7 @@ export default function ShopPage() {
                                             購入済み
                                         </Button>
                                      ) : item.price > 0 ? (
-                                        <Button onClick={() => handlePurchase(item, type)} disabled={currency < item.price} className="w-full">
+                                        <Button onClick={() => handlePurchase(item, type)} disabled={!user || currency < item.price} className="w-full">
                                             <Coins className="mr-2" />
                                             {item.price.toLocaleString()} G で購入
                                         </Button>
@@ -165,3 +174,5 @@ export default function ShopPage() {
         </main>
     );
 }
+
+    

@@ -14,8 +14,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { AchievementsUI, type Achievement } from '@/components/ui/achievements';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
-import { useProfile, PROFILES, type ProfileId } from '@/hooks/use-profile';
-import { cn } from '@/lib/utils';
 import { useUser, loginWithId, signUpWithId, loginWithGoogle, initializeFirebase } from '@/firebase';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -48,7 +46,6 @@ interface Replay {
 export default function MyPage() {
     const { user, profile, isUserLoading } = useUser();
     const { firestore } = initializeFirebase();
-    const { activeProfile, setActiveProfile } = useProfile();
     const { currency, addCurrency } = useCurrency();
     const { wins, losses } = useStats();
     const { missions, claimMissionReward } = useMissions();
@@ -74,7 +71,7 @@ export default function MyPage() {
     // Load data from localStorage when profile changes
     useEffect(() => {
         setIsClient(true);
-        if (!activeProfile) return;
+        if (!user) return;
         try {
             const savedCollection = JSON.parse(localStorage.getItem(`cardCollection`) || '[]');
             const savedDecks = JSON.parse(localStorage.getItem(`decks`) || '[]');
@@ -91,7 +88,7 @@ export default function MyPage() {
         } catch (error) {
             console.error("Failed to load data from localStorage", error);
         }
-    }, [activeProfile]);
+    }, [user]);
     
     // Fetch replays
     useEffect(() => {
@@ -116,19 +113,19 @@ export default function MyPage() {
 
     // Save data when it changes
     useEffect(() => {
-        if (!isClient || !activeProfile) return;
+        if (!isClient || !user) return;
         localStorage.setItem(`selectedTitle`, selectedTitle);
-    }, [selectedTitle, activeProfile, isClient]);
+    }, [selectedTitle, user, isClient]);
 
     useEffect(() => {
-        if (!isClient || !activeProfile) return;
+        if (!isClient || !user) return;
         localStorage.setItem(`claimedRewards`, JSON.stringify(claimedRewards));
-    }, [claimedRewards, activeProfile, isClient]);
+    }, [claimedRewards, user, isClient]);
 
     useEffect(() => {
-        if (!isClient || !activeProfile) return;
+        if (!isClient || !user) return;
         localStorage.setItem(`selectedGachaAnimation`, selectedAnimation);
-    }, [selectedAnimation, activeProfile, isClient]);
+    }, [selectedAnimation, user, isClient]);
 
 
     const getUniqueCardCount = (cards: CardData[]) => {
@@ -136,10 +133,6 @@ export default function MyPage() {
         const ids = new Set(cards.map(card => card.id));
         return ids.size;
     };
-
-    const getDisplayName = () => {
-        return PROFILES[activeProfile].name;
-    }
 
     const uniqueCardCount = getUniqueCardCount(cardCollection);
 

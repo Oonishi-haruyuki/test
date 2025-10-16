@@ -2,7 +2,7 @@
 'use client';
 
 import React, { createContext, useState, useEffect, useCallback } from 'react';
-import { useProfile } from '@/hooks/use-profile';
+import { useUser } from '@/firebase';
 import { useCurrency } from '@/hooks/use-currency';
 import { useToast } from '@/hooks/use-toast';
 import { allMissions, Mission } from '@/lib/missions';
@@ -16,13 +16,13 @@ interface MissionsContextType {
 export const MissionsContext = createContext<MissionsContextType | null>(null);
 
 export function MissionsProvider({ children }: { children: React.ReactNode }) {
-  const { activeProfile } = useProfile();
+  const { user } = useUser();
   const { addCurrency } = useCurrency();
   const { toast } = useToast();
   const [missions, setMissions] = useState<Mission[]>([]);
   const [isInitialized, setIsInitialized] = useState(false);
 
-  const getMissionsKey = useCallback(() => `${activeProfile}-missions`, [activeProfile]);
+  const getMissionsKey = useCallback(() => user ? `user-${user.uid}-missions` : 'guest-missions', [user]);
 
   // Function to get the start of the current day in UTC
   const getStartOfDayUTC = () => {
@@ -96,7 +96,7 @@ export function MissionsProvider({ children }: { children: React.ReactNode }) {
         return baseMission;
     });
 
-    if (needsUpdate && activeProfile) {
+    if (needsUpdate && user) {
         localStorage.setItem(getMissionsKey(), JSON.stringify({
             missions: mergedMissions,
             lastDailyReset: today,
@@ -107,10 +107,15 @@ export function MissionsProvider({ children }: { children: React.ReactNode }) {
 
     return mergedMissions;
 
-  }, [activeProfile, getMissionsKey]);
+  }, [user, getMissionsKey]);
 
   useEffect(() => {
-    if (!activeProfile) return;
+    if (!user) {
+        if (isInitialized) {
+            setMissions(JSON.parse(JSON.stringify(allMissions)));
+        }
+        return;
+    };
     try {
       const savedData = localStorage.getItem(getMissionsKey());
       if (savedData) {
@@ -132,11 +137,11 @@ export function MissionsProvider({ children }: { children: React.ReactNode }) {
       setMissions(JSON.parse(JSON.stringify(allMissions)));
     }
     setIsInitialized(true);
-  }, [activeProfile, getMissionsKey, resetMissions]);
+  }, [user, getMissionsKey, resetMissions, isInitialized]);
   
   const saveMissions = useCallback((updatedMissions: Mission[]) => {
     setMissions(updatedMissions);
-    if(activeProfile) {
+    if(user) {
       const dataToSave = {
         missions: updatedMissions,
         lastDailyReset: getStartOfDayUTC(),
@@ -145,7 +150,7 @@ export function MissionsProvider({ children }: { children: React.ReactNode }) {
       };
       localStorage.setItem(getMissionsKey(), JSON.stringify(dataToSave));
     }
-  }, [activeProfile, getMissionsKey]);
+  }, [user, getMissionsKey]);
 
 
   const updateMissionProgress = useCallback((action: Mission['action'], amount: number) => {
@@ -161,7 +166,7 @@ export function MissionsProvider({ children }: { children: React.ReactNode }) {
         });
         
         // Save to localStorage immediately after state update
-        if(activeProfile) {
+        if(user) {
           const dataToSave = {
             missions: updatedMissions,
             lastDailyReset: getStartOfDayUTC(),
@@ -174,7 +179,7 @@ export function MissionsProvider({ children }: { children: React.ReactNode }) {
         return updatedMissions;
     });
 
-  }, [isInitialized, activeProfile, getMissionsKey]);
+  }, [isInitialized, user, getMissionsKey]);
 
   const claimMissionReward = useCallback((missionId: string) => {
     const mission = missions.find(m => m.id === missionId);
