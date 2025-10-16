@@ -63,7 +63,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({ children }) 
             try {
               const newProfileData = { 
                 loginId: user.email || `user_${user.uid.substring(0, 5)}`,
-                rating: 1500, // Initial rating
+                rating: 1000, // Initial rating
                 lastMatchDate: new Date(0).toISOString(), // Epoch time
               };
               await setDoc(profileRef, newProfileData);

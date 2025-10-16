@@ -12,7 +12,7 @@
         },
         "rating": {
           "type": "number",
-          "description": "The user's ELO rating for ranked matches. Defaults to 1500."
+          "description": "The user's ELO rating for ranked matches. Defaults to 1000."
         },
         "lastMatchDate": {
             "type": "string",
@@ -310,5 +310,3 @@
     }
   }
 }
-
-    

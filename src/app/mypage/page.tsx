@@ -317,7 +317,7 @@ export default function MyPage() {
                 />
                  <StatCard
                     title="レーティング"
-                    value={profile?.rating || 1500}
+                    value={profile?.rating || 1000}
                     icon={<BarChart className="h-4 w-4 text-muted-foreground" />}
                     description="現在の対戦レーティング"
                     loading={isUserLoading}
