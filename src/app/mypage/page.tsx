@@ -61,7 +61,7 @@ export default function MyPage() {
         resolver: zodResolver(loginSchema),
     });
 
-    const [collection, setCollection] = useState<CardData[]>([]);
+    const [cardCollection, setCardCollection] = useState<CardData[]>([]);
     const [decks, setDecks] = useState<{ id: string, name: string, cards: CardData[] }[]>([]);
     const [selectedTitle, setSelectedTitle] = useState('未設定');
     const [claimedRewards, setClaimedRewards] = useState<string[]>([]);
@@ -82,7 +82,7 @@ export default function MyPage() {
             const savedClaimedRewards = JSON.parse(localStorage.getItem(`claimedRewards`) || '[]');
             const savedAnimations = JSON.parse(localStorage.getItem(`purchasedGachaAnimations`) || '["anim-flip"]');
             const savedSelectedAnimation = localStorage.getItem(`selectedGachaAnimation`) || 'anim-flip';
-            setCollection(savedCollection);
+            setCardCollection(savedCollection);
             setDecks(savedDecks);
             setSelectedTitle(savedTitle);
             setClaimedRewards(savedClaimedRewards);
@@ -141,7 +141,7 @@ export default function MyPage() {
         return PROFILES[activeProfile].name;
     }
 
-    const uniqueCardCount = getUniqueCardCount(collection);
+    const uniqueCardCount = getUniqueCardCount(cardCollection);
 
     const handleTitleChange = (title: string) => {
         setSelectedTitle(title);
@@ -457,7 +457,7 @@ export default function MyPage() {
                 <CardContent>
                     <ul className="list-disc pl-5 space-y-2 text-sm text-muted-foreground">
                         <li>**ギルド機能**: 仲間と集まり、チャットやギルド対戦を楽しめる機能。</li>
-                        <li>**ドラフトモード**: その場でランダムなカードを選んでデッキを構築し、他のプレイヤーと対戦する新しい対戦形式。</li>
+                        <li>**ドラフトモード**: その場で属性を選択しランダムに２枚ずつ生成されるカードを選んでデッキを構築し、他のプレイヤーと対戦する新しい対戦形式。</li>
                         <li>**カードの進化・強化**: 特定のカードを素材を使ってアップグレードし、新たな能力や見た目を解放するシステム。</li>
                         <li>**リプレイ機能**: 過去の対戦を見返し、戦略を分析できる機能。</li>
                         <li>**観戦モード**: 他のプレイヤーの白熱したオンライン対戦をリアルタイムで観戦できる機能。</li>
@@ -470,5 +470,3 @@ export default function MyPage() {
         </main>
     );
 }
-
-    
