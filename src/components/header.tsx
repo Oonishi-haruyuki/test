@@ -20,6 +20,7 @@ const navLinks = [
     { href: '/battle', label: 'AI対戦' },
     { href: '/online-battle', label: 'オンライン対戦' },
     { href: '/trade', label: 'トレード' },
+    { href: '/guild', label: 'ギルド' },
     { href: '/story', label: 'ストーリー' },
     { href: '/rules', label: 'ルール' },
     { href: '/ranking', label: 'ランキング' },

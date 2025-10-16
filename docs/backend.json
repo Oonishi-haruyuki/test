@@ -18,6 +18,10 @@
             "type": "string",
             "format": "date-time",
             "description": "The timestamp of the user's last completed match."
+        },
+        "guildId": {
+          "type": "string",
+          "description": "The ID of the guild the user belongs to."
         }
       }
     },
@@ -195,6 +199,31 @@
         "status": { "type": "string", "enum": ["pending", "accepted", "rejected", "cancelled"] },
         "createdAt": { "type": "string", "format": "date-time" }
       }
+    },
+    "Guild": {
+      "title": "Guild",
+      "description": "Represents a player guild.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "The name of the guild." },
+        "description": { "type": "string", "description": "A short description of the guild." },
+        "leaderId": { "type": "string", "description": "The UID of the user who created the guild." },
+        "memberIds": { "type": "array", "items": { "type": "string" }, "description": "A list of UIDs of the guild members." },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "leaderId", "memberIds"]
+    },
+    "ChatMessage": {
+      "title": "Chat Message",
+      "description": "Represents a single message in a guild chat.",
+      "type": "object",
+      "properties": {
+        "guildId": { "type": "string" },
+        "userId": { "type": "string" },
+        "userLoginId": { "type": "string" },
+        "text": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
     }
   },
   "auth": {
@@ -257,6 +286,23 @@
             "allow": ["update"],
             "if": "request.auth != null && request.auth.uid == resource.data.offerorId && resource.data.status == 'pending' && request.resource.data.status == 'cancelled'"
         }
+      ]
+    },
+    "/guilds/{guildId}": {
+      "schema": { "$ref": "#/entities/Guild" },
+      "description": "Stores guild information.",
+      "rules": [
+        { "allow": ["read"], "if": "request.auth != null" },
+        { "allow": ["create"], "if": "request.auth != null" },
+        { "allow": ["update"], "if": "request.auth != null && request.auth.uid in resource.data.memberIds" }
+      ]
+    },
+    "/guilds/{guildId}/messages/{messageId}": {
+      "schema": { "$ref": "#/entities/ChatMessage" },
+      "description": "Stores chat messages for a guild.",
+      "rules": [
+        { "allow": ["read"], "if": "request.auth != null && get(/databases/$(database)/documents/guilds/$(guildId)).data.memberIds.has(request.auth.uid)" },
+        { "allow": ["create"], "if": "request.auth != null && request.resource.data.userId == request.auth.uid && get(/databases/$(database)/documents/guilds/$(guildId)).data.memberIds.has(request.auth.uid)" }
       ]
     }
   }
