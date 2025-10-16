@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Send, Users, Shield, LogOut, PlusCircle, Crown, Search, Coins, Star } from 'lucide-react';
+import { Loader2, Send, Users, Shield, LogOut, PlusCircle, Crown, Search, Coins, Star, Clock, Milestone, StickyNote } from 'lucide-react';
 import { collection, query, where, onSnapshot, doc, getDoc, getDocs, orderBy, limit, startAfter, updateDoc } from 'firebase/firestore';
 import { createGuild, joinGuild, leaveGuild, sendChatMessage } from '@/lib/guild-actions';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from '@/components/ui/dialog';
@@ -16,6 +16,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { formatDistanceToNow } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { useCurrency } from '@/hooks/use-currency';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface Guild {
     id: string;
@@ -23,6 +25,9 @@ interface Guild {
     description: string;
     leaderId: string;
     memberIds: string[];
+    activityTime?: string;
+    genderRatio?: string;
+    notes?: string;
 }
 
 interface ChatMessage {
@@ -107,6 +112,9 @@ export default function GuildPage() {
     // Guild Creation
     const [newGuildName, setNewGuildName] = useState('');
     const [newGuildDesc, setNewGuildDesc] = useState('');
+    const [activityTime, setActivityTime] = useState('all-day');
+    const [genderRatio, setGenderRatio] = useState('any');
+    const [notes, setNotes] = useState('');
 
     // Guild Search
     const [searchTerm, setSearchTerm] = useState('');
@@ -185,7 +193,7 @@ export default function GuildPage() {
 
         setIsProcessing(true);
         if (spendCurrency(GUILD_CREATION_COST)) {
-            const result = await createGuild(user.uid, profile.loginId, newGuildName, newGuildDesc);
+            const result = await createGuild(user.uid, profile.loginId, newGuildName, newGuildDesc, activityTime, genderRatio, notes);
             if (result.success && result.guildId) {
                 toast({ title: 'ギルドを作成しました！', description: `${GUILD_CREATION_COST}G を消費しました。` });
                 fetchMyGuildData(result.guildId);
@@ -298,18 +306,32 @@ export default function GuildPage() {
                     <CardDescription>{myGuild.description || '説明がありません。'}</CardDescription>
                 </CardHeader>
                 <CardContent className="grid md:grid-cols-3 gap-6">
-                    <div className="md:col-span-1">
-                        <h3 className="font-bold mb-2 flex items-center gap-2"><Users />メンバー ({myGuild.memberIds.length})</h3>
-                        <ScrollArea className="h-96 border rounded-md p-4">
-                            <ul className="space-y-2">
-                                {guildMembers.map(member => (
-                                    <li key={member.id} className="flex items-center gap-2 text-sm">
-                                        {member.id === myGuild.leaderId ? <Crown className="text-yellow-500"/> : <Shield />}
-                                        {member.loginId}
-                                    </li>
-                                ))}
-                            </ul>
-                        </ScrollArea>
+                    <div className="md:col-span-1 space-y-4">
+                        <div>
+                            <h3 className="font-bold mb-2 flex items-center gap-2"><Users />メンバー ({myGuild.memberIds.length})</h3>
+                            <ScrollArea className="h-60 border rounded-md p-4">
+                                <ul className="space-y-2">
+                                    {guildMembers.map(member => (
+                                        <li key={member.id} className="flex items-center gap-2 text-sm">
+                                            {member.id === myGuild.leaderId ? <Crown className="text-yellow-500"/> : <Shield />}
+                                            {member.loginId}
+                                        </li>
+                                    ))}
+                                </ul>
+                            </ScrollArea>
+                        </div>
+                        <div className="space-y-2">
+                            <h3 className="font-bold mb-2 flex items-center gap-2"><Clock />活動時間帯</h3>
+                            <p className="text-sm bg-muted p-2 rounded-md">{myGuild.activityTime || '未設定'}</p>
+                        </div>
+                         <div className="space-y-2">
+                            <h3 className="font-bold mb-2 flex items-center gap-2"><Milestone />男女比率</h3>
+                            <p className="text-sm bg-muted p-2 rounded-md">{myGuild.genderRatio || '未設定'}</p>
+                        </div>
+                        <div className="space-y-2">
+                            <h3 className="font-bold mb-2 flex items-center gap-2"><StickyNote />記載事項</h3>
+                            <p className="text-sm bg-muted p-2 rounded-md whitespace-pre-wrap">{myGuild.notes || '記載事項はありません。'}</p>
+                        </div>
                     </div>
                      <div className="md:col-span-2">
                         <h3 className="font-bold mb-2">ギルドチャット</h3>
@@ -332,19 +354,52 @@ export default function GuildPage() {
                         <DialogTrigger asChild>
                            <Button className="w-full" size="lg"><PlusCircle /> ギルドを作成</Button>
                         </DialogTrigger>
-                        <DialogContent>
+                        <DialogContent className="max-w-md">
                             <DialogHeader>
                                 <DialogTitle>新しいギルドを作成</DialogTitle>
                                 <DialogDescription>ギルドの作成には {GUILD_CREATION_COST.toLocaleString()}G が必要です。</DialogDescription>
                             </DialogHeader>
-                            <div className="space-y-4">
+                            <div className="space-y-4 py-4">
                                 <div className="space-y-2">
                                     <Label htmlFor="guild-name">ギルド名</Label>
                                     <Input id="guild-name" value={newGuildName} onChange={e => setNewGuildName(e.target.value)} />
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="guild-desc">ギルド紹介文</Label>
-                                    <Input id="guild-desc" value={newGuildDesc} onChange={e => setNewGuildDesc(e.target.value)} />
+                                    <Textarea id="guild-desc" value={newGuildDesc} onChange={e => setNewGuildDesc(e.target.value)} />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="activity-time">活動時間帯</Label>
+                                    <Select value={activityTime} onValueChange={setActivityTime}>
+                                        <SelectTrigger id="activity-time">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="all-day">終日</SelectItem>
+                                            <SelectItem value="morning">朝</SelectItem>
+                                            <SelectItem value="afternoon">昼</SelectItem>
+                                            <SelectItem value="night">夜</SelectItem>
+                                            <SelectItem value="late-night">深夜</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                 <div className="space-y-2">
+                                    <Label htmlFor="gender-ratio">男女比率</Label>
+                                    <Select value={genderRatio} onValueChange={setGenderRatio}>
+                                        <SelectTrigger id="gender-ratio">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="any">問わない</SelectItem>
+                                            <SelectItem value="male-only">男性のみ</SelectItem>
+                                            <SelectItem value="female-only">女性のみ</SelectItem>
+                                            <SelectItem value="balanced">半々</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="notes">記載事項</Label>
+                                    <Textarea id="notes" value={notes} onChange={e => setNotes(e.target.value)} placeholder="エンジョイ勢、初心者歓迎など" />
                                 </div>
                             </div>
                             <DialogFooter>
@@ -393,3 +448,5 @@ export default function GuildPage() {
         </Card>
     );
 }
+
+    

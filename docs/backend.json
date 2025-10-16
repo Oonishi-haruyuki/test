@@ -209,7 +209,10 @@
         "description": { "type": "string", "description": "A short description of the guild." },
         "leaderId": { "type": "string", "description": "The UID of the user who created the guild." },
         "memberIds": { "type": "array", "items": { "type": "string" }, "description": "A list of UIDs of the guild members." },
-        "createdAt": { "type": "string", "format": "date-time" }
+        "createdAt": { "type": "string", "format": "date-time" },
+        "activityTime": { "type": "string", "description": "The typical activity time for the guild." },
+        "genderRatio": { "type": "string", "description": "The gender ratio of the guild." },
+        "notes": { "type": "string", "description": "Additional notes or rules for the guild." }
       },
       "required": ["name", "leaderId", "memberIds"]
     },
@@ -307,3 +310,5 @@
     }
   }
 }
+
+    

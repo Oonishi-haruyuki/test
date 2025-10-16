@@ -20,7 +20,10 @@ export async function createGuild(
     userId: string, 
     userLoginId: string, 
     guildName: string, 
-    description: string
+    description: string,
+    activityTime: string,
+    genderRatio: string,
+    notes: string
 ): Promise<{ success: boolean; message: string; guildId?: string }> {
     const { firestore } = initializeFirebase();
     
@@ -45,6 +48,9 @@ export async function createGuild(
                 leaderId: userId,
                 memberIds: [userId],
                 createdAt: serverTimestamp(),
+                activityTime,
+                genderRatio,
+                notes,
             });
 
             transaction.update(userRef, { guildId: guildId });
@@ -152,3 +158,5 @@ export async function sendChatMessage(guildId: string, userLoginId: string, text
         return { success: false, message: 'メッセージの送信に失敗しました。'};
     }
 }
+
+    
