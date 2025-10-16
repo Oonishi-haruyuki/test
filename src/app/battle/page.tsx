@@ -19,6 +19,7 @@ import { useMissions } from '@/hooks/use-missions';
 import { useUser } from '@/firebase';
 import { updateUserRating } from '@/lib/rating-system';
 import { useInventory } from '@/hooks/use-inventory';
+import { saveReplay, type GameHistoryEntry } from '@/lib/replay-actions';
 
 const DECK_SIZE = 30;
 const MAX_MANA = 10;
@@ -186,9 +187,10 @@ function BattleGame({
     const { addCurrency, spendCurrency } = useCurrency();
     const { addWin, addLoss } = useStats();
     const { updateMissionProgress } = useMissions();
-    const { user } = useUser();
+    const { user, profile } = useUser();
     const [ratingChange, setRatingChange] = useState<number | null>(null);
     const { addItem } = useInventory();
+    const [gameHistory, setGameHistory] = useState<GameHistoryEntry[]>([]);
 
     // Game State
     const [playerDeck, setPlayerDeck] = useState<CardData[]>([]);
@@ -230,9 +232,27 @@ function BattleGame({
     const shuffleDeck = (deck: CardData[]) => {
         return [...deck].sort(() => Math.random() - 0.5);
     }
+    
+    const recordHistory = (log: string) => {
+        const historyEntry: GameHistoryEntry = {
+            log,
+            player1Health: playerHealth,
+            player2Health: opponentHealth,
+            player1Mana: playerMana,
+            player2Mana: opponentMana,
+            player1MaxMana: playerMaxMana,
+            player2MaxMana: opponentMaxMana,
+            player1Hand: playerHand.map(c => ({ id: c.id, name: c.name })),
+            player2Hand: opponentHand.map(c => ({ id: c.id, name: c.name })),
+            player1Board: [...playerBoard],
+            player2Board: [...opponentBoard],
+        };
+        setGameHistory(prev => [...prev, historyEntry]);
+    };
 
     const addToLog = (message: string) => {
         setGameLog(prev => [`[T${Math.ceil(turn/2)}] ${message}`, ...prev]);
+        recordHistory(message);
     }
 
     const startGame = useCallback((playerDeckData: CardData[], opponentDeckData: CardData[]) => {
@@ -270,6 +290,7 @@ function BattleGame({
         setGamePhase('main');
         setGameOver('');
         setRatingChange(null);
+        setGameHistory([]);
         const firstTurnMessage = playerGoesFirst ? 'あなたが先攻です。' : '相手が先攻です。';
         setGameLog([`--- ターン 1: ${playerGoesFirst ? 'あなた' : '相手'}のターン ---`, firstTurnMessage, 'ゲーム開始！']);
         
@@ -371,6 +392,15 @@ function BattleGame({
             if (onGameEnd) onGameEnd(result);
             return;
         }
+        
+        await saveReplay({
+            player1Id: user.uid,
+            player2Id: 'AI',
+            player1LoginId: profile?.loginId || 'Player',
+            player2LoginId: `AI (${difficulty})`,
+            winnerId: result === 'win' ? user.uid : 'AI',
+            history: gameHistory,
+        });
     
         const winRewardMap = { 'beginner': BEGINNER_WIN_REWARD, 'advanced': ADVANCED_WIN_REWARD, 'super': SUPER_WIN_REWARD };
         const losePenaltyMap = { 'beginner': BEGINNER_LOSE_PENALTY, 'advanced': ADVANCED_LOSE_PENALTY, 'super': SUPER_LOSE_PENALTY };
@@ -433,7 +463,7 @@ function BattleGame({
         } finally {
             if (onGameEnd) onGameEnd(result);
         }
-    }, [difficulty, user, addCurrency, addLoss, addWin, spendCurrency, toast, updateMissionProgress, isDailyChallenge, onGameEnd, addItem]);
+    }, [difficulty, user, profile, addCurrency, addLoss, addWin, spendCurrency, toast, updateMissionProgress, isDailyChallenge, onGameEnd, addItem, gameHistory]);
 
     useEffect(() => {
         if (gameOver) return;
@@ -986,3 +1016,5 @@ export default function BattlePage(props: BattleProps) {
 
     return null;
 }
+
+    

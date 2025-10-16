@@ -8,7 +8,7 @@ import { z } from 'zod';
 import { useCurrency } from '@/hooks/use-currency';
 import { useStats } from '@/hooks/use-stats';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Coins, Trophy, Star, Library, Users, Skull, User, LogIn, BarChart } from 'lucide-react';
+import { Coins, Trophy, Star, Library, Users, Skull, User, LogIn, BarChart, History } from 'lucide-react';
 import type { CardData } from '@/components/card-editor';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AchievementsUI, type Achievement } from '@/components/ui/achievements';
@@ -16,7 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { useProfile, PROFILES, type ProfileId } from '@/hooks/use-profile';
 import { cn } from '@/lib/utils';
-import { useUser, loginWithId, signUpWithId, loginWithGoogle } from '@/firebase';
+import { useUser, loginWithId, signUpWithId, loginWithGoogle, initializeFirebase } from '@/firebase';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useMissions } from '@/hooks/use-missions';
@@ -24,6 +24,10 @@ import { MissionsUI } from '@/components/ui/missions-ui';
 import { allMissions } from '@/lib/missions';
 import { shopItems } from '@/lib/shop-items';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { collection, query, where, orderBy, limit, getDocs } from 'firebase/firestore';
+import { Badge } from '@/components/ui/badge';
+import { formatDistanceToNow } from 'date-fns';
+import { ja } from 'date-fns/locale';
 
 const loginSchema = z.object({
     loginId: z.string().min(1, { message: 'ログインIDを入力してください。' }),
@@ -32,8 +36,18 @@ const loginSchema = z.object({
 type LoginSchema = z.infer<typeof loginSchema>;
 
 
+interface Replay {
+    id: string;
+    player1LoginId: string;
+    player2LoginId: string;
+    winnerId: string;
+    createdAt: any;
+}
+
+
 export default function MyPage() {
     const { user, profile, isUserLoading } = useUser();
+    const { firestore } = initializeFirebase();
     const { activeProfile, setActiveProfile } = useProfile();
     const { currency, addCurrency } = useCurrency();
     const { wins, losses } = useStats();
@@ -54,6 +68,8 @@ export default function MyPage() {
     const [isClient, setIsClient] = useState(false);
     const [purchasedAnimations, setPurchasedAnimations] = useState<string[]>([]);
     const [selectedAnimation, setSelectedAnimation] = useState('anim-flip');
+    const [replays, setReplays] = useState<Replay[]>([]);
+    const [isLoadingReplays, setIsLoadingReplays] = useState(true);
 
     // Load data from localStorage when profile changes
     useEffect(() => {
@@ -76,6 +92,27 @@ export default function MyPage() {
             console.error("Failed to load data from localStorage", error);
         }
     }, [activeProfile]);
+    
+    // Fetch replays
+    useEffect(() => {
+        if (!user) return;
+        setIsLoadingReplays(true);
+        const replaysRef = collection(firestore, 'replays');
+        const q = query(replaysRef, where('player1Id', '==', user.uid), orderBy('createdAt', 'desc'), limit(10));
+        
+        getDocs(q).then(querySnapshot => {
+            const fetchedReplays: Replay[] = [];
+            querySnapshot.forEach((doc) => {
+                fetchedReplays.push({ id: doc.id, ...doc.data() } as Replay);
+            });
+            setReplays(fetchedReplays);
+            setIsLoadingReplays(false);
+        }).catch(error => {
+            console.error("Error fetching replays:", error);
+            setIsLoadingReplays(false);
+        });
+
+    }, [user, firestore]);
 
     // Save data when it changes
     useEffect(() => {
@@ -352,11 +389,42 @@ export default function MyPage() {
                 />
             </div>
 
-             <div className="mt-8">
+            <div className="mt-8 grid gap-8 lg:grid-cols-2">
                 <MissionsUI 
                     missions={missions}
                     onClaimReward={claimMissionReward}
                 />
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2"><History /> 最近の対戦リプレイ</CardTitle>
+                        <CardDescription>最近のAI対戦の記録です。</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        {isLoadingReplays ? (
+                            <div className="space-y-2">
+                                {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
+                            </div>
+                        ) : replays.length === 0 ? (
+                            <p className="text-center text-muted-foreground">リプレイ記録はありません。</p>
+                        ) : (
+                            <ul className="space-y-3">
+                                {replays.map(replay => (
+                                    <li key={replay.id} className="flex items-center justify-between p-2 rounded-md border bg-secondary/30">
+                                        <div>
+                                            <p className="text-sm font-semibold">vs {replay.player2LoginId}</p>
+                                            <p className="text-xs text-muted-foreground">
+                                                {replay.createdAt?.toDate ? formatDistanceToNow(replay.createdAt.toDate(), { addSuffix: true, locale: ja }) : '日付不明'}
+                                            </p>
+                                        </div>
+                                        <Badge variant={replay.winnerId === user.uid ? 'default' : 'destructive'}>
+                                            {replay.winnerId === user.uid ? '勝利' : '敗北'}
+                                        </Badge>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                    </CardContent>
+                </Card>
             </div>
 
             <div className="mt-8">
@@ -389,7 +457,7 @@ export default function MyPage() {
                 <CardContent>
                     <ul className="list-disc pl-5 space-y-2 text-sm text-muted-foreground">
                         <li>**ギルド機能**: 仲間と集まり、チャットやギルド対戦を楽しめる機能。</li>
-                        <li>**ドラフトモード**: その場で属性を選択しランダムに２枚ずつ生成されるカードを選んでデッキを構築し、他のプレイヤーと対戦する新しい対戦形式。</li>
+                        <li>**ドラフトモード**: その場でランダムなカードを選んでデッキを構築し、他のプレイヤーと対戦する新しい対戦形式。</li>
                         <li>**カードの進化・強化**: 特定のカードを素材を使ってアップグレードし、新たな能力や見た目を解放するシステム。</li>
                         <li>**リプレイ機能**: 過去の対戦を見返し、戦略を分析できる機能。</li>
                         <li>**観戦モード**: 他のプレイヤーの白熱したオンライン対戦をリアルタイムで観戦できる機能。</li>
@@ -402,3 +470,5 @@ export default function MyPage() {
         </main>
     );
 }
+
+    

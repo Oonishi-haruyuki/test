@@ -237,6 +237,38 @@
         "text": { "type": "string" },
         "createdAt": { "type": "string", "format": "date-time" }
       }
+    },
+    "Replay": {
+      "title": "Game Replay",
+      "description": "Stores the full history of a game for later playback.",
+      "type": "object",
+      "properties": {
+        "player1Id": { "type": "string" },
+        "player2Id": { "type": "string" },
+        "player1LoginId": { "type": "string" },
+        "player2LoginId": { "type": "string" },
+        "winnerId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "history": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "log": { "type": "string" },
+              "player1Health": { "type": "number" },
+              "player2Health": { "type": "number" },
+              "player1Mana": { "type": "number" },
+              "player2Mana": { "type": "number" },
+              "player1MaxMana": { "type": "number" },
+              "player2MaxMana": { "type": "number" },
+              "player1Hand": { "type": "array", "items": { "$ref": "#/entities/Card" } },
+              "player2Hand": { "type": "array", "items": { "$ref": "#/entities/Card" } },
+              "player1Board": { "type": "array", "items": { "$ref": "#/entities/Card" } },
+              "player2Board": { "type": "array", "items": { "$ref": "#/entities/Card" } }
+            }
+          }
+        }
+      }
     }
   },
   "auth": {
@@ -247,76 +279,33 @@
       "schema": {
         "$ref": "#/entities/UserProfile"
       },
-      "description": "Stores public information about a user, like their display name and rating.",
-      "rules": [
-        {
-          "description": "Users can read their own profile and all profiles for ranking purposes.",
-          "allow": ["read"]
-        },
-        {
-          "description": "Users can only create or update their own profile.",
-          "allow": ["create", "update"],
-          "if": "request.auth != null && request.auth.uid == userId"
-        }
-      ]
+      "description": "Stores public information about a user, like their display name and rating."
     },
     "/games/{gameId}": {
       "schema": {
         "$ref": "#/entities/Game"
       },
-      "description": "Stores individual game sessions for online battles.",
-      "rules": [
-        {
-            "description": "Authenticated users can read, create and update games.",
-            "allow": ["read", "create", "update"],
-            "if": "request.auth != null"
-        }
-      ]
+      "description": "Stores individual game sessions for online battles."
     },
     "/trades/{tradeId}": {
       "schema": {
         "$ref": "#/entities/TradeOffer"
       },
-      "description": "Stores trade offers between users.",
-      "rules": [
-        {
-            "description": "Authenticated users can create trade offers.",
-            "allow": ["create"],
-            "if": "request.auth != null"
-        },
-        {
-            "description": "Users can read trade offers they are involved in.",
-            "allow": ["read"],
-            "if": "request.auth != null && (request.auth.uid == resource.data.offerorId || request.auth.uid == resource.data.offereeId)"
-        },
-        {
-            "description": "The offeree can accept or reject a pending offer.",
-            "allow": ["update"],
-            "if": "request.auth != null && request.auth.uid == resource.data.offereeId && resource.data.status == 'pending' && (request.resource.data.status == 'accepted' || request.resource.data.status == 'rejected')"
-        },
-        {
-            "description": "The offeror can cancel a pending offer.",
-            "allow": ["update"],
-            "if": "request.auth != null && request.auth.uid == resource.data.offerorId && resource.data.status == 'pending' && request.resource.data.status == 'cancelled'"
-        }
-      ]
+      "description": "Stores trade offers between users."
     },
     "/guilds/{guildId}": {
       "schema": { "$ref": "#/entities/Guild" },
-      "description": "Stores guild information.",
-      "rules": [
-        { "allow": ["read"], "if": "request.auth != null" },
-        { "allow": ["create"], "if": "request.auth != null" },
-        { "allow": ["update"], "if": "request.auth != null && request.auth.uid in resource.data.memberIds" }
-      ]
+      "description": "Stores guild information."
     },
     "/guilds/{guildId}/messages/{messageId}": {
       "schema": { "$ref": "#/entities/ChatMessage" },
-      "description": "Stores chat messages for a guild.",
-      "rules": [
-        { "allow": ["read"], "if": "request.auth != null && get(/databases/$(database)/documents/guilds/$(guildId)).data.memberIds.has(request.auth.uid)" },
-        { "allow": ["create"], "if": "request.auth != null && request.resource.data.userId == request.auth.uid && get(/databases/$(database)/documents/guilds/$(guildId)).data.memberIds.has(request.auth.uid)" }
-      ]
+      "description": "Stores chat messages for a guild."
+    },
+    "/replays/{replayId}": {
+      "schema": { "$ref": "#/entities/Replay" },
+      "description": "Stores game replay data."
     }
   }
 }
+
+    
