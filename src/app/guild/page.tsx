@@ -8,13 +8,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Send, Users, Shield, LogOut, PlusCircle, Crown, Search } from 'lucide-react';
-import { collection, query, where, onSnapshot, doc, getDoc, getDocs, orderBy, limit, startAfter } from 'firebase/firestore';
+import { Loader2, Send, Users, Shield, LogOut, PlusCircle, Crown, Search, Coins } from 'lucide-react';
+import { collection, query, where, onSnapshot, doc, getDoc, getDocs, orderBy, limit, startAfter, updateDoc } from 'firebase/firestore';
 import { createGuild, joinGuild, leaveGuild, sendChatMessage } from '@/lib/guild-actions';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { formatDistanceToNow } from 'date-fns';
 import { ja } from 'date-fns/locale';
+import { useCurrency } from '@/hooks/use-currency';
 
 interface Guild {
     id: string;
@@ -32,11 +33,14 @@ interface ChatMessage {
     createdAt: any;
 }
 
+const GUILD_CREATION_COST = 5000;
+
 const GuildChat = ({ guildId, userLoginId }: { guildId: string, userLoginId: string }) => {
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [newMessage, setNewMessage] = useState('');
     const [isSending, setIsSending] = useState(false);
     const { firestore } = initializeFirebase();
+    const { toast } = useToast();
 
     useEffect(() => {
         const messagesRef = collection(firestore, 'guilds', guildId, 'messages');
@@ -91,6 +95,7 @@ const GuildChat = ({ guildId, userLoginId }: { guildId: string, userLoginId: str
 
 export default function GuildPage() {
     const { user, profile, isUserLoading } = useUser();
+    const { currency, spendCurrency } = useCurrency();
     const { toast } = useToast();
     const [myGuild, setMyGuild] = useState<Guild | null>(null);
     const [guildMembers, setGuildMembers] = useState<any[]>([]);
@@ -129,8 +134,10 @@ export default function GuildPage() {
 
         } else {
             // User has a guildId but guild doesn't exist, likely deleted. Clear from user profile.
-             const userRef = doc(firestore, 'users', user!.uid);
-             await updateDoc(userRef, { guildId: null });
+             if (user) {
+                const userRef = doc(firestore, 'users', user.uid);
+                await updateDoc(userRef, { guildId: null });
+             }
         }
         setIsLoading(false);
     }, [firestore, user]);
@@ -151,13 +158,23 @@ export default function GuildPage() {
             toast({ variant: 'destructive', title: 'ギルド名を入力してください。' });
             return;
         }
+
+        if (currency < GUILD_CREATION_COST) {
+            toast({ variant: 'destructive', title: 'Gコインが足りません！', description: `ギルド作成には ${GUILD_CREATION_COST}G が必要です。` });
+            return;
+        }
+
         setIsProcessing(true);
-        const result = await createGuild(user.uid, profile.loginId, newGuildName, newGuildDesc);
-        if (result.success && result.guildId) {
-            toast({ title: 'ギルドを作成しました！' });
-            fetchMyGuildData(result.guildId);
+        if (spendCurrency(GUILD_CREATION_COST)) {
+            const result = await createGuild(user.uid, profile.loginId, newGuildName, newGuildDesc);
+            if (result.success && result.guildId) {
+                toast({ title: 'ギルドを作成しました！', description: `${GUILD_CREATION_COST}G を消費しました。` });
+                fetchMyGuildData(result.guildId);
+            } else {
+                toast({ variant: 'destructive', title: '作成失敗', description: result.message });
+            }
         } else {
-            toast({ variant: 'destructive', title: '作成失敗', description: result.message });
+             toast({ variant: 'destructive', title: 'Gコインの支払いに失敗しました。' });
         }
         setIsProcessing(false);
     };
@@ -186,7 +203,7 @@ export default function GuildPage() {
         const result = await joinGuild(guildId, user.uid);
          if (result.success) {
             toast({ title: 'ギルドに参加しました！' });
-            fetchMyGguildData(guildId);
+            fetchMyGuildData(guildId);
         } else {
             toast({ variant: 'destructive', title: '参加失敗', description: result.message });
         }
@@ -289,6 +306,7 @@ export default function GuildPage() {
                         <DialogContent>
                             <DialogHeader>
                                 <DialogTitle>新しいギルドを作成</DialogTitle>
+                                <DialogDescription>ギルドの作成には {GUILD_CREATION_COST.toLocaleString()}G が必要です。</DialogDescription>
                             </DialogHeader>
                             <div className="space-y-4">
                                 <div className="space-y-2">
@@ -338,3 +356,5 @@ export default function GuildPage() {
         </Card>
     );
 }
+
+    
