@@ -19,6 +19,7 @@ const navLinks = [
     { href: '/gacha', label: 'ガチャ' },
     { href: '/battle', label: 'AI対戦' },
     { href: '/online-battle', label: 'オンライン対戦' },
+    { href: '/draft', label: 'ドラフト' },
     { href: '/trade', label: 'トレード' },
     { href: '/guild', label: 'ギルド' },
     { href: '/story', label: 'ストーリー' },
