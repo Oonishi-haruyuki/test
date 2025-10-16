@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Send, Users, Shield, LogOut, PlusCircle, Crown, Search, Coins } from 'lucide-react';
+import { Loader2, Send, Users, Shield, LogOut, PlusCircle, Crown, Search, Coins, Star } from 'lucide-react';
 import { collection, query, where, onSnapshot, doc, getDoc, getDocs, orderBy, limit, startAfter, updateDoc } from 'firebase/firestore';
 import { createGuild, joinGuild, leaveGuild, sendChatMessage } from '@/lib/guild-actions';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from '@/components/ui/dialog';
@@ -112,7 +112,7 @@ export default function GuildPage() {
     const [searchTerm, setSearchTerm] = useState('');
     const [searchResults, setSearchResults] = useState<Guild[]>([]);
     const [isSearching, setIsSearching] = useState(false);
-    const [lastVisible, setLastVisible] = useState<any>(null);
+    const [suggestedGuilds, setSuggestedGuilds] = useState<Guild[]>([]);
 
     const fetchMyGuildData = useCallback(async (guildId: string) => {
         const guildRef = doc(firestore, 'guilds', guildId);
@@ -141,6 +141,25 @@ export default function GuildPage() {
         }
         setIsLoading(false);
     }, [firestore, user]);
+
+    // Fetch suggested guilds on mount
+    useEffect(() => {
+        const fetchSuggestedGuilds = async () => {
+            try {
+                // Fetch top 3 guilds by member count as suggestions
+                const q = query(collection(firestore, 'guilds'), orderBy('memberIds', 'desc'), limit(3));
+                const docSnaps = await getDocs(q);
+                const guilds = docSnaps.docs.map(doc => ({ id: doc.id, ...doc.data() } as Guild));
+                setSuggestedGuilds(guilds);
+            } catch (error) {
+                console.error("Failed to fetch suggested guilds:", error);
+            }
+        };
+
+        if (!profile?.guildId) {
+            fetchSuggestedGuilds();
+        }
+    }, [firestore, profile]);
 
     useEffect(() => {
         if (isUserLoading) return;
@@ -193,7 +212,6 @@ export default function GuildPage() {
         const docSnaps = await getDocs(q);
         const guilds = docSnaps.docs.map(doc => ({ id: doc.id, ...doc.data() } as Guild));
         setSearchResults(guilds);
-        setLastVisible(docSnaps.docs[docSnaps.docs.length - 1]);
         setIsSearching(false);
     }
     
@@ -224,6 +242,18 @@ export default function GuildPage() {
         setIsProcessing(false);
     }
 
+    const GuildListItem = ({ guild }: { guild: Guild }) => (
+         <li className="flex justify-between items-center p-2 bg-secondary rounded-md">
+            <div>
+                <p className="font-bold">{guild.name}</p>
+                <p className="text-sm text-muted-foreground flex items-center gap-1">
+                    <Users className="h-4 w-4" />{guild.memberIds.length}人
+                </p>
+            </div>
+            <Button size="sm" onClick={() => handleJoinGuild(guild.id)} disabled={isProcessing}>参加</Button>
+        </li>
+    );
+
     if (isLoading) {
         return <main className="text-center p-10"><Loader2 className="animate-spin" /> ロード中...</main>;
     }
@@ -240,7 +270,6 @@ export default function GuildPage() {
     }
 
     if (myGuild) {
-        const isLeader = user.uid === myGuild.leaderId;
         return (
             <Card>
                 <CardHeader>
@@ -337,24 +366,30 @@ export default function GuildPage() {
                         <Input placeholder="ギルド名で検索..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
                         <Button onClick={handleSearchGuilds} disabled={isSearching}>{isSearching ? <Loader2 className="animate-spin" /> : <Search />}</Button>
                     </div>
-                     <ScrollArea className="h-64 border rounded-md">
-                        <ul className="p-2 space-y-2">
-                            {searchResults.map(guild => (
-                                <li key={guild.id} className="flex justify-between items-center p-2 bg-secondary rounded-md">
-                                    <div>
-                                        <p className="font-bold">{guild.name}</p>
-                                        <p className="text-sm text-muted-foreground">{guild.memberIds.length}人のメンバー</p>
-                                    </div>
-                                    <Button size="sm" onClick={() => handleJoinGuild(guild.id)} disabled={isProcessing}>参加</Button>
-                                </li>
-                            ))}
-                            {searchResults.length === 0 && !isSearching && <p className="text-center text-sm text-muted-foreground py-4">ギルドが見つかりません。</p>}
-                        </ul>
-                    </ScrollArea>
+
+                    {searchResults.length > 0 && (
+                        <div className="mb-6">
+                            <h4 className="font-semibold mb-2 text-md">検索結果</h4>
+                            <ul className="p-2 space-y-2 border rounded-md">
+                                {searchResults.map(guild => <GuildListItem key={guild.id} guild={guild} />)}
+                            </ul>
+                        </div>
+                    )}
+                    
+                    {searchResults.length === 0 && !isSearching && suggestedGuilds.length > 0 && (
+                        <div>
+                             <h4 className="font-semibold mb-2 text-md flex items-center gap-2"><Star className="text-yellow-500" /> おすすめギルド</h4>
+                            <ul className="p-2 space-y-2 border rounded-md bg-secondary/20">
+                               {suggestedGuilds.map(guild => <GuildListItem key={guild.id} guild={guild} />)}
+                            </ul>
+                        </div>
+                    )}
+
+                    {searchResults.length === 0 && !isSearching && suggestedGuilds.length === 0 && (
+                        <p className="text-center text-sm text-muted-foreground py-4">ギルドが見つかりません。</p>
+                    )}
                 </div>
             </CardContent>
         </Card>
     );
 }
-
-    
