@@ -22,6 +22,16 @@
         "guildId": {
           "type": "string",
           "description": "The ID of the guild the user belongs to."
+        },
+        "inventory": {
+          "type": "object",
+          "description": "Player's inventory for evolution materials and other items.",
+          "properties": {
+            "dragon-soul": {
+              "type": "number",
+              "description": "Number of Dragon's Souls held."
+            }
+          }
         }
       }
     },

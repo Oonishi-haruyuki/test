@@ -8,6 +8,7 @@ import { AppHeader } from "@/components/header";
 import { ProfileProvider } from "@/hooks/use-profile";
 import { FirebaseProvider } from "@/firebase/provider";
 import { MissionsProvider } from "@/components/missions-provider";
+import { InventoryProvider } from "@/components/inventory-provider";
 
 export const metadata: Metadata = {
   title: "カードクラフター",
@@ -28,15 +29,17 @@ export default function RootLayout({
           <ProfileProvider>
             <StatsProvider>
               <CurrencyProvider>
-                <MissionsProvider>
-                  <div className="min-h-screen bg-background text-foreground">
-                    <div className="container mx-auto px-4 py-8">
-                      <AppHeader />
-                      <main className="mt-8">{children}</main>
+                <InventoryProvider>
+                  <MissionsProvider>
+                    <div className="min-h-screen bg-background text-foreground">
+                      <div className="container mx-auto px-4 py-8">
+                        <AppHeader />
+                        <main className="mt-8">{children}</main>
+                      </div>
                     </div>
-                  </div>
-                  <Toaster />
-                </MissionsProvider>
+                    <Toaster />
+                  </MissionsProvider>
+                </InventoryProvider>
               </CurrencyProvider>
             </StatsProvider>
           </ProfileProvider>

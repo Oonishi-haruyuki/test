@@ -6,7 +6,7 @@ import type { CardData } from '@/components/card-editor';
 import { CardPreview } from '@/components/card-preview';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Pencil, Trash2 } from 'lucide-react';
+import { Pencil, Trash2, ArrowUpCircle } from 'lucide-react';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -29,6 +29,7 @@ import {
 import { CollectionCardEditor } from '@/components/collection-card-editor';
 import { useToast } from '@/hooks/use-toast';
 import { useCurrency } from '@/hooks/use-currency';
+import { useInventory } from '@/hooks/use-inventory';
 
 // Levenshtein distance to calculate the difference between two strings
 const levenshtein = (s1: string, s2: string): number => {
@@ -51,6 +52,25 @@ const levenshtein = (s1: string, s2: string): number => {
     }
     return previousRow[previousRow.length - 1];
 };
+
+const evolutions: Record<string, { to: Partial<CardData>, cost: { 'dragon-soul': number } }> = {
+    'ドラゴンの雛': {
+        to: {
+            id: 'starter-dragon-3', // Evolved card's ID
+            name: '若きドラゴン',
+            manaCost: 4,
+            attack: 3,
+            defense: 3,
+            rarity: 'uncommon',
+            abilities: '飛行、速攻',
+            flavorText: '空を焦がす、若き炎。',
+            imageUrl: 'https://picsum.photos/seed/sd3/400/300',
+            imageHint: 'young dragon'
+        },
+        cost: { 'dragon-soul': 3 }
+    }
+};
+
   
 
 export default function CollectionPage() {
@@ -59,6 +79,7 @@ export default function CollectionPage() {
   const [editingCard, setEditingCard] = useState<CardData | null>(null);
   const { toast } = useToast();
   const { spendCurrency } = useCurrency();
+  const { inventory, removeItem } = useInventory();
   const EDIT_COST_PER_CHAR = 3;
 
   useEffect(() => {
@@ -114,6 +135,44 @@ export default function CollectionPage() {
     setEditingCard(null);
   }
 
+  const handleEvolveCard = (cardToEvolve: CardData) => {
+    const evolutionInfo = evolutions[cardToEvolve.name];
+    if (!evolutionInfo) return;
+
+    const material = Object.keys(evolutionInfo.cost)[0] as keyof typeof inventory;
+    const requiredAmount = evolutionInfo.cost[material];
+    const userAmount = inventory[material] || 0;
+    
+    if (userAmount < requiredAmount) {
+        toast({ variant: 'destructive', title: '素材が足りません！', description: `進化には ${material} が ${requiredAmount}個 必要です。`});
+        return;
+    }
+    
+    if (removeItem(material, requiredAmount)) {
+        // Remove one instance of the old card
+        const cardIndex = collection.findIndex(c => c.id === cardToEvolve.id);
+        const newCollection = [...collection];
+        if (cardIndex > -1) {
+            newCollection.splice(cardIndex, 1);
+        }
+
+        // Add the new evolved card
+        const evolvedCard: CardData = {
+            ...cardToEvolve,
+            ...evolutionInfo.to,
+            id: self.crypto.randomUUID() // Give it a new unique ID
+        };
+        newCollection.push(evolvedCard);
+
+        setCollection(newCollection);
+        localStorage.setItem('cardCollection', JSON.stringify(newCollection));
+
+        toast({ title: '進化した！', description: `「${cardToEvolve.name}」が「${evolvedCard.name}」に進化しました！`});
+    } else {
+         toast({ variant: 'destructive', title: '進化に失敗しました', description: '素材の消費に失敗しました。'});
+    }
+  }
+
   if (!isClient) {
     return null; // or a loading spinner
   }
@@ -157,10 +216,14 @@ export default function CollectionPage() {
         </Card>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {collection.map(card => (
+          {collection.map(card => {
+            const canEvolve = card.name in evolutions;
+            const evolutionInfo = canEvolve ? evolutions[card.name] : null;
+
+            return (
             <div key={card.id} className="relative group">
               <CardPreview {...card} />
-                <div className="absolute top-4 right-4 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="absolute top-2 right-2 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                     <Button variant="secondary" size="icon" onClick={() => setEditingCard(card)}>
                         <Pencil size={20} />
                     </Button>
@@ -183,9 +246,31 @@ export default function CollectionPage() {
                         </AlertDialogFooter>
                         </AlertDialogContent>
                     </AlertDialog>
+                    {canEvolve && evolutionInfo && (
+                         <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button variant="default" size="icon" className="bg-yellow-500 hover:bg-yellow-600">
+                                    <ArrowUpCircle size={20} />
+                                </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>カードを進化させますか？</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    「{card.name}」を「{evolutionInfo.to.name}」に進化させます。
+                                    <p className="font-bold mt-2">消費アイテム: 竜の魂 x{evolutionInfo.cost['dragon-soul']}</p>
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel>キャンセル</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleEvolveCard(card)}>進化させる</AlertDialogAction>
+                            </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+                    )}
                 </div>
             </div>
-          ))}
+          )})}
         </div>
       )}
 

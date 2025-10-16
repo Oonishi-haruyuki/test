@@ -11,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, BookOpen, CheckCircle2 } from 'lucide-react';
 import BattlePage from '@/app/battle/page';
 import { useUser } from '@/firebase';
+import { useInventory } from '@/hooks/use-inventory';
 
 interface StoryChapter {
     id: string;
@@ -20,7 +21,10 @@ interface StoryChapter {
         playerDeck: CardData[];
         opponentName: string;
         opponentDeck: CardData[];
-        reward: number;
+        reward: {
+            g: number;
+            items?: Record<string, number>;
+        }
     }
 }
 
@@ -33,7 +37,10 @@ const storyContent: StoryChapter[] = [
             playerDeck: elementalDeck,
             opponentName: 'ゴブリンリーダー',
             opponentDeck: goblinDeck,
-            reward: 200,
+            reward: {
+                g: 200,
+                items: { 'dragon-soul': 1 }
+            },
         }
     },
     {
@@ -46,6 +53,7 @@ const storyContent: StoryChapter[] = [
 export default function StoryModePage() {
     const { user } = useUser();
     const { addCurrency } = useCurrency();
+    const { addItem } = useInventory();
     const { toast } = useToast();
 
     const [isClient, setIsClient] = useState(false);
@@ -79,13 +87,25 @@ export default function StoryModePage() {
         const isAlreadyCleared = clearedChapters.includes(activeChapter.id);
 
         if (!isAlreadyCleared) {
-            addCurrency(activeChapter.battle.reward);
+            const { g, items } = activeChapter.battle.reward;
+            addCurrency(g);
+            let rewardText = `報酬として ${g}G を獲得しました。`;
+            
+            if (items) {
+                const itemRewards = [];
+                for (const [itemId, amount] of Object.entries(items)) {
+                    addItem(itemId, amount);
+                    itemRewards.push(`${itemId} x${amount}`);
+                }
+                rewardText += ` ${itemRewards.join(', ')}も獲得！`;
+            }
+
             const newClearedChapters = [...clearedChapters, activeChapter.id];
             setClearedChapters(newClearedChapters);
             localStorage.setItem(getStorageKey(), JSON.stringify(newClearedChapters));
             toast({
                 title: `${activeChapter.title}をクリア！`,
-                description: `報酬として ${activeChapter.battle.reward}G を獲得しました。`
+                description: rewardText
             });
         } else {
              toast({

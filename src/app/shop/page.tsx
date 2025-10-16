@@ -9,11 +9,13 @@ import { useToast } from '@/hooks/use-toast';
 import { Coins, CheckCircle2 } from 'lucide-react';
 import { shopItems, ShopItem } from '@/lib/shop-items';
 import Image from 'next/image';
+import { useInventory } from '@/hooks/use-inventory';
 
-type ItemType = 'frames' | 'backs' | 'artifacts' | 'animations';
+type ItemType = 'frames' | 'backs' | 'artifacts' | 'animations' | 'materials';
 
 export default function ShopPage() {
     const { currency, spendCurrency } = useCurrency();
+    const { addItem } = useInventory();
     const { toast } = useToast();
     const [purchasedFrames, setPurchasedFrames] = useState<string[]>([]);
     const [purchasedBacks, setPurchasedBacks] = useState<string[]>([]);
@@ -57,6 +59,16 @@ export default function ShopPage() {
         let purchasedItems: string[];
         let storageKey: string;
 
+        if (type === 'materials') {
+            addItem(item.id, 1);
+            toast({
+                title: '購入しました！',
+                description: `「${item.name}」を1つ購入しました。`,
+            });
+            return; // No need to save to a separate 'purchased' list for consumables
+        }
+
+
         if (type === 'frames') {
             purchasedItems = [...purchasedFrames, item.id];
             setPurchasedFrames(purchasedItems);
@@ -92,13 +104,15 @@ export default function ShopPage() {
         }
     };
     
-    const renderShopSection = (title: string, items: ShopItem[], purchasedIds: string[], type: ItemType) => {
+    const renderShopSection = (title: string, items: ShopItem[], purchasedIds: string[] | undefined, type: ItemType) => {
+        const isConsumable = type === 'materials';
+
         return (
             <section className="mb-12">
                 <h2 className="text-2xl font-bold mb-6">{title}</h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                     {items.map(item => {
-                        const isPurchased = purchasedIds.includes(item.id);
+                        const isPurchased = !isConsumable && purchasedIds && purchasedIds.includes(item.id);
                         return (
                             <Card key={item.id} className="flex flex-col">
                                 <CardHeader>
@@ -143,6 +157,7 @@ export default function ShopPage() {
                 <h1 className="text-3xl font-bold">ショップ</h1>
                 <p className="text-muted-foreground">Gコインを使って、カードの新しい見た目や便利なアイテムを手に入れよう！</p>
             </div>
+            {renderShopSection('進化素材', shopItems.materials, undefined, 'materials')}
             {renderShopSection('アーティファクト', shopItems.artifacts, purchasedArtifacts, 'artifacts')}
             {renderShopSection('ガチャアニメーション', shopItems.animations, purchasedAnimations, 'animations')}
             {renderShopSection('カードフレーム', shopItems.frames, purchasedFrames, 'frames')}

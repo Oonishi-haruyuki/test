@@ -18,6 +18,7 @@ import { shopItems } from '@/lib/shop-items';
 import { useMissions } from '@/hooks/use-missions';
 import { useUser } from '@/firebase';
 import { updateUserRating } from '@/lib/rating-system';
+import { useInventory } from '@/hooks/use-inventory';
 
 const DECK_SIZE = 30;
 const MAX_MANA = 10;
@@ -29,6 +30,7 @@ const ADVANCED_WIN_REWARD = 50;
 const ADVANCED_LOSE_PENALTY = 10;
 const SUPER_WIN_REWARD = 100;
 const SUPER_LOSE_PENALTY = 25;
+const DROP_RATE = 0.05; // 5% chance
 
 
 interface Deck {
@@ -186,6 +188,7 @@ function BattleGame({
     const { updateMissionProgress } = useMissions();
     const { user } = useUser();
     const [ratingChange, setRatingChange] = useState<number | null>(null);
+    const { addItem } = useInventory();
 
     // Game State
     const [playerDeck, setPlayerDeck] = useState<CardData[]>([]);
@@ -390,10 +393,20 @@ function BattleGame({
               if (isDailyChallenge) {
                   updateMissionProgress('win-daily-challenge', 1);
               }
-              toast({
-                title: '勝利！',
-                description: `${winReward}G獲得しました！ レーティング: ${newRating} (${change > 0 ? '+' : ''}${change})`,
-              });
+              
+              if (Math.random() < DROP_RATE) {
+                addItem('dragon-soul', 1);
+                toast({
+                    title: '勝利！',
+                    description: `${winReward}Gと竜の魂x1を獲得しました！ レーティング: ${newRating} (${change > 0 ? '+' : ''}${change})`,
+                  });
+              } else {
+                toast({
+                    title: '勝利！',
+                    description: `${winReward}G獲得しました！ レーティング: ${newRating} (${change > 0 ? '+' : ''}${change})`,
+                  });
+              }
+
             } else {
               setGameOver('相手の勝利！');
               addToLog('ゲーム終了！相手が勝利しました。');
@@ -420,7 +433,7 @@ function BattleGame({
         } finally {
             if (onGameEnd) onGameEnd(result);
         }
-    }, [difficulty, user, addCurrency, addLoss, addWin, spendCurrency, toast, updateMissionProgress, isDailyChallenge, onGameEnd]);
+    }, [difficulty, user, addCurrency, addLoss, addWin, spendCurrency, toast, updateMissionProgress, isDailyChallenge, onGameEnd, addItem]);
 
     useEffect(() => {
         if (gameOver) return;
