@@ -22,7 +22,7 @@ import { MissionsUI } from '@/components/ui/missions-ui';
 import { allMissions } from '@/lib/missions';
 import { shopItems } from '@/lib/shop-items';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { collection, query, where, orderBy, limit, getDocs } from 'firebase/firestore';
+import { collection, query, where, orderBy, limit, getDocs, onSnapshot } from 'firebase/firestore';
 import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow } from 'date-fns';
 import { ja } from 'date-fns/locale';
@@ -519,3 +519,5 @@ export default function MyPage() {
         </main>
     );
 }
+
+    
