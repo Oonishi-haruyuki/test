@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -14,7 +15,7 @@ import Image from 'next/image';
 import { useUser, initializeFirebase } from '@/firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { findOrCreateGame, playCardAction, attackAction } from '@/lib/actions';
-import { goblinDeck, elementalDeck } from '@/app/battle/page'; // Using starter decks for now
+import { goblinDeck, elementalDeck } from '@/app/(main)/battle/page'; // Using starter decks for now
 
 const DECK_SIZE = 30;
 
@@ -295,4 +296,3 @@ export default function OnlineBattlePage() {
         </main>
     );
 }
-

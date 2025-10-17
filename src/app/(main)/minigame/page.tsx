@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -14,7 +15,7 @@ import { Coins, HelpCircle, Shuffle, ArrowDown, ArrowUp, Brain, Repeat, Lightbul
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from '@/lib/utils';
 
-import { goblinDeck, elementalDeck, undeadDeck, dragonDeck, ninjaDeck } from '@/app/battle/page';
+import { goblinDeck, elementalDeck, undeadDeck, dragonDeck, ninjaDeck } from '@/app/(main)/battle/page';
 
 const allStarterCards = [...goblinDeck, ...elementalDeck, ...undeadDeck, ...dragonDeck, ...ninjaDeck];
 const uniqueStarterCards = Array.from(new Map(allStarterCards.map(card => [card.id, card])).values());

@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -10,8 +11,8 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2, Wand2, Swords } from 'lucide-react';
 import { CardPreview } from '@/components/card-preview';
 import { Progress } from '@/components/ui/progress';
-import BattlePage from '@/app/battle/page';
-import { elementalDeck } from '@/app/battle/page';
+import BattlePage from '@/app/(main)/battle/page';
+import { elementalDeck } from '@/app/(main)/battle/page';
 
 type DraftTheme = 'ファンタジー' | 'SF' | 'ニンジャ' | 'ドラゴン';
 const DRAFT_DECK_SIZE = 30;

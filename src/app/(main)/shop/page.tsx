@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -161,7 +162,7 @@ export default function ShopPage() {
     if (!isClient) return null;
 
     return (
-        <main>
+        <>
             <div className="mb-8">
                 <h1 className="text-3xl font-bold">ショップ</h1>
                 <p className="text-muted-foreground">Gコインを使って、カードの新しい見た目や便利なアイテムを手に入れよう！</p>
@@ -171,8 +172,6 @@ export default function ShopPage() {
             {renderShopSection('ガチャアニメーション', shopItems.animations, purchasedAnimations, 'animations')}
             {renderShopSection('カードフレーム', shopItems.frames, purchasedFrames, 'frames')}
             {renderShopSection('カード裏面デザイン', shopItems.backs, purchasedBacks, 'backs')}
-        </main>
+        </>
     );
 }
-
-    

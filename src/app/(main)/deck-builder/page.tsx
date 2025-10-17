@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -240,7 +241,7 @@ export default function DeckBuilderPage() {
   }
 
   return (
-    <main>
+    <>
       <div className="flex flex-col md:flex-row justify-between items-center mb-4 gap-4">
         <h1 className="text-3xl font-bold">デッキ構築</h1>
       </div>
@@ -400,8 +401,6 @@ export default function DeckBuilderPage() {
           </Card>
         </div>
       </div>
-    </main>
+    </>
   );
 }
-
-    

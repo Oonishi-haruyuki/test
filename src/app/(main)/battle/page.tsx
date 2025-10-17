@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
@@ -630,7 +631,7 @@ function BattleGame({
             if (drawSpells.length > 0 && hand.length <= 2) {
                 return drawSpells[0];
             }
-            return spellCards.sort((a,b) => b.manaCost - a.manaCost)[0];
+            return spellCards.sort((a,b) => b.manaCost - a.manaCost)[0] ?? null;
         }
 
         return playableCards.sort((a,b) => b.manaCost - a.manaCost)[0] ?? null;
@@ -962,7 +963,7 @@ export default function BattlePage(props: BattleProps) {
     
     if (gameState === 'battle' && playerDeck && opponentDeck && difficulty) {
         return (
-             <main
+             <div
                 className="flex flex-col gap-4 min-h-screen bg-cover bg-center bg-fixed p-2 md:p-4"
                 style={{ backgroundImage: "url('https://picsum.photos/seed/battleground/1920/1080')" }}
             >
@@ -975,7 +976,7 @@ export default function BattlePage(props: BattleProps) {
                     isDailyChallenge={isDailyChallenge}
                     gameRules={props.gameRules}
                 />
-            </main>
+            </div>
         )
     }
 

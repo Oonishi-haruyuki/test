@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -7,7 +8,7 @@ import { Swords, Shield, Sparkles, BookOpen, Star, Hand, Layers } from "lucide-r
 
 export default function RulesPage() {
     return (
-        <main className="container mx-auto">
+        <>
             <Card className="max-w-4xl mx-auto">
                 <CardHeader>
                     <CardTitle className="text-3xl">ゲームのルール</CardTitle>
@@ -99,6 +100,6 @@ export default function RulesPage() {
                     </Accordion>
                 </CardContent>
             </Card>
-        </main>
+        </>
     );
 }

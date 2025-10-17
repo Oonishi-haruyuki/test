@@ -1,15 +1,16 @@
 
+
 'use client';
 
 import { useState, useEffect } from 'react';
 import type { CardData } from '@/components/card-editor';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { elementalDeck, goblinDeck, undeadDeck, dragonDeck, ninjaDeck } from '@/app/battle/page';
+import { elementalDeck, goblinDeck, undeadDeck, dragonDeck, ninjaDeck } from '@/app/(main)/battle/page';
 import { useCurrency } from '@/hooks/use-currency';
 import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, BookOpen, CheckCircle2 } from 'lucide-react';
-import BattlePage from '@/app/battle/page';
+import BattlePage from '@/app/(main)/battle/page';
 import { useUser } from '@/firebase';
 import { useInventory } from '@/hooks/use-inventory';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';

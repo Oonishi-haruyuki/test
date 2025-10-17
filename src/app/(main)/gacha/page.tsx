@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -136,7 +137,7 @@ export default function GachaPage() {
   }
 
   return (
-    <main className="container mx-auto">
+    <>
       <Card className="max-w-2xl mx-auto text-center">
         <CardHeader>
           <CardTitle className="text-3xl">カードガチャ</CardTitle>
@@ -203,8 +204,6 @@ export default function GachaPage() {
           </div>
         </div>
       )}
-    </main>
+    </>
   );
 }
-
-    

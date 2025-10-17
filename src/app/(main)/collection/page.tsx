@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -187,7 +188,7 @@ export default function CollectionPage() {
   }
 
   return (
-    <main>
+    <>
         <div className="flex justify-between items-center mb-8">
             <h1 className="text-3xl font-bold">マイカード</h1>
             {collection.length > 0 && (
@@ -300,8 +301,6 @@ export default function CollectionPage() {
             )}
         </DialogContent>
       </Dialog>
-    </main>
+    </>
   );
 }
-
-    

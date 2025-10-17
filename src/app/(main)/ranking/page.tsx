@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -58,7 +59,7 @@ export default function RankingPage() {
 
 
     return (
-        <main>
+        <>
             <Card className="max-w-4xl mx-auto">
                 <CardHeader>
                     <CardTitle className="text-3xl">ランキング</CardTitle>
@@ -105,6 +106,6 @@ export default function RankingPage() {
                     )}
                 </CardContent>
             </Card>
-        </main>
+        </>
     );
 }
