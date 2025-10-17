@@ -26,12 +26,13 @@ import { collection, query, where, orderBy, limit, getDocs } from 'firebase/fire
 import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow } from 'date-fns';
 import { ja } from 'date-fns/locale';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
-const loginSchema = z.object({
-    loginId: z.string().min(1, { message: 'ログインIDを入力してください。' }),
+const authSchema = z.object({
+    loginId: z.string().min(3, { message: 'ログインIDは3文字以上で入力してください。' }),
     password: z.string().min(6, { message: 'パスワードは6文字以上で入力してください。' }),
 });
-type LoginSchema = z.infer<typeof loginSchema>;
+type AuthSchema = z.infer<typeof authSchema>;
 
 
 interface Replay {
@@ -54,8 +55,8 @@ export default function MyPage() {
         register,
         handleSubmit,
         formState: { errors },
-    } = useForm<LoginSchema>({
-        resolver: zodResolver(loginSchema),
+    } = useForm<AuthSchema>({
+        resolver: zodResolver(authSchema),
     });
 
     const [cardCollection, setCardCollection] = useState<CardData[]>([]);
@@ -189,35 +190,43 @@ export default function MyPage() {
         return { ...ach, unlocked, claimed };
     });
 
-    const onLoginSubmit: SubmitHandler<LoginSchema> = async (data) => {
+    const onLoginSubmit: SubmitHandler<AuthSchema> = async (data) => {
         try {
             await loginWithId(data.loginId, data.password);
             toast({ title: 'ログインしました。' });
         } catch (error: any) {
-            if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found') {
-                try {
-                    await signUpWithId(data.loginId, data.password);
-                    toast({ title: 'アカウントを新規登録し、ログインしました。' });
-                } catch (signUpError: any) {
-                    console.error('Sign up failed after login failed:', signUpError);
-                    let description = '時間をおいて再度お試しください。';
-                    if (signUpError.code === 'auth/email-already-in-use') { // This logic might need adjustment based on how login IDs are handled
-                        description = 'このログインIDは既に使用されています。';
-                    }
-                    toast({
-                        variant: 'destructive',
-                        title: '新規登録に失敗しました',
-                        description: description,
-                    });
-                }
-            } else {
-                 console.error('Login failed:', error);
-                toast({
+            console.error('Login failed:', error);
+            if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+                 toast({
                     variant: 'destructive',
                     title: 'ログインに失敗しました',
                     description: 'ログインIDまたはパスワードが正しくありません。',
                 });
+            } else {
+                 toast({
+                    variant: 'destructive',
+                    title: 'エラーが発生しました',
+                    description: '時間をおいて再度お試しください。',
+                });
             }
+        }
+    };
+    
+    const onSignUpSubmit: SubmitHandler<AuthSchema> = async (data) => {
+        try {
+            await signUpWithId(data.loginId, data.password);
+            toast({ title: 'アカウントを新規登録し、ログインしました。' });
+        } catch (error: any) {
+            console.error('Sign up failed:', error);
+            let description = '時間をおいて再度お試しください。';
+            if (error.code === 'auth/email-already-in-use') {
+                description = 'このログインIDは既に使用されています。';
+            }
+             toast({
+                variant: 'destructive',
+                title: '新規登録に失敗しました',
+                description: description,
+            });
         }
     };
     
@@ -282,27 +291,53 @@ export default function MyPage() {
             <main className="flex justify-center items-center p-4">
                 <Card className="max-w-md w-full">
                     <CardHeader>
-                        <CardTitle className="text-2xl text-center">ログイン</CardTitle>
-                        <CardDescription className="text-center">
-                            アカウントにログインするか、Googleで続行してください。
+                        <CardTitle className="text-2xl text-center">マイページへようこそ</CardTitle>
+                         <CardDescription className="text-center">
+                            ログインまたは新規登録してください。
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <form onSubmit={handleSubmit(onLoginSubmit)} className="space-y-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="loginId">ログインID</Label>
-                                <Input id="loginId" {...register('loginId')} />
-                                {errors.loginId && <p className="text-sm text-destructive">{errors.loginId.message}</p>}
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="password">パスワード</Label>
-                                <Input id="password" type="password" {...register('password')} />
-                                {errors.password && <p className="text-sm text-destructive">{errors.password.message}</p>}
-                            </div>
-                             <Button type="submit" className="w-full">
-                                <LogIn className="mr-2 h-4 w-4" /> ログインまたは新規登録
-                            </Button>
-                        </form>
+                        <Tabs defaultValue="login">
+                            <TabsList className="grid w-full grid-cols-2">
+                                <TabsTrigger value="login">ログイン</TabsTrigger>
+                                <TabsTrigger value="signup">新規登録</TabsTrigger>
+                            </TabsList>
+                            <TabsContent value="login" className="pt-4">
+                                 <form onSubmit={handleSubmit(onLoginSubmit)} className="space-y-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="loginId">ログインID</Label>
+                                        <Input id="loginId" {...register('loginId')} />
+                                        {errors.loginId && <p className="text-sm text-destructive">{errors.loginId.message}</p>}
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="password">パスワード</Label>
+                                        <Input id="password" type="password" {...register('password')} />
+                                        {errors.password && <p className="text-sm text-destructive">{errors.password.message}</p>}
+                                    </div>
+                                    <Button type="submit" className="w-full">
+                                        <LogIn className="mr-2 h-4 w-4" /> ログイン
+                                    </Button>
+                                </form>
+                            </TabsContent>
+                            <TabsContent value="signup" className="pt-4">
+                                <form onSubmit={handleSubmit(onSignUpSubmit)} className="space-y-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="signupLoginId">ログインID</Label>
+                                        <Input id="signupLoginId" {...register('loginId')} />
+                                        {errors.loginId && <p className="text-sm text-destructive">{errors.loginId.message}</p>}
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="signupPassword">パスワード</Label>
+                                        <Input id="signupPassword" type="password" {...register('password')} />
+                                        {errors.password && <p className="text-sm text-destructive">{errors.password.message}</p>}
+                                    </div>
+                                    <Button type="submit" className="w-full">
+                                        <User className="mr-2 h-4 w-4" /> 新規登録してログイン
+                                    </Button>
+                                </form>
+                            </TabsContent>
+                        </Tabs>
+                        
                         <div className="relative my-4">
                             <div className="absolute inset-0 flex items-center">
                                 <span className="w-full border-t" />

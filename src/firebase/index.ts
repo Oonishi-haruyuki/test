@@ -17,16 +17,24 @@ const { auth, firestore } = initializeFirebase();
 // --- Authentication Functions ---
 
 export const loginWithId = async (loginId: string, password: string): Promise<void> => {
-    const email = `${loginId}@cardcrafter.app`;
+    // Firebase Auth uses email for login, so we create a dummy email.
+    const email = `${loginId.trim()}@cardcrafter.app`;
     await signInWithEmailAndPassword(auth, email, password);
 };
 
 export const signUpWithId = async (loginId: string, password: string): Promise<void> => {
-    const userCredential = await createUserWithEmailAndPassword(auth, `${loginId}@cardcrafter.app`, password);
+    const email = `${loginId.trim()}@cardcrafter.app`;
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
     if (user) {
+        // After sign-up, create a corresponding user profile in Firestore
         const userDocRef = doc(firestore, 'users', user.uid);
-        await setDoc(userDocRef, { loginId: loginId });
+        await setDoc(userDocRef, { 
+            loginId: loginId.trim(),
+            rating: 1000,
+            lastMatchDate: new Date(0).toISOString(),
+            inventory: {},
+        });
     }
 };
 
@@ -37,8 +45,14 @@ export const loginWithGoogle = async (): Promise<void> => {
         const user = result.user;
         const userDocRef = doc(firestore, 'users', user.uid);
         const userDoc = await getDoc(userDocRef);
+        // If the user profile doesn't exist (first-time Google login), create it
         if (!userDoc.exists()) {
-            await setDoc(userDocRef, { loginId: user.email });
+            await setDoc(userDocRef, { 
+                loginId: user.displayName || user.email || `user_${user.uid.substring(0,5)}`,
+                rating: 1000,
+                lastMatchDate: new Date(0).toISOString(),
+                inventory: {},
+             });
         }
     } catch (error: any) {
         if (error.code === 'auth/popup-blocked') {
