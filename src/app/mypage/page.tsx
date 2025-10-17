@@ -8,7 +8,7 @@ import { z } from 'zod';
 import { useCurrency } from '@/hooks/use-currency';
 import { useStats } from '@/hooks/use-stats';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Coins, Trophy, Star, Library, Users, Skull, User, LogIn, BarChart, History, LogOut } from 'lucide-react';
+import { Coins, Trophy, Star, Library, Users, Skull, User, LogIn, BarChart, History, LogOut, Eye, EyeOff } from 'lucide-react';
 import type { CardData } from '@/components/card-editor';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AchievementsUI, type Achievement } from '@/components/ui/achievements';
@@ -22,7 +22,7 @@ import { MissionsUI } from '@/components/ui/missions-ui';
 import { allMissions } from '@/lib/missions';
 import { shopItems } from '@/lib/shop-items';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { collection, query, where, orderBy, limit, getDocs, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, orderBy, limit, onSnapshot } from 'firebase/firestore';
 import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow } from 'date-fns';
 import { ja } from 'date-fns/locale';
@@ -68,6 +68,7 @@ export default function MyPage() {
     const [selectedAnimation, setSelectedAnimation] = useState('anim-flip');
     const [replays, setReplays] = useState<Replay[]>([]);
     const [isLoadingReplays, setIsLoadingReplays] = useState(true);
+    const [showAccountInfo, setShowAccountInfo] = useState(true);
 
     // Load data from localStorage when profile changes
     useEffect(() => {
@@ -272,7 +273,7 @@ export default function MyPage() {
                     {icon}
                 </CardHeader>
                 <CardContent>
-                    {loading ? <Skeleton className="h-8 w-24" /> : <div className="text-2xl font-bold">{value}</div>}
+                    {loading ? <Skeleton className="h-8 w-24" /> : <div className="text-2xl font-bold truncate">{value}</div>}
                     <p className="text-xs text-muted-foreground">{description}</p>
                 </CardContent>
             </Card>
@@ -439,6 +440,30 @@ export default function MyPage() {
             </div>
 
             <div className="mt-8 grid gap-8 lg:grid-cols-2">
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex justify-between items-center">
+                            アカウント情報
+                            <Button variant="ghost" size="sm" onClick={() => setShowAccountInfo(!showAccountInfo)}>
+                                {showAccountInfo ? <EyeOff className="mr-2" /> : <Eye className="mr-2" />}
+                                {showAccountInfo ? '非表示' : '表示'}
+                            </Button>
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="flex items-center justify-between">
+                            <Label>ログインID:</Label>
+                            <span className="font-mono text-sm">{showAccountInfo ? (profile?.loginId || user.email) : '********'}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                            <Label>パスワード:</Label>
+                            <span className="font-mono text-sm">********</span>
+                        </div>
+                         <p className="text-xs text-muted-foreground pt-2">
+                            セキュリティ保護のため、パスワードは表示されません。パスワードをお忘れの場合は、一度ログアウトしてから再度ログインをお試しください。
+                        </p>
+                    </CardContent>
+                </Card>
                 <MissionsUI 
                     missions={missions}
                     onClaimReward={claimMissionReward}
