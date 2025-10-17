@@ -1,6 +1,6 @@
 
 import { initializeApp, getApps, getApp, type FirebaseApp } from 'firebase/app';
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, type Auth } from 'firebase/auth';
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, type Auth, signOut } from 'firebase/auth';
 import { getFirestore, doc, setDoc, getDoc, type Firestore } from 'firebase/firestore';
 import { firebaseConfig } from '@/firebase/config';
 
@@ -61,6 +61,10 @@ export const loginWithGoogle = async (): Promise<void> => {
         console.error("Google sign-in error", error);
         throw error;
     }
+};
+
+export const logout = async (): Promise<void> => {
+    await signOut(auth);
 };
 
 

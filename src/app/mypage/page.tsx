@@ -8,13 +8,13 @@ import { z } from 'zod';
 import { useCurrency } from '@/hooks/use-currency';
 import { useStats } from '@/hooks/use-stats';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Coins, Trophy, Star, Library, Users, Skull, User, LogIn, BarChart, History } from 'lucide-react';
+import { Coins, Trophy, Star, Library, Users, Skull, User, LogIn, BarChart, History, LogOut } from 'lucide-react';
 import type { CardData } from '@/components/card-editor';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AchievementsUI, type Achievement } from '@/components/ui/achievements';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
-import { useUser, loginWithId, signUpWithId, loginWithGoogle, initializeFirebase } from '@/firebase';
+import { useUser, loginWithId, signUpWithId, loginWithGoogle, initializeFirebase, logout } from '@/firebase';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useMissions } from '@/hooks/use-missions';
@@ -93,22 +93,28 @@ export default function MyPage() {
     
     // Fetch replays
     useEffect(() => {
-        if (!user) return;
+        if (!user) {
+            setReplays([]);
+            setIsLoadingReplays(false);
+            return;
+        }
         setIsLoadingReplays(true);
         const replaysRef = collection(firestore, 'replays');
         const q = query(replaysRef, where('player1Id', '==', user.uid), orderBy('createdAt', 'desc'), limit(10));
         
-        getDocs(q).then(querySnapshot => {
+        const unsubscribe = onSnapshot(q, (querySnapshot) => {
             const fetchedReplays: Replay[] = [];
             querySnapshot.forEach((doc) => {
                 fetchedReplays.push({ id: doc.id, ...doc.data() } as Replay);
             });
             setReplays(fetchedReplays);
             setIsLoadingReplays(false);
-        }).catch(error => {
+        }, (error) => {
             console.error("Error fetching replays:", error);
             setIsLoadingReplays(false);
         });
+
+        return () => unsubscribe();
 
     }, [user, firestore]);
 
@@ -248,6 +254,15 @@ export default function MyPage() {
         }
     };
 
+    const handleLogout = async () => {
+        try {
+            await logout();
+            toast({ title: 'ログアウトしました。' });
+        } catch (error) {
+            toast({ variant: 'destructive', title: 'ログアウトに失敗しました。'});
+        }
+    };
+
 
     const StatCard = ({ title, value, icon, description, loading }: { title: string, value: string | number, icon: React.ReactNode, description: string, loading?: boolean }) => {
         return (
@@ -360,9 +375,15 @@ export default function MyPage() {
 
     return (
         <main>
-            <div className="mb-8">
-                <h1 className="text-3xl font-bold truncate">{(profile?.loginId || user.email) ?? 'ようこそ'}のマイページ</h1>
-                <p className="text-muted-foreground">あなたのアクティビティと実績</p>
+            <div className="flex justify-between items-start mb-8">
+                <div>
+                    <h1 className="text-3xl font-bold truncate">{(profile?.loginId || user.email) ?? 'ようこそ'}のマイページ</h1>
+                    <p className="text-muted-foreground">あなたのアクティビティと実績</p>
+                </div>
+                <Button variant="outline" onClick={handleLogout}>
+                    <LogOut className="mr-2" />
+                    ログアウト
+                </Button>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
