@@ -5,20 +5,26 @@ import { useState, useEffect } from 'react';
 import type { CardData } from '@/components/card-editor';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { elementalDeck, goblinDeck } from '@/app/battle/page';
+import { elementalDeck, goblinDeck, undeadDeck, dragonDeck, ninjaDeck } from '@/app/battle/page';
 import { useCurrency } from '@/hooks/use-currency';
 import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, BookOpen, CheckCircle2 } from 'lucide-react';
 import BattlePage from '@/app/battle/page';
 import { useUser } from '@/firebase';
 import { useInventory } from '@/hooks/use-inventory';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
+interface Deck {
+    id: string;
+    name: string;
+    cards: CardData[];
+}
 
 interface StoryChapter {
     id: string;
     title: string;
     prologue: string;
     battle?: {
-        playerDeck: CardData[];
         opponentName: string;
         opponentDeck: CardData[];
         reward: {
@@ -32,9 +38,8 @@ const storyContent: StoryChapter[] = [
     {
         id: 'chapter-1',
         title: '第1章: 目覚めとゴブリンの森',
-        prologue: 'あなたは不思議な力に導かれ、カードがすべての世界「アルカディア」に召喚されたカードクラフター。...\n\nあなたの目の前には、いたずら好きで厄介なゴブリンたちがうごめく森が広がっている。\n\n森を抜けるには、彼らのリーダーをカードバトルで打ち負かすしかないようだ。\n\n与えられた基本のエレメンタルデッキを手に、最初の戦いに挑もう。',
+        prologue: 'あなたは不思議な力に導かれ、カードがすべての世界「アルカディア」に召喚されたカードクラフター。...\n\nあなたの目の前には、いたずら好きで厄介なゴブリンたちがうごめく森が広がっている。\n\n森を抜けるには、彼らのリーダーをカードバトルで打ち負かすしかないようだ。\n\nまずは、自分のデッキを選んで戦いに挑もう。',
         battle: {
-            playerDeck: elementalDeck,
             opponentName: 'ゴブリンリーダー',
             opponentDeck: goblinDeck,
             reward: {
@@ -45,10 +50,42 @@ const storyContent: StoryChapter[] = [
     },
     {
         id: 'chapter-2',
-        title: '第2章: (近日公開)',
-        prologue: 'ゴブリンたちとの戦いを経て、あなたは新たな仲間と出会う...。次なる冒険があなたを待っている。',
+        title: '第2章: 墓場のアンデッド',
+        prologue: 'ゴブリンの森を抜けた先にあったのは、不気味な雰囲気が漂う古い墓場だった。そこではネクロマンサーによって操られたアンデッドたちが、侵入者を待ち構えている。',
+        battle: {
+            opponentName: 'ネクロマンサー',
+            opponentDeck: undeadDeck,
+            reward: { g: 300 },
+        }
+    },
+    {
+        id: 'chapter-3',
+        title: '第3章: ドラゴンの巣窟',
+        prologue: 'アンデッドの脅威を退けたあなたの次なる目的地は、燃え盛る山脈に位置するドラゴンの巣窟。強力なドラゴンたちを相手に、あなたのデッキ戦略が試される。',
+        battle: {
+            opponentName: 'ドラゴンロード',
+            opponentDeck: dragonDeck,
+            reward: { g: 500, items: { 'dragon-soul': 2 } },
+        }
+    },
+    {
+        id: 'chapter-4',
+        title: '第4章: 影のニンジャ一族',
+        prologue: 'ドラゴンの力を認められたあなたは、東の国からやってきた謎のニンジャ一族の存在を知る。彼らの素早い攻撃とトリッキーな戦術に対応できるか？',
+        battle: {
+            opponentName: 'ニンジャマスター',
+            opponentDeck: ninjaDeck,
+            reward: { g: 700 },
+        }
+    },
+    {
+        id: 'chapter-5',
+        title: '第5章: (近日公開)',
+        prologue: '数々の強敵を打ち破り、カードクラフターとして名を馳せたあなた。しかし、この世界の真の危機はまだ始まったばかりだった...。',
     }
 ];
+
+const DECK_SIZE = 30;
 
 export default function StoryModePage() {
     const { user } = useUser();
@@ -60,6 +97,9 @@ export default function StoryModePage() {
     const [clearedChapters, setClearedChapters] = useState<string[]>([]);
     const [activeChapter, setActiveChapter] = useState<StoryChapter | null>(null);
     const [inBattle, setInBattle] = useState(false);
+
+    const [savedDecks, setSavedDecks] = useState<Deck[]>([]);
+    const [selectedDeck, setSelectedDeck] = useState<Deck | null>(null);
     
     const getStorageKey = () => user ? `story-progress-${user.uid}` : 'story-progress-guest';
 
@@ -70,15 +110,28 @@ export default function StoryModePage() {
             if (savedProgress) {
                 setClearedChapters(JSON.parse(savedProgress));
             }
+            try {
+                const decksFromStorage: Deck[] = JSON.parse(localStorage.getItem('decks') || '[]');
+                const validDecks = decksFromStorage.filter(d => d.cards.length === DECK_SIZE);
+                setSavedDecks(validDecks);
+                if (validDecks.length > 0) {
+                    setSelectedDeck(validDecks[0]);
+                }
+            } catch (error) {
+                console.error("Failed to load decks", error);
+            }
         }
     }, [user]);
     
     const handleChapterSelect = (chapter: StoryChapter) => {
-        if (chapter.id === 'chapter-2') {
+        if (!chapter.battle) {
              toast({ title: '近日公開', description: '次の章のアップデートをお楽しみに！'});
              return;
         }
         setActiveChapter(chapter);
+        if (savedDecks.length > 0) {
+            setSelectedDeck(savedDecks[0]);
+        }
     }
     
     const handleWinBattle = () => {
@@ -130,10 +183,10 @@ export default function StoryModePage() {
     
     if (!isClient) return null;
 
-    if (inBattle && activeChapter?.battle) {
+    if (inBattle && activeChapter?.battle && selectedDeck) {
         return (
            <BattlePage
-                initialPlayerDeck={activeChapter.battle.playerDeck}
+                initialPlayerDeck={selectedDeck.cards.filter(c => c.cardType !== 'artifact')}
                 initialOpponentDeck={activeChapter.battle.opponentDeck}
                 forcedDifficulty="beginner" // Story mode battles are not rated
                 onGameEnd={(result) => {
@@ -142,6 +195,13 @@ export default function StoryModePage() {
                     } else {
                         handleLoseBattle();
                     }
+                }}
+                gameRules={{
+                    playerHealth: 20,
+                    opponentHealth: 15,
+                    boardLimit: 3,
+                    landLimit: 2,
+                    disallowedCardTypes: ['artifact']
                 }}
             />
         );
@@ -161,8 +221,22 @@ export default function StoryModePage() {
                     <CardContent>
                         <p className="whitespace-pre-line leading-relaxed">{activeChapter.prologue}</p>
                         {activeChapter.battle && (
-                            <div className="mt-8 text-center">
-                                 <Button onClick={() => setInBattle(true)} size="lg">
+                            <div className="mt-8 text-center space-y-4">
+                                 <div className="max-w-xs mx-auto">
+                                    <p className="font-semibold mb-2">使用するデッキを選択</p>
+                                     <Select onValueChange={(deckId) => setSelectedDeck(savedDecks.find(d => d.id === deckId) || null)} defaultValue={selectedDeck?.id}>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="デッキを選択..." />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {savedDecks.map(deck => (
+                                                <SelectItem key={deck.id} value={deck.id}>{deck.name}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    {savedDecks.length === 0 && <p className="text-xs text-destructive mt-2">対戦可能なデッキがありません。「デッキ構築」で30枚のデッキを作成してください。</p>}
+                                </div>
+                                 <Button onClick={() => setInBattle(true)} size="lg" disabled={!selectedDeck}>
                                     この章の対戦に挑む
                                 </Button>
                             </div>

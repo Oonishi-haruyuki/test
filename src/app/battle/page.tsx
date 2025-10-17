@@ -23,7 +23,7 @@ import { saveReplay, type GameHistoryEntry } from '@/lib/replay-actions';
 
 const DECK_SIZE = 30;
 const MAX_MANA = 10;
-const BOARD_LIMIT = 5;
+const DEFAULT_BOARD_LIMIT = 5;
 
 const BEGINNER_WIN_REWARD = 10;
 const BEGINNER_LOSE_PENALTY = 5;
@@ -43,11 +43,20 @@ interface Deck {
 export type Difficulty = 'beginner' | 'advanced' | 'super';
 type DeckChoice = 'my-deck' | 'starter-goblin' | 'starter-elemental' | 'starter-undead' | 'starter-dragon' | 'starter-ninja' | 'ai-fantasy' | 'ai-scifi';
 
+export interface GameRules {
+    playerHealth?: number;
+    opponentHealth?: number;
+    boardLimit?: number;
+    landLimit?: number;
+    disallowedCardTypes?: (CardData['cardType'])[];
+}
+
 export interface BattleProps {
   initialPlayerDeck?: CardData[];
   initialOpponentDeck?: CardData[];
   forcedDifficulty?: Difficulty;
   onGameEnd?: (result: 'win' | 'loss') => void;
+  gameRules?: GameRules;
 }
 
 export const goblinDeck: CardData[] = [
@@ -176,12 +185,14 @@ function BattleGame({
   difficulty,
   onGameEnd,
   isDailyChallenge = false,
+  gameRules = {},
 }: {
   playerDeck: CardData[];
   opponentDeck: CardData[];
   difficulty: Difficulty;
   onGameEnd: (result: 'win' | 'loss') => void;
   isDailyChallenge?: boolean;
+  gameRules?: GameRules;
 }) {
     const { toast } = useToast();
     const { addCurrency, spendCurrency } = useCurrency();
@@ -192,18 +203,21 @@ function BattleGame({
     const { addItem } = useInventory();
     const [gameHistory, setGameHistory] = useState<GameHistoryEntry[]>([]);
 
+    const boardLimit = gameRules.boardLimit ?? DEFAULT_BOARD_LIMIT;
+    const landLimit = gameRules.landLimit ?? DEFAULT_BOARD_LIMIT; // Default to same as board limit if not specified
+
     // Game State
     const [playerDeck, setPlayerDeck] = useState<CardData[]>([]);
     const [playerHand, setPlayerHand] = useState<CardData[]>([]);
     const [playerBoard, setPlayerBoard] = useState<CardData[]>([]);
-    const [playerHealth, setPlayerHealth] = useState(20);
+    const [playerHealth, setPlayerHealth] = useState(gameRules.playerHealth ?? 20);
     const [playerMana, setPlayerMana] = useState(1);
     const [playerMaxMana, setPlayerMaxMana] = useState(1);
     
     const [opponentDeck, setOpponentDeck] = useState<CardData[]>([]);
     const [opponentHand, setOpponentHand] = useState<CardData[]>([]);
     const [opponentBoard, setOpponentBoard] = useState<CardData[]>([]);
-    const [opponentHealth, setOpponentHealth] = useState(20);
+    const [opponentHealth, setOpponentHealth] = useState(gameRules.opponentHealth ?? 20);
     const [opponentMana, setOpponentMana] = useState(1);
     const [opponentMaxMana, setOpponentMaxMana] = useState(1);
     
@@ -222,12 +236,15 @@ function BattleGame({
             if (savedCardBack) {
                 setCardBackImage(savedCardBack);
             }
-            const savedArtifacts = JSON.parse(localStorage.getItem('purchasedArtifacts') || '[]');
-            setPurchasedArtifacts(savedArtifacts);
+            // Only apply purchased artifacts if not in a custom rules game
+            if (Object.keys(gameRules).length === 0) {
+                 const savedArtifacts = JSON.parse(localStorage.getItem('purchasedArtifacts') || '[]');
+                 setPurchasedArtifacts(savedArtifacts);
+            }
         } catch (error) {
             console.error("Failed to check for saved data", error);
         }
-    }, []);
+    }, [gameRules]);
 
     const shuffleDeck = (deck: CardData[]) => {
         return [...deck].sort(() => Math.random() - 0.5);
@@ -262,7 +279,10 @@ function BattleGame({
         const hasHpBoost = purchasedArtifacts.includes('artifact-hp-boost');
         const hasHandBoost = purchasedArtifacts.includes('artifact-hand-boost');
         const hasManaBoost = purchasedArtifacts.includes('artifact-mana-boost');
-        const initialPlayerHealth = hasHpBoost ? 25 : 20;
+        
+        const initialPlayerHealth = gameRules.playerHealth ?? (hasHpBoost ? 25 : 20);
+        const initialOpponentHealth = gameRules.opponentHealth ?? 20;
+
         const initialHandSize = hasHandBoost ? 6 : 5;
         const initialPlayerMaxMana = hasManaBoost ? 2 : 1;
 
@@ -279,7 +299,7 @@ function BattleGame({
         setOpponentDeck(oDeck);
         setOpponentHand(initialOpponentHand);
         setOpponentBoard([]);
-        setOpponentHealth(20);
+        setOpponentHealth(initialOpponentHealth);
         setOpponentMana(1);
         setOpponentMaxMana(1);
 
@@ -301,7 +321,7 @@ function BattleGame({
         if (!playerGoesFirst) {
             setTimeout(aiTurn, 1000);
         }
-    }, [purchasedArtifacts]);
+    }, [purchasedArtifacts, gameRules]);
 
      useEffect(() => {
         if (initialPlayerDeck && initialOpponentDeck) {
@@ -411,42 +431,58 @@ function BattleGame({
         updateMissionProgress('play-game', 1);
 
         try {
-            const { newRating, change } = await updateUserRating(user.uid, difficulty, result);
-            setRatingChange(change);
+            // Do not update rating if it's a custom game (story mode)
+            if (Object.keys(gameRules).length === 0) {
+                const { newRating, change } = await updateUserRating(user.uid, difficulty, result);
+                setRatingChange(change);
+                 if (result === 'win') {
+                    setGameOver('あなたの勝利！');
+                    addCurrency(winReward);
+                    toast({
+                        title: '勝利！',
+                        description: `${winReward}G獲得しました！ レーティング: ${newRating} (${change > 0 ? '+' : ''}${change})`,
+                      });
+                 } else {
+                    setGameOver('相手の勝利！');
+                    spendCurrency(losePenalty);
+                    toast({
+                        title: '敗北...',
+                        description: `${losePenalty}G失いました。レーティング: ${newRating} (${change})`,
+                        variant: 'destructive',
+                    });
+                 }
+            }
             
             if (result === 'win') {
               setGameOver('あなたの勝利！');
               addToLog('ゲーム終了！あなたが勝利しました。');
-              addCurrency(winReward);
               addWin();
               updateMissionProgress('win-game', 1);
               if (isDailyChallenge) {
                   updateMissionProgress('win-daily-challenge', 1);
               }
-              
-              if (Math.random() < DROP_RATE) {
+              if (Object.keys(gameRules).length > 0) { // Story mode etc. has its own reward toast
+                // Do nothing, reward is handled by the calling page
+              } else if (Math.random() < DROP_RATE) {
                 addItem('dragon-soul', 1);
+                addCurrency(winReward);
                 toast({
                     title: '勝利！',
-                    description: `${winReward}Gと竜の魂x1を獲得しました！ レーティング: ${newRating} (${change > 0 ? '+' : ''}${change})`,
+                    description: `${winReward}Gと竜の魂x1を獲得しました！`,
                   });
               } else {
-                toast({
-                    title: '勝利！',
-                    description: `${winReward}G獲得しました！ レーティング: ${newRating} (${change > 0 ? '+' : ''}${change})`,
-                  });
+                addCurrency(winReward);
+                // Rating toast is handled above
               }
 
             } else {
               setGameOver('相手の勝利！');
               addToLog('ゲーム終了！相手が勝利しました。');
-              spendCurrency(losePenalty);
               addLoss();
-              toast({
-                title: '敗北...',
-                description: `${losePenalty}G失いました。レーティング: ${newRating} (${change})`,
-                variant: 'destructive',
-              });
+              if (Object.keys(gameRules).length === 0) {
+                 spendCurrency(losePenalty);
+                 // Rating toast is handled above
+              }
             }
         } catch (error) {
             console.error("Rating update failed", error);
@@ -463,7 +499,7 @@ function BattleGame({
         } finally {
             if (onGameEnd) onGameEnd(result);
         }
-    }, [difficulty, user, profile, addCurrency, addLoss, addWin, spendCurrency, toast, updateMissionProgress, isDailyChallenge, onGameEnd, addItem, gameHistory]);
+    }, [difficulty, user, profile, addCurrency, addLoss, addWin, spendCurrency, toast, updateMissionProgress, isDailyChallenge, onGameEnd, addItem, gameHistory, gameRules]);
 
     useEffect(() => {
         if (gameOver) return;
@@ -476,21 +512,38 @@ function BattleGame({
 
     const playCard = (card: CardData, cardIndex: number) => {
         if (!isPlayerTurn || gameOver || gamePhase !== 'main') return;
+        
+        if (gameRules.disallowedCardTypes?.includes(card.cardType)) {
+            toast({ variant: 'destructive', title: '使用不可カード', description: `このモードでは「${card.cardType}」カードは使用できません。`});
+            return;
+        }
+
         if (playerMana < card.manaCost) {
             toast({ variant: 'destructive', title: 'マナが足りません！'});
             return;
         }
+        
+        const isCreature = card.cardType === 'creature';
+        const isLand = card.cardType === 'land';
 
-        if (card.cardType === 'creature' && playerBoard.length >= BOARD_LIMIT) {
-            toast({ variant: 'destructive', title: '場が上限に達しています。'});
+        const creatureCount = playerBoard.filter(c => c.cardType === 'creature').length;
+        const landCount = playerBoard.filter(c => c.cardType === 'land').length;
+
+        if (isCreature && creatureCount >= boardLimit) {
+            toast({ variant: 'destructive', title: 'クリーチャーゾーンが上限です。'});
             return;
         }
+        if (isLand && landCount >= landLimit) {
+            toast({ variant: 'destructive', title: '土地ゾーンが上限です。'});
+            return;
+        }
+
         const newHand = [...playerHand];
         newHand.splice(cardIndex, 1);
         setPlayerMana(prev => prev - card.manaCost);
         setPlayerHand(newHand);
         addToLog(`あなたが「${card.name}」をプレイ！`);
-        if (card.cardType === 'creature') {
+        if (isCreature || isLand) {
             setPlayerBoard(prev => [...prev, {...card, canAttack: false}]);
         } else {
             applySpellEffect(card, true);
@@ -503,7 +556,7 @@ function BattleGame({
         addToLog('攻撃フェーズへ！');
         let totalDamage = 0;
         playerBoard.forEach(c => {
-            if (c.canAttack) {
+            if (c.canAttack && c.cardType === 'creature') {
                 totalDamage += c.attack;
                 addToLog(`あなたの「${c.name}」(${c.attack}/${c.defense})が相手に攻撃！`);
             }
@@ -527,10 +580,21 @@ function BattleGame({
     
     const aiChooseCard = (hand: CardData[], mana: number, myBoard: CardData[]): CardData | null => {
         let playableCards = hand.filter(c => c.manaCost <= mana);
+        
+        if (gameRules.disallowedCardTypes) {
+            playableCards = playableCards.filter(c => !gameRules.disallowedCardTypes?.includes(c.cardType));
+        }
 
-        if (myBoard.length >= BOARD_LIMIT) {
+        const creatureCount = myBoard.filter(c => c.cardType === 'creature').length;
+        if (creatureCount >= boardLimit) {
             playableCards = playableCards.filter(c => c.cardType !== 'creature');
         }
+        
+        const landCount = myBoard.filter(c => c.cardType === 'land').length;
+         if (landCount >= landLimit) {
+            playableCards = playableCards.filter(c => c.cardType !== 'land');
+        }
+
         if (playableCards.length === 0) return null;
 
         if (difficulty === 'beginner') {
@@ -538,7 +602,7 @@ function BattleGame({
         }
 
         const creatureCards = playableCards.filter(c => c.cardType === 'creature');
-        const spellCards = playableCards.filter(c => c.cardType !== 'creature');
+        const spellCards = playableCards.filter(c => c.cardType !== 'creature' && c.cardType !== 'land');
         const damageSpells = spellCards.filter(s => s.abilities.includes('ダメージ'));
 
         if (difficulty === 'super') {
@@ -549,7 +613,7 @@ function BattleGame({
             }
         }
 
-        if (creatureCards.length > 0 && myBoard.length < BOARD_LIMIT) {
+        if (creatureCards.length > 0) {
              const bestCreature = creatureCards.reduce((best, current) => {
                 const bestScore = (best.attack + best.defense) / (best.manaCost + 1);
                 const currentScore = (current.attack + current.defense) / (current.manaCost + 1);
@@ -603,8 +667,11 @@ function BattleGame({
                     setOpponentMana(m => m - cardToPlay.manaCost);
                     
                     addToLog(`相手が「${cardToPlay.name}」をプレイ！`);
+                    
+                    const isCreature = cardToPlay.cardType === 'creature';
+                    const isLand = cardToPlay.cardType === 'land';
 
-                    if (cardToPlay.cardType === 'creature') {
+                    if (isCreature || isLand) {
                         tempBoard.push({...cardToPlay, canAttack: false});
                         setOpponentBoard(b => [...b, {...cardToPlay, canAttack: false}]);
                     } else {
@@ -624,7 +691,7 @@ function BattleGame({
             addToLog('相手の攻撃フェーズ！');
             let totalDamage = 0;
             opponentBoard.forEach(c => {
-                if (c.canAttack) {
+                if (c.canAttack && c.cardType === 'creature') {
                     totalDamage += c.attack;
                     addToLog(`相手の「${c.name}」(${c.attack}/${c.defense})があなたに攻撃！`);
                 }
@@ -666,11 +733,12 @@ function BattleGame({
         return (
             <Card className="p-4 md:p-6 my-4 max-w-2xl text-center bg-yellow-200/90 text-slate-800 mx-auto">
                 <p className="text-xl md:text-2xl font-semibold mb-2">{gameOver}</p>
-                {gameOver === 'あなたの勝利！' ? (
+                {gameOver === 'あなたの勝利！' && Object.keys(gameRules).length === 0 && (
                     <p className="flex items-center justify-center gap-2 text-md md:text-lg font-medium text-yellow-700 mb-2">
                         <Coins className="h-6 w-6" /> +{winReward}G
                     </p>
-                ) : (
+                )} 
+                {gameOver !== 'あなたの勝利！' && Object.keys(gameRules).length === 0 && (
                     <p className="flex items-center justify-center gap-2 text-md md:text-lg font-medium text-red-600 mb-2">
                         <Coins className="h-6 w-6" /> -{losePenalty}G
                     </p>
@@ -903,8 +971,9 @@ export default function BattlePage(props: BattleProps) {
                     playerDeck={playerDeck}
                     opponentDeck={opponentDeck}
                     difficulty={difficulty}
-                    onGameEnd={() => props.onGameEnd ? props.onGameEnd : resetGame()}
+                    onGameEnd={props.onGameEnd ? props.onGameEnd : resetGame}
                     isDailyChallenge={isDailyChallenge}
+                    gameRules={props.gameRules}
                 />
             </main>
         )
@@ -1016,5 +1085,3 @@ export default function BattlePage(props: BattleProps) {
 
     return null;
 }
-
-    
