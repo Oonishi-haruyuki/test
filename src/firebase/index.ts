@@ -1,6 +1,6 @@
 
 import { initializeApp, getApps, getApp, type FirebaseApp } from 'firebase/app';
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, type Auth, signOut } from 'firebase/auth';
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, type Auth, signOut, EmailAuthProvider, reauthenticateWithCredential, updatePassword } from 'firebase/auth';
 import { getFirestore, doc, setDoc, getDoc, type Firestore } from 'firebase/firestore';
 import { firebaseConfig } from '@/firebase/config';
 
@@ -37,6 +37,24 @@ export const signUpWithId = async (loginId: string, password: string): Promise<v
         });
     }
 };
+
+export const changePassword = async (loginId: string, oldPassword: string, newPassword: string): Promise<void> => {
+    const user = auth.currentUser;
+    if (!user) {
+        throw new Error("ユーザーがログインしていません。");
+    }
+
+    // Firebase Auth requires re-authentication to change a password.
+    const email = `${loginId.trim()}@cardcrafter.app`;
+    const credential = EmailAuthProvider.credential(email, oldPassword);
+
+    // Re-authenticate the user with their old password
+    await reauthenticateWithCredential(user, credential);
+
+    // If re-authentication is successful, update the password
+    await updatePassword(user, newPassword);
+};
+
 
 export const loginWithGoogle = async (): Promise<void> => {
     const provider = new GoogleAuthProvider();

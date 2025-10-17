@@ -7,14 +7,14 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useCurrency } from '@/hooks/use-currency';
 import { useStats } from '@/hooks/use-stats';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Coins, Trophy, Star, Library, Users, Skull, User, LogIn, BarChart, History, LogOut, Eye, EyeOff } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { Coins, Trophy, Star, Library, Users, Skull, User, LogIn, BarChart, History, LogOut, Eye, EyeOff, KeyRound } from 'lucide-react';
 import type { CardData } from '@/components/card-editor';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AchievementsUI, type Achievement } from '@/components/ui/achievements';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
-import { useUser, loginWithId, signUpWithId, loginWithGoogle, initializeFirebase, logout } from '@/firebase';
+import { useUser, loginWithId, signUpWithId, loginWithGoogle, initializeFirebase, logout, changePassword } from '@/firebase';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useMissions } from '@/hooks/use-missions';
@@ -27,6 +27,7 @@ import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from '@/components/ui/dialog';
 
 const authSchema = z.object({
     loginId: z.string().min(3, { message: 'ログインIDは3文字以上で入力してください。' }),
@@ -34,6 +35,16 @@ const authSchema = z.object({
 });
 type AuthSchema = z.infer<typeof authSchema>;
 
+const passwordChangeSchema = z.object({
+    loginId: z.string().min(3, "ログインIDを入力してください。"),
+    oldPassword: z.string().min(6, "現在のパスワードは6文字以上です。"),
+    newPassword: z.string().min(6, "新しいパスワードは6文字以上で入力してください。"),
+    confirmPassword: z.string().min(6, "確認用パスワードは6文字以上です。"),
+}).refine(data => data.newPassword === data.confirmPassword, {
+    message: "新しいパスワードが一致しません。",
+    path: ["confirmPassword"], // Show error on the confirmation field
+});
+type PasswordChangeSchema = z.infer<typeof passwordChangeSchema>;
 
 interface Replay {
     id: string;
@@ -51,14 +62,7 @@ export default function MyPage() {
     const { wins, losses } = useStats();
     const { missions, claimMissionReward } = useMissions();
     const { toast } = useToast();
-    const {
-        register,
-        handleSubmit,
-        formState: { errors },
-    } = useForm<AuthSchema>({
-        resolver: zodResolver(authSchema),
-    });
-
+    
     const [cardCollection, setCardCollection] = useState<CardData[]>([]);
     const [decks, setDecks] = useState<{ id: string, name: string, cards: CardData[] }[]>([]);
     const [selectedTitle, setSelectedTitle] = useState('未設定');
@@ -69,6 +73,26 @@ export default function MyPage() {
     const [replays, setReplays] = useState<Replay[]>([]);
     const [isLoadingReplays, setIsLoadingReplays] = useState(true);
     const [showAccountInfo, setShowAccountInfo] = useState(true);
+    const [isPasswordChangeOpen, setIsPasswordChangeOpen] = useState(false);
+
+
+    const {
+        register: registerAuth,
+        handleSubmit: handleSubmitAuth,
+        formState: { errors: authErrors },
+    } = useForm<AuthSchema>({
+        resolver: zodResolver(authSchema),
+    });
+
+    const {
+        register: registerPasswordChange,
+        handleSubmit: handleSubmitPasswordChange,
+        formState: { errors: passwordChangeErrors },
+        reset: resetPasswordChangeForm,
+    } = useForm<PasswordChangeSchema>({
+        resolver: zodResolver(passwordChangeSchema),
+    });
+
 
     // Load data from localStorage when profile changes
     useEffect(() => {
@@ -237,6 +261,30 @@ export default function MyPage() {
         }
     };
     
+    const onPasswordChangeSubmit: SubmitHandler<PasswordChangeSchema> = async (data) => {
+        try {
+            await changePassword(data.loginId, data.oldPassword, data.newPassword);
+            toast({ title: 'パスワードが変更されました。' });
+            setIsPasswordChangeOpen(false);
+            resetPasswordChangeForm();
+        } catch (error: any) {
+            console.error('Password change failed:', error);
+            let description = '時間をおいて再度お試しください。';
+            if (error.code === 'auth/wrong-password') {
+                description = '現在のパスワードが正しくありません。';
+            } else if (error.code === 'auth/user-not-found') {
+                description = '指定されたログインIDのユーザーが見つかりません。';
+            } else if (error.code === 'auth/invalid-credential') {
+                description = 'ログインIDまたは現在のパスワードが正しくありません。';
+            }
+            toast({
+                variant: 'destructive',
+                title: 'パスワードの変更に失敗しました',
+                description,
+            });
+        }
+    };
+
     const handleGoogleSignIn = async () => {
         try {
             await loginWithGoogle();
@@ -319,16 +367,16 @@ export default function MyPage() {
                                 <TabsTrigger value="signup">新規登録</TabsTrigger>
                             </TabsList>
                             <TabsContent value="login" className="pt-4">
-                                 <form onSubmit={handleSubmit(onLoginSubmit)} className="space-y-4">
+                                 <form onSubmit={handleSubmitAuth(onLoginSubmit)} className="space-y-4">
                                     <div className="space-y-2">
                                         <Label htmlFor="loginId">ログインID</Label>
-                                        <Input id="loginId" {...register('loginId')} />
-                                        {errors.loginId && <p className="text-sm text-destructive">{errors.loginId.message}</p>}
+                                        <Input id="loginId" {...registerAuth('loginId')} />
+                                        {authErrors.loginId && <p className="text-sm text-destructive">{authErrors.loginId.message}</p>}
                                     </div>
                                     <div className="space-y-2">
                                         <Label htmlFor="password">パスワード</Label>
-                                        <Input id="password" type="password" {...register('password')} />
-                                        {errors.password && <p className="text-sm text-destructive">{errors.password.message}</p>}
+                                        <Input id="password" type="password" {...registerAuth('password')} />
+                                        {authErrors.password && <p className="text-sm text-destructive">{authErrors.password.message}</p>}
                                     </div>
                                     <Button type="submit" className="w-full">
                                         <LogIn className="mr-2 h-4 w-4" /> ログイン
@@ -336,16 +384,16 @@ export default function MyPage() {
                                 </form>
                             </TabsContent>
                             <TabsContent value="signup" className="pt-4">
-                                <form onSubmit={handleSubmit(onSignUpSubmit)} className="space-y-4">
+                                <form onSubmit={handleSubmitAuth(onSignUpSubmit)} className="space-y-4">
                                     <div className="space-y-2">
                                         <Label htmlFor="signupLoginId">ログインID</Label>
-                                        <Input id="signupLoginId" {...register('loginId')} />
-                                        {errors.loginId && <p className="text-sm text-destructive">{errors.loginId.message}</p>}
+                                        <Input id="signupLoginId" {...registerAuth('loginId')} />
+                                        {authErrors.loginId && <p className="text-sm text-destructive">{authErrors.loginId.message}</p>}
                                     </div>
                                     <div className="space-y-2">
                                         <Label htmlFor="signupPassword">パスワード</Label>
-                                        <Input id="signupPassword" type="password" {...register('password')} />
-                                        {errors.password && <p className="text-sm text-destructive">{errors.password.message}</p>}
+                                        <Input id="signupPassword" type="password" {...registerAuth('password')} />
+                                        {authErrors.password && <p className="text-sm text-destructive">{authErrors.password.message}</p>}
                                     </div>
                                     <Button type="submit" className="w-full">
                                         <User className="mr-2 h-4 w-4" /> 新規登録してログイン
@@ -459,10 +507,51 @@ export default function MyPage() {
                             <Label>パスワード:</Label>
                             <span className="font-mono text-sm">********</span>
                         </div>
-                         <p className="text-xs text-muted-foreground pt-2">
-                            セキュリティ保護のため、パスワードは表示されません。パスワードをお忘れの場合は、一度ログアウトしてから再度ログインをお試しください。
-                        </p>
                     </CardContent>
+                     <CardFooter className="flex-col items-start gap-4">
+                        <p className="text-xs text-muted-foreground">
+                            セキュリティ保護のため、パスワードは表示されません。
+                        </p>
+                        <Dialog open={isPasswordChangeOpen} onOpenChange={setIsPasswordChangeOpen}>
+                            <DialogTrigger asChild>
+                                <Button variant="outline"><KeyRound className="mr-2"/>パスワードを変更</Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                                <DialogHeader>
+                                    <DialogTitle>パスワードの変更</DialogTitle>
+                                    <DialogDescription>
+                                        現在のパスワードと新しいパスワードを入力してください。
+                                    </DialogDescription>
+                                </DialogHeader>
+                                <form onSubmit={handleSubmitPasswordChange(onPasswordChangeSubmit)} className="space-y-4">
+                                     <div className="space-y-2">
+                                        <Label htmlFor="pw-change-loginId">ログインID</Label>
+                                        <Input id="pw-change-loginId" {...registerPasswordChange('loginId')} defaultValue={profile?.loginId || ''} />
+                                        {passwordChangeErrors.loginId && <p className="text-sm text-destructive">{passwordChangeErrors.loginId.message}</p>}
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="pw-change-old">現在のパスワード</Label>
+                                        <Input id="pw-change-old" type="password" {...registerPasswordChange('oldPassword')} />
+                                        {passwordChangeErrors.oldPassword && <p className="text-sm text-destructive">{passwordChangeErrors.oldPassword.message}</p>}
+                                    </div>
+                                     <div className="space-y-2">
+                                        <Label htmlFor="pw-change-new">新しいパスワード</Label>
+                                        <Input id="pw-change-new" type="password" {...registerPasswordChange('newPassword')} />
+                                        {passwordChangeErrors.newPassword && <p className="text-sm text-destructive">{passwordChangeErrors.newPassword.message}</p>}
+                                    </div>
+                                     <div className="space-y-2">
+                                        <Label htmlFor="pw-change-confirm">新しいパスワード (確認用)</Label>
+                                        <Input id="pw-change-confirm" type="password" {...registerPasswordChange('confirmPassword')} />
+                                        {passwordChangeErrors.confirmPassword && <p className="text-sm text-destructive">{passwordChangeErrors.confirmPassword.message}</p>}
+                                    </div>
+                                    <DialogFooter>
+                                        <Button type="button" variant="secondary" onClick={() => setIsPasswordChangeOpen(false)}>キャンセル</Button>
+                                        <Button type="submit">変更する</Button>
+                                    </DialogFooter>
+                                </form>
+                            </DialogContent>
+                        </Dialog>
+                    </CardFooter>
                 </Card>
                 <MissionsUI 
                     missions={missions}
@@ -544,5 +633,3 @@ export default function MyPage() {
         </main>
     );
 }
-
-    
