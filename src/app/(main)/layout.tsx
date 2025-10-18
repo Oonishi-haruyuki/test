@@ -1,33 +1,20 @@
 
-'use client';
-
-import { CurrencyProvider } from "@/components/currency-provider";
 import { AppHeader } from "@/components/header";
+import { CurrencyProvider } from "@/components/currency-provider";
+import { StatsProvider } from "@/components/stats-provider";
 import { InventoryProvider } from "@/components/inventory-provider";
 import { MissionsProvider } from "@/components/missions-provider";
-import { StatsProvider } from "@/components/stats-provider";
 import { Toaster } from "@/components/ui/toaster";
+import { ReactNode } from "react";
 
-export default function MainLayout({
-    children,
-}: Readonly<{
-    children: React.ReactNode;
-}>) {
-    return (
-        <StatsProvider>
-            <CurrencyProvider>
-                <InventoryProvider>
-                    <MissionsProvider>
-                        <div className="min-h-screen bg-background text-foreground">
-                            <div className="container mx-auto px-4 py-8">
-                                <AppHeader />
-                                <main className="mt-8">{children}</main>
-                            </div>
-                        </div>
-                        <Toaster />
-                    </MissionsProvider>
-                </InventoryProvider>
-            </CurrencyProvider>
-        </StatsProvider>
-    );
+export default function MainLayout({ children }: { children: ReactNode }) {
+  return (
+      <div className="min-h-screen bg-background text-foreground">
+        <div className="container mx-auto px-4 py-8">
+          <AppHeader />
+          <main>{children}</main>
+        </div>
+        <Toaster />
+      </div>
+  );
 }
