@@ -334,7 +334,7 @@ export default function MyPage() {
 
     if (!isClient || isUserLoading) {
         return (
-            <>
+            <main>
                 <div className="mb-8">
                     <Skeleton className="h-10 w-1/3" />
                     <Skeleton className="h-6 w-1/2 mt-2" />
@@ -347,7 +347,7 @@ export default function MyPage() {
                     <StatCard title="" value="" icon={<div />} description="" loading />
                     <StatCard title="" value="" icon={<div />} description="" loading />
                 </div>
-            </>
+            </main>
         )
     }
 
@@ -424,7 +424,7 @@ export default function MyPage() {
     }
 
     return (
-        <>
+        <main>
             <div className="flex justify-between items-start mb-8">
                 <div>
                     <h1 className="text-3xl font-bold truncate">{(profile?.loginId || user.email) ?? 'ようこそ'}のマイページ</h1>
@@ -631,6 +631,6 @@ export default function MyPage() {
                     </ul>
                 </CardContent>
             </Card>
-        </>
+        </main>
     );
 }

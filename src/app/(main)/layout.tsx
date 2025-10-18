@@ -7,12 +7,15 @@ import { InventoryProvider } from "@/components/inventory-provider";
 import { MissionsProvider } from "@/components/missions-provider";
 import { StatsProvider } from "@/components/stats-provider";
 import { Toaster } from "@/components/ui/toaster";
+import { usePathname } from "next/navigation";
 
 export default function MainLayout({
     children,
 }: Readonly<{
     children: React.ReactNode;
 }>) {
+    const pathname = usePathname();
+    const isMainPage = pathname === '/';
     return (
         <StatsProvider>
             <CurrencyProvider>
