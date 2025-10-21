@@ -26,6 +26,10 @@ import {
   DialogClose
 } from "@/components/ui/dialog"
 import { Label } from '@/components/ui/label';
+import { AchievementsUI, type Achievement } from '@/components/ui/achievements';
+import { doc, updateDoc } from 'firebase/firestore';
+import { initializeFirebase } from '@/firebase';
+
 
 const LoginPage = () => {
     const [loginId, setLoginId] = useState('');
@@ -201,28 +205,71 @@ export default function MyPage() {
     const { user, profile, isUserLoading } = useUser();
     const { wins, losses } = useStats();
     const { missions, claimMissionReward } = useMissions();
-    const { currency, setCurrency } = useCurrency();
+    const { currency, setCurrency, addCurrency } = useCurrency();
     const [isLoggingOut, setIsLoggingOut] = useState(false);
     const { toast } = useToast();
+    const [achievements, setAchievements] = useState<Achievement[]>([]);
+    const { firestore } = initializeFirebase();
+
+
+    useEffect(() => {
+        if (!user) return;
+        const baseAchievements: Achievement[] = [
+            { id: 'win-10', name: '勝利の探求者', description: 'AI対戦で10回勝利する', unlocked: wins >= 10, reward: 500, claimed: false },
+            { id: 'create-50', name: '創造神', description: 'カードを50枚作成する', unlocked: (JSON.parse(localStorage.getItem('cardCollection') || '[]').length) >= 50, reward: 1000, claimed: false },
+            { id: 'perfect-win', name: '完全勝利', description: 'HP満タンでAI対戦に勝利する', unlocked: false, reward: 2000, claimed: false }, // This needs specific game logic to track
+        ];
+        
+        try {
+            const savedAchievements = JSON.parse(localStorage.getItem(`user-${user.uid}-achievements`) || '[]');
+            const mergedAchievements = baseAchievements.map(baseAch => {
+                const saved = savedAchievements.find((sa: Achievement) => sa.id === baseAch.id);
+                return saved ? { ...baseAch, claimed: saved.claimed, unlocked: baseAch.unlocked || saved.unlocked } : baseAch;
+            });
+            setAchievements(mergedAchievements);
+        } catch (e) {
+            console.error(e);
+            setAchievements(baseAchievements);
+        }
+
+    }, [user, wins]);
+
+    const handleClaimRewards = (reward: number) => {
+        addCurrency(reward);
+        const updatedAchievements = achievements.map(ach => 
+            (ach.unlocked && !ach.claimed) ? { ...ach, claimed: true } : ach
+        );
+        setAchievements(updatedAchievements);
+        if (user) {
+            localStorage.setItem(`user-${user.uid}-achievements`, JSON.stringify(updatedAchievements));
+        }
+        toast({ title: '実績報酬を受け取りました！', description: `${reward}Gを獲得しました。` });
+    };
+
+    const handleTitleChange = async (title: string) => {
+        if (user) {
+            const userRef = doc(firestore, 'users', user.uid);
+            await updateDoc(userRef, { title: title });
+            toast({ title: '称号を変更しました。', description: `新しい称号: ${title}` });
+        }
+    };
+
 
     useEffect(() => {
         // Reset local storage based states on logout
         if (!user && !isUserLoading) {
             try {
-                // Keep currency for guests, but reset other user-specific data
                 localStorage.removeItem('cardCollection');
                 localStorage.removeItem('cardDecks');
-                localStorage.removeItem('user-guest-wins');
-                localStorage.removeItem('user-guest-losses');
-                localStorage.removeItem('user-guest-missions');
+                localStorage.removeItem('guest-wins');
+                localStorage.removeItem('guest-losses');
+                localStorage.removeItem('guest-missions');
                 localStorage.removeItem('purchasedCardFrames');
                 localStorage.removeItem('purchasedCardBacks');
                 localStorage.removeItem('purchasedArtifacts');
                 localStorage.removeItem('purchasedAnimations');
                 
-                // Resetting state in providers might be needed if they don't reset themselves
                 setCurrency(500); // Reset to initial guest currency
-                // Need a way to reset stats, missions etc.
             } catch (e) {
                 console.error("Error clearing localStorage on logout", e);
             }
@@ -279,12 +326,15 @@ export default function MyPage() {
         { name: '勝利', value: wins, fill: 'hsl(var(--primary))' },
         { name: '敗北', value: losses, fill: 'hsl(var(--destructive))' },
     ];
-    const completedMissions = missions.filter(m => m.progress >= m.goal && !m.claimed).length;
 
     return (
         <div className="space-y-8">
-            <h1 className="text-3xl font-bold">マイページ</h1>
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="flex justify-between items-center">
+                 <h1 className="text-3xl font-bold">マイページ</h1>
+                 {profile?.title && <span className="font-bold text-lg text-primary bg-primary/20 px-4 py-1 rounded-full">{profile.title}</span>}
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
                 {/* Left Column */}
                 <div className="lg:col-span-1 space-y-6">
                     <Card>
@@ -324,8 +374,16 @@ export default function MyPage() {
                         </CardContent>
                     </Card>
                 </div>
+                {/* Middle Column */}
+                <div className="lg:col-span-1">
+                     <AchievementsUI 
+                        achievements={achievements}
+                        onClaimRewards={handleClaimRewards}
+                        onTitleChange={handleTitleChange}
+                    />
+                </div>
                 {/* Right Column */}
-                <div className="lg:col-span-2">
+                <div className="lg:col-span-1">
                     <MissionsUI missions={missions} onClaimReward={claimMissionReward} />
                 </div>
             </div>

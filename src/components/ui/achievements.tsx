@@ -72,7 +72,7 @@ export function AchievementsUI({ achievements, onTitleChange, onClaimRewards, ch
                     </div>
                     <div>
                         <h4 className="font-semibold mb-2">実績一覧</h4>
-                        <ul className="space-y-4">
+                        <ul className="space-y-4 max-h-80 overflow-y-auto pr-2">
                         {achievements.map((ach) => (
                             <li key={ach.id} className="flex items-center p-3 rounded-lg data-[unlocked=false]:opacity-50" data-unlocked={ach.unlocked}>
                                 <div className="mr-4">
