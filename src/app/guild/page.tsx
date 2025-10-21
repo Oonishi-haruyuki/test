@@ -239,28 +239,54 @@ function GuildDashboard({ guild }: { guild: Guild }) {
 
 function MemberList({ memberIds }: { memberIds: string[] }) {
     const [members, setMembers] = useState<any[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
     const { firestore } = initializeFirebase();
 
     useEffect(() => {
         const fetchMembers = async () => {
-             if (memberIds.length === 0) {
+            if (memberIds.length === 0) {
                 setMembers([]);
+                setIsLoading(false);
                 return;
             }
-            const q = query(collection(firestore, 'users'), where('__name__', 'in', memberIds));
-            const userDocs = await getDocs(q);
-            const memberData = userDocs.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            setIsLoading(true);
+            try {
+                const memberData: any[] = [];
+                // Firestore 'in' query has a limit of 10 items. Chunk the array.
+                const chunks = [];
+                for (let i = 0; i < memberIds.length; i += 10) {
+                    chunks.push(memberIds.slice(i, i + 10));
+                }
+                
+                for (const chunk of chunks) {
+                     if (chunk.length === 0) continue;
+                    const q = query(collection(firestore, 'users'), where('__name__', 'in', chunk));
+                    const userDocs = await getDocs(q);
+                    userDocs.forEach(doc => {
+                        memberData.push({ id: doc.id, ...doc.data() });
+                    });
+                }
 
-            // Preserve original order from memberIds
-            const sortedMembers = memberIds.map(id => {
-                const found = memberData.find(m => m.id === id);
-                return found || { id, loginId: '不明なユーザー' };
-            });
-            
-            setMembers(sortedMembers);
+                // Preserve original order from memberIds
+                const sortedMembers = memberIds.map(id => {
+                    const found = memberData.find(m => m.id === id);
+                    return found || { id, loginId: '不明なユーザー' };
+                });
+
+                setMembers(sortedMembers);
+            } catch (error) {
+                console.error("Failed to fetch guild members:", error);
+                // Set a partial or error state if needed
+            } finally {
+                setIsLoading(false);
+            }
         };
         fetchMembers();
     }, [memberIds, firestore]);
+    
+    if (isLoading) {
+        return <div className="flex justify-center items-center py-4"><Loader2 className="animate-spin"/></div>
+    }
 
     return (
         <ul className="space-y-2">
@@ -346,3 +372,4 @@ function GuildChat({ guildId }: { guildId: string }) {
         </Card>
     );
 }
+
