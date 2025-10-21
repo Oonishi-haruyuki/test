@@ -38,7 +38,7 @@ import { useMissions } from '@/hooks/use-missions';
 // Type definitions
 export type Theme = 'fantasy' | 'sci-fi' | 'modern' | 'custom';
 export type CardType = 'creature' | 'spell' | 'artifact' | 'land';
-export type CreatureType = 'none' | 'angel' | 'demon' | 'machine' | 'human' | 'elf' | 'dwarf' | 'goblin' | 'orc' | 'undead' | 'dragon' | 'beast' | 'elemental' | 'soldier' | 'wizard' | 'spirit';
+export type CreatureType = 'none' | 'human' | 'elf' | 'dwarf' | 'goblin' | 'orc' | 'undead' | 'dragon' | 'beast' | 'elemental' | 'soldier' | 'wizard' | 'spirit' | 'angel' | 'demon' | 'machine';
 export type Rarity = 'common' | 'uncommon' | 'rare' | 'mythic';
 
 export interface CardData {
@@ -607,3 +607,5 @@ export function CardEditor({ cardData, setCardData, cardPreviewRef }: CardEditor
       </div>
   );
 }
+
+    

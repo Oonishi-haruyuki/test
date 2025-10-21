@@ -22,7 +22,7 @@ const CardSchemaForGacha = z.object({
     attack: z.number().describe('クリーチャーの攻撃力。呪文の場合は0。'),
     defense: z.number().describe('クリーチャーの防御力。呪文の場合は0。'),
     cardType: z.enum(['creature', 'spell']).describe('カードの種類。「クリーチャー」または「呪文」のいずれか。'),
-    creatureType: z.enum(['none', 'angel', 'demon', 'machine', 'human', 'elf', 'dwarf', 'goblin', 'orc', 'undead', 'dragon', 'beast', 'elemental', 'soldier', 'wizard', 'spirit']).optional().describe('クリーチャーの場合の種族。呪文の場合は常に"none"。'),
+    creatureType: z.enum(['none', 'human', 'elf', 'dwarf', 'goblin', 'orc', 'undead', 'dragon', 'beast', 'elemental', 'soldier', 'wizard', 'spirit', 'angel', 'demon', 'machine']).optional().describe('クリーチャーの場合の種族。呪文の場合は常に"none"。'),
     rarity: z.enum(['common', 'uncommon', 'rare', 'mythic']).describe('指定されたカードのレアリティ。'),
     abilities: z.string().describe('カードの能力。簡潔かつユニークに記述する。'),
     flavorText: z.string().describe('カードのフレーバーテキスト。世界観を表す短いテキスト。'),
@@ -122,3 +122,5 @@ const generateGachaPullFlow = ai.defineFlow(
 export async function generateGachaPull(input: GenerateGachaPullInput): Promise<GenerateGachaPullOutput> {
     return generateGachaPullFlow(input);
 }
+
+    
