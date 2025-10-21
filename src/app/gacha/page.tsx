@@ -25,8 +25,8 @@ import { cn } from '@/lib/utils';
 
 
 const PULL_COST = 100;
-const TEN_PULL_COST = 900; // 10% discount
 const TEN_PULL_COUNT = 10;
+const TEN_PULL_COST = PULL_COST * TEN_PULL_COUNT * 0.9; // 10% discount
 
 export default function GachaPage() {
   const [pulledCards, setPulledCards] = useState<CardData[]>([]);
@@ -142,13 +142,13 @@ export default function GachaPage() {
 
         <AlertDialog>
             <AlertDialogTrigger asChild>
-                <Button size="lg" disabled={isPending} className="bg-accent text-accent-foreground hover:bg-accent/90"><Dices />10回引く ({TEN_PULL_COST}G)</Button>
+                <Button size="lg" disabled={isPending} className="bg-accent text-accent-foreground hover:bg-accent/90"><Dices />{TEN_PULL_COUNT}回引く ({TEN_PULL_COST}G)</Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
                 <AlertDialogHeader>
-                    <AlertDialogTitle>ガチャを10回引きますか？</AlertDialogTitle>
+                    <AlertDialogTitle>ガチャを{TEN_PULL_COUNT}回引きますか？</AlertDialogTitle>
                     <AlertDialogDescription>
-                        {TEN_PULL_COST}Gを消費してカードガチャを10回引きます。1回分お得です！
+                        {TEN_PULL_COST}Gを消費してカードガチャを{TEN_PULL_COUNT}回引きます。1回分お得です！
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
@@ -199,11 +199,3 @@ export default function GachaPage() {
     </div>
   );
 }
-
-// Add these utility classes to globals.css if they don't exist
-/*
-.perspective-1000 { perspective: 1000px; }
-.preserve-3d { transform-style: preserve-3d; }
-.backface-hidden { backface-visibility: hidden; }
-.rotate-y-180 { transform: rotateY(180deg); }
-*/
