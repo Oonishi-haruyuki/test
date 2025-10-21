@@ -30,6 +30,18 @@ const cardTypeJapanese: Record<CardType, string> = {
 
 const creatureTypeJapanese: Record<CreatureType, string> = {
     none: '',
+    human: 'ヒューマン',
+    elf: 'エルフ',
+    dwarf: 'ドワーフ',
+    goblin: 'ゴブリン',
+    orc: 'オーク',
+    undead: 'アンデッド',
+    dragon: 'ドラゴン',
+    beast: 'ビースト',
+    elemental: 'エレメンタル',
+    soldier: 'ソルジャー',
+    wizard: 'ウィザード',
+    spirit: 'スピリット',
     angel: '天使',
     demon: '悪魔',
     machine: '機械',

@@ -38,7 +38,7 @@ import { useMissions } from '@/hooks/use-missions';
 // Type definitions
 export type Theme = 'fantasy' | 'sci-fi' | 'modern' | 'custom';
 export type CardType = 'creature' | 'spell' | 'artifact' | 'land';
-export type CreatureType = 'none' | 'angel' | 'demon' | 'machine';
+export type CreatureType = 'none' | 'angel' | 'demon' | 'machine' | 'human' | 'elf' | 'dwarf' | 'goblin' | 'orc' | 'undead' | 'dragon' | 'beast' | 'elemental' | 'soldier' | 'wizard' | 'spirit';
 export type Rarity = 'common' | 'uncommon' | 'rare' | 'mythic';
 
 export interface CardData {
@@ -420,6 +420,18 @@ export function CardEditor({ cardData, setCardData, cardPreviewRef }: CardEditor
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
                             <SelectItem value="none">なし</SelectItem>
+                            <SelectItem value="human">ヒューマン</SelectItem>
+                            <SelectItem value="elf">エルフ</SelectItem>
+                            <SelectItem value="dwarf">ドワーフ</SelectItem>
+                            <SelectItem value="goblin">ゴブリン</SelectItem>
+                            <SelectItem value="orc">オーク</SelectItem>
+                            <SelectItem value="undead">アンデッド</SelectItem>
+                            <SelectItem value="dragon">ドラゴン</SelectItem>
+                            <SelectItem value="beast">ビースト</SelectItem>
+                            <SelectItem value="elemental">エレメンタル</SelectItem>
+                            <SelectItem value="soldier">ソルジャー</SelectItem>
+                            <SelectItem value="wizard">ウィザード</SelectItem>
+                            <SelectItem value="spirit">スピリット</SelectItem>
                             <SelectItem value="angel">天使</SelectItem>
                             <SelectItem value="demon">悪魔</SelectItem>
                             <SelectItem value="machine">機械</SelectItem>
@@ -595,5 +607,3 @@ export function CardEditor({ cardData, setCardData, cardPreviewRef }: CardEditor
       </div>
   );
 }
-
-    

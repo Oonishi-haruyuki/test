@@ -22,7 +22,7 @@ const CardSchemaForGacha = z.object({
     attack: z.number().describe('クリーチャーの攻撃力。呪文の場合は0。'),
     defense: z.number().describe('クリーチャーの防御力。呪文の場合は0。'),
     cardType: z.enum(['creature', 'spell']).describe('カードの種類。「クリーチャー」または「呪文」のいずれか。'),
-    creatureType: z.enum(['none', 'angel', 'demon', 'machine']).optional().describe('クリーチャーの場合の種族。「天使」「悪魔」「機械」または「なし」。呪文の場合は常に"none"。'),
+    creatureType: z.enum(['none', 'angel', 'demon', 'machine', 'human', 'elf', 'dwarf', 'goblin', 'orc', 'undead', 'dragon', 'beast', 'elemental', 'soldier', 'wizard', 'spirit']).optional().describe('クリーチャーの場合の種族。呪文の場合は常に"none"。'),
     rarity: z.enum(['common', 'uncommon', 'rare', 'mythic']).describe('指定されたカードのレアリティ。'),
     abilities: z.string().describe('カードの能力。簡潔かつユニークに記述する。'),
     flavorText: z.string().describe('カードのフレーバーテキスト。世界観を表す短いテキスト。'),
@@ -60,7 +60,7 @@ const generateCardPrompt = ai.definePrompt({
 - カード名はテーマに沿った、ユニークで喚情的なものにしてください。
 - imageHintはカードのイラストをイメージした英語のキーワード（2単語以内）にしてください。
 - 必ずしもクリーチャーである必要はありません。呪文カードも生成してください。
-- クリーチャーカードを生成する際は、適切な種族(creatureType: 'angel', 'demon', 'machine' または 'none')を設定してください。呪文の場合はcreatureTypeを'none'にしてください。
+- クリーチャーカードを生成する際は、適切な種族(creatureType)を設定してください。呪文の場合はcreatureTypeを'none'にしてください。
 
 **能力に関するルール:**
 - 能力の説明は非常に簡潔にしてください。長文は避けてください。

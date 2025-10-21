@@ -21,7 +21,7 @@ const CardForAnalysisSchema = z.object({
   attack: z.number(),
   defense: z.number(),
   cardType: z.enum(['creature', 'spell', 'artifact', 'land']),
-  creatureType: z.enum(['none', 'angel', 'demon', 'machine']).optional().describe('クリーチャーの種族'),
+  creatureType: z.enum(['none', 'angel', 'demon', 'machine', 'human', 'elf', 'dwarf', 'goblin', 'orc', 'undead', 'dragon', 'beast', 'elemental', 'soldier', 'wizard', 'spirit']).optional().describe('クリーチャーの種族'),
   abilities: z.string(),
 });
 
