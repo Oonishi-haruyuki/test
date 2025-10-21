@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } 'react';
+import { useState, useEffect, useMemo } from 'react';
 import type { CardData } from '@/components/card-editor';
 import { CardPreview } from '@/components/card-preview';
 import { Button } from '@/components/ui/button';
