@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, LogIn, UserPlus, LogOut, KeyRound, History } from 'lucide-react';
+import { Loader2, LogIn, UserPlus, LogOut, KeyRound, History, Info } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useStats } from '@/hooks/use-stats';
@@ -27,10 +27,11 @@ import {
 } from "@/components/ui/dialog"
 import { Label } from '@/components/ui/label';
 import { AchievementsUI, type Achievement } from '@/components/ui/achievements';
-import { doc, updateDoc, collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
+import { doc, updateDoc, collection, query, where, getDocs, orderBy } from 'firebase/firestore';
 import { initializeFirebase } from '@/firebase';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { format } from 'date-fns';
+import { limit } from 'firebase/firestore';
 
 
 const LoginPage = () => {
@@ -401,11 +402,12 @@ export default function MyPage() {
             </div>
 
             <Tabs defaultValue="account">
-                <TabsList className="grid w-full grid-cols-4">
+                <TabsList className="grid w-full grid-cols-5">
                     <TabsTrigger value="account">アカウント</TabsTrigger>
                     <TabsTrigger value="stats">戦績</TabsTrigger>
                     <TabsTrigger value="achievements">実績</TabsTrigger>
                     <TabsTrigger value="missions">ミッション</TabsTrigger>
+                    <TabsTrigger value="info">お知らせ</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="account" className="mt-6">
@@ -463,6 +465,43 @@ export default function MyPage() {
 
                 <TabsContent value="missions" className="mt-6">
                     <MissionsUI missions={missions} onClaimReward={claimMissionReward} />
+                </TabsContent>
+
+                 <TabsContent value="info" className="mt-6">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2"><Info /> お知らせ・情報</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-6">
+                            <section>
+                                <h3 className="text-lg font-semibold mb-2 border-b pb-1">アプデ情報</h3>
+                                <ul className="list-disc list-inside space-y-1 text-muted-foreground">
+                                    <li>2024/05/20: Ver 1.0.0 - 「カードクラフター」正式リリース！</li>
+                                    <li>2024/05/21: Ver 1.0.1 - 新しいカードフレームと裏面デザインをショップに追加しました。</li>
+                                    <li>2024/05/22: Ver 1.1.0 - 「ギルド」機能を追加しました。</li>
+                                </ul>
+                            </section>
+                             <section>
+                                <h3 className="text-lg font-semibold mb-2 border-b pb-1">お知らせ</h3>
+                                <ul className="list-disc list-inside space-y-1 text-muted-foreground">
+                                    <li>現在、サーバーメンテナンスの予定はありません。</li>
+                                    <li>[イベント] 初代最強決定戦、開催準備中！詳細は後日発表！</li>
+                                </ul>
+                            </section>
+                             <section>
+                                <h3 className="text-lg font-semibold mb-2 border-b pb-1">使用できるデバイス</h3>
+                                <p className="text-muted-foreground">
+                                    カードクラフターは、以下の環境で快適にプレイいただけます。
+                                </p>
+                                <ul className="list-disc list-inside space-y-1 text-muted-foreground mt-2">
+                                    <li>PC: Google Chrome, Firefox, Safari, Microsoft Edge (それぞれ最新版)</li>
+                                    <li>スマートフォン: iOSまたはAndroidの最新版ブラウザ</li>
+                                    <li>タブレット: iOSまたはAndroidの最新版ブラウザ</li>
+                                </ul>
+                                 <p className="text-sm text-muted-foreground mt-2">※一部機能はPCでの利用を推奨しています。</p>
+                            </section>
+                        </CardContent>
+                    </Card>
                 </TabsContent>
             </Tabs>
         </div>
