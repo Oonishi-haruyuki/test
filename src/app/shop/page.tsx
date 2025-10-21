@@ -45,7 +45,9 @@ const ShopCategory = ({ category, title, purchasedItems, currency, handlePurchas
                         {item.description && <CardDescription>{item.description}</CardDescription>}
                     </CardHeader>
                     <CardContent className="flex-grow flex flex-col justify-center items-center">
-                        <Image src={item.url} alt={item.name} width={200} height={200} className="rounded-md object-contain mb-4 max-h-[150px]" unoptimized/>
+                        <div className="relative w-full h-40 mb-4">
+                            <Image src={item.url} alt={item.name} layout="fill" className="rounded-md object-contain" unoptimized/>
+                        </div>
                         <div className="text-lg font-bold flex items-center gap-2 text-yellow-500">
                             <Coins className="h-5 w-5"/>
                             <span>{item.price.toLocaleString()} G</span>
@@ -84,7 +86,7 @@ const ShopCategory = ({ category, title, purchasedItems, currency, handlePurchas
             ))}
         </div>
     );
-}
+};
 
 export default function ShopPage() {
     const { user } = useUser();
@@ -190,3 +192,5 @@ export default function ShopPage() {
         </div>
     );
 }
+
+    

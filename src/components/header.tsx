@@ -21,7 +21,6 @@ const navLinks = [
     { href: '/online-battle', label: 'オンライン対戦' },
     { href: '/story', label: 'ストーリー' },
     { href: '/shop', label: 'ショップ' },
-    { href: '/mypage', label: 'マイページ' },
 ];
 
 const secondaryLinks = [
@@ -31,41 +30,42 @@ const secondaryLinks = [
     { href: '/rules', label: 'ルール' },
     { href: '/ranking', label: 'ランキング' },
     { href: '/minigame', label: 'ミニゲーム' },
+    { href: '/mypage', label: 'マイページ' },
 ]
 
 export function AppHeader() {
   const pathname = usePathname();
-  const { user } = useUser();
+  const { user, profile } = useUser();
   const [isSheetOpen, setSheetOpen] = React.useState(false);
 
 
   return (
     <header className="mb-8">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-4xl md:text-5xl font-bold text-primary">
+      <div className="flex justify-between items-center mb-4 flex-wrap gap-y-4">
+        <h1 className="text-3xl md:text-4xl font-bold text-primary">
           <Link href="/">カードクラフター</Link>
         </h1>
         <div className="flex items-center gap-2 md:gap-4">
-            {user && (
-                 <div className="hidden sm:flex items-center gap-2 text-sm font-medium text-muted-foreground">
+            {user && profile?.loginId && (
+                 <div className="hidden sm:flex items-center gap-2 text-sm font-medium text-muted-foreground border-b-2 border-transparent hover:border-primary/50 pb-1 transition-colors">
                     <User className="h-5 w-5"/>
-                    <span className="truncate max-w-[100px]">{user.email?.split('@')[0] || 'User'}</span>
+                    <Link href="/mypage" className="truncate max-w-[100px]">{profile.loginId}</Link>
                 </div>
             )}
             <CurrencyDisplay />
         </div>
       </div>
-      <div className="flex justify-between items-center mt-4 border-b pb-4">
+      <div className="flex justify-between items-center mt-2 border-b pb-2">
         {/* Desktop Navigation */}
-        <nav className="hidden md:flex items-center space-x-1 lg:space-x-2 overflow-x-auto">
+        <nav className="hidden md:flex items-center space-x-1 overflow-x-auto">
           {navLinks.map((link) => (
             <Button
               key={link.href}
-              variant={pathname === link.href ? "secondary" : "ghost"}
+              variant="ghost"
               asChild
               className={cn(
                 'text-sm font-medium transition-colors hover:text-primary shrink-0',
-                pathname === link.href ? 'text-primary-foreground' : 'text-muted-foreground'
+                pathname === link.href ? 'text-primary' : 'text-muted-foreground'
               )}
             >
               <Link href={link.href}>{link.label}</Link>
@@ -81,8 +81,9 @@ export function AppHeader() {
                         <Menu />
                     </Button>
                 </SheetTrigger>
-                <SheetContent side="left">
+                <SheetContent side="left" className="w-[250px]">
                      <nav className="flex flex-col space-y-2 mt-8">
+                        <p className="text-lg font-semibold px-4">Menu</p>
                         {[...navLinks, ...secondaryLinks].map((link) => (
                         <Button
                             key={link.href}
@@ -90,7 +91,7 @@ export function AppHeader() {
                             asChild
                             onClick={() => setSheetOpen(false)}
                             className={cn(
-                            'justify-start text-lg',
+                            'justify-start text-base',
                             pathname === link.href ? 'text-primary' : 'text-muted-foreground'
                             )}
                         >
@@ -102,14 +103,14 @@ export function AppHeader() {
             </Sheet>
         </div>
         
-        <nav className="hidden md:flex items-center space-x-1 lg:space-x-2 overflow-x-auto">
+        <nav className="hidden md:flex items-center space-x-1 overflow-x-auto">
           {secondaryLinks.map((link) => (
             <Button
               key={link.href}
               variant="ghost"
               asChild
               className={cn(
-                'text-xs lg:text-sm font-medium transition-colors hover:text-primary shrink-0',
+                'text-xs font-medium transition-colors hover:text-primary shrink-0',
                 pathname === link.href ? 'text-primary' : 'text-muted-foreground'
               )}
             >
@@ -121,3 +122,5 @@ export function AppHeader() {
     </header>
   );
 }
+
+    

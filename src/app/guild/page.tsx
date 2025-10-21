@@ -164,7 +164,7 @@ function GuildBrowser({ guilds, onJoin }: { guilds: Guild[], onJoin: (guildId: s
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="genderRatio">男女比</Label>
-                            <Input id="genderRatio" placeholder="例: 半々、男性多め" value={genderRatio} onChange={(e) => setGenderRatio(e.g.target.value)} />
+                            <Input id="genderRatio" placeholder="例: 半々、男性多め" value={genderRatio} onChange={(e) => setGenderRatio(e.target.value)} />
                         </div>
                          <div className="space-y-2">
                             <Label htmlFor="notes">備考</Label>
@@ -328,3 +328,4 @@ function GuildChat({ guildId }: { guildId: string }) {
     );
 }
 
+    

@@ -73,21 +73,28 @@ export function CardEditor({ cardData, setCardData, cardPreviewRef }: CardEditor
   const { toast } = useToast();
   const { currency, spendCurrency } = useCurrency();
 
-  const [purchasedFrames, setPurchasedFrames] = useState<string[]>([]);
-  const [purchasedBacks, setPurchasedBacks] = useState<string[]>([]);
+  const [purchasedFrames, setPurchasedFrames] = useState<string[]>(['frame-default']);
+  const [purchasedBacks, setPurchasedBacks] = useState<string[]>(['back-default']);
+  const [currentBack, setCurrentBack] = useState<string>('back-default');
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
     setIsClient(true);
+    const defaultBack = shopItems.backs.find(b => b.id === 'back-default');
     if (user) {
         try {
             const savedFrames = JSON.parse(localStorage.getItem('purchasedCardFrames') || '["frame-default"]');
             const savedBacks = JSON.parse(localStorage.getItem('purchasedCardBacks') || '["back-default"]');
             setPurchasedFrames(savedFrames);
             setPurchasedBacks(savedBacks);
+            const savedBackImage = localStorage.getItem('cardBackImage') || defaultBack?.url;
+            const backId = shopItems.backs.find(b => b.url === savedBackImage)?.id || 'back-default';
+            setCurrentBack(backId);
         } catch (e) {
             console.error("Failed to load purchased items", e);
         }
+    } else {
+       setCurrentBack('back-default');
     }
   }, [user]);
 
@@ -171,6 +178,7 @@ export function CardEditor({ cardData, setCardData, cardPreviewRef }: CardEditor
 
     try {
         localStorage.setItem('cardBackImage', cardBack.url);
+        setCurrentBack(cardBackId);
         toast({
             title: 'カード裏面の画像を変更しました',
             description: `「${cardBack.name}」が設定されました。`,
@@ -340,9 +348,6 @@ export function CardEditor({ cardData, setCardData, cardPreviewRef }: CardEditor
   const availableFrames = shopItems.frames.filter(frame => purchasedFrames.includes(frame.id) || frame.price === 0);
   const availableBacks = shopItems.backs.filter(back => purchasedBacks.includes(back.id) || back.price === 0);
   
-  const currentBackUrl = isClient ? localStorage.getItem('cardBackImage') : null;
-
-
   return (
       <div className="space-y-6">
         <Card>
@@ -493,7 +498,7 @@ export function CardEditor({ cardData, setCardData, cardPreviewRef }: CardEditor
                 <div key={frame.id}>
                     <RadioGroupItem value={frame.id} id={frame.id} className="peer sr-only" />
                     <Label htmlFor={frame.id} className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary">
-                       <Image src={frame.url} alt={frame.name} width={50} height={70} className="w-full h-auto rounded-sm mb-2" />
+                       <Image src={frame.url} alt={frame.name} width={50} height={70} className="w-full h-auto rounded-sm mb-2" unoptimized />
                        <span className="text-xs text-center">{frame.name}</span>
                     </Label>
                 </div>
@@ -518,14 +523,12 @@ export function CardEditor({ cardData, setCardData, cardPreviewRef }: CardEditor
             </Label>
             <Separator />
             <Label>カード裏面のデザイン</Label>
-            <RadioGroup onValueChange={handleCardBackSelect} defaultValue={currentBackUrl || shopItems.backs[0].id} className="grid grid-cols-3 gap-4">
+            <RadioGroup onValueChange={handleCardBackSelect} value={currentBack} className="grid grid-cols-3 gap-4">
                 {isClient && availableBacks.map(back => (
                     <div key={back.id}>
                          <RadioGroupItem value={back.id} id={`back-${back.id}`} className="peer sr-only" />
-                         <Label htmlFor={`back-${back.id}`} className={cn("rounded-md border-2 border-muted bg-popover p-2 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary",
-                            currentBackUrl === back.url && 'border-primary'
-                         )}>
-                           <Image src={back.url} alt={back.name} width={100} height={140} className="w-full h-auto rounded-sm" />
+                         <Label htmlFor={`back-${back.id}`} className={cn("rounded-md border-2 border-muted bg-popover p-2 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary")}>
+                           <Image src={back.url} alt={back.name} width={100} height={140} className="w-full h-auto rounded-sm" unoptimized />
                            <p className="text-xs text-center mt-1">{back.name}</p>
                         </Label>
                     </div>
@@ -576,3 +579,5 @@ export function CardEditor({ cardData, setCardData, cardPreviewRef }: CardEditor
       </div>
   );
 }
+
+    
