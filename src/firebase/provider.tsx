@@ -52,41 +52,52 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({ children }) 
   }, [auth]);
 
   useEffect(() => {
-    if (user) {
-      const profileRef = doc(firestore, 'users', user.uid);
-      const unsubscribe = onSnapshot(profileRef, 
-        async (docSnap) => {
-          if (docSnap.exists()) {
-            setProfile(docSnap.data());
-          } else {
+    const setupProfileListener = async () => {
+      if (user) {
+        const profileRef = doc(firestore, 'users', user.uid);
+        try {
+          const docSnap = await getDoc(profileRef);
+          if (!docSnap.exists()) {
             // If profile doesn't exist (e.g. first login), create it
-            try {
-              const newProfileData = { 
-                loginId: user.email || `user_${user.uid.substring(0, 5)}`,
-                rating: 1000, // Initial rating
-                lastMatchDate: new Date(0).toISOString(), // Epoch time
-              };
-              await setDoc(profileRef, newProfileData);
-              setProfile(newProfileData);
-            } catch (error) {
-              console.error("Error creating user profile:", error);
-              setUserError(error instanceof Error ? error : new Error(String(error)));
-            }
+            const newProfileData = {
+              loginId: user.email || `user_${user.uid.substring(0, 5)}`,
+              rating: 1000, // Initial rating
+              lastMatchDate: new Date(0).toISOString(), // Epoch time
+            };
+            await setDoc(profileRef, newProfileData);
           }
+        } catch (error) {
+          console.error("Error ensuring user profile exists:", error);
+          setUserError(error instanceof Error ? error : new Error(String(error)));
           setIsUserLoading(false);
-        },
-        (error) => {
-          console.error("Profile snapshot error:", error);
-          setUserError(error);
-          setProfile(null);
-          setIsUserLoading(false);
+          return;
         }
-      );
-      return () => unsubscribe();
-    } else {
-      setProfile(null);
-      setIsUserLoading(false);
-    }
+
+        const unsubscribe = onSnapshot(profileRef,
+          (docSnap) => {
+            if (docSnap.exists()) {
+              setProfile(docSnap.data());
+            } else {
+              // This case should ideally not happen after ensuring document existence
+              setProfile(null);
+            }
+            setIsUserLoading(false);
+          },
+          (error) => {
+            console.error("Profile snapshot error:", error);
+            setUserError(error);
+            setProfile(null);
+            setIsUserLoading(false);
+          }
+        );
+        return () => unsubscribe();
+      } else {
+        setProfile(null);
+        setIsUserLoading(false);
+      }
+    };
+
+    setupProfileListener();
   }, [user, firestore]);
 
   const value = { user, profile, isUserLoading, userError };
