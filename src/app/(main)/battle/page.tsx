@@ -135,6 +135,28 @@ function DeckSelection({ onStartGame }: { onStartGame: (deck: CardData[], diffic
     const [difficulty, setDifficulty] = useState<Difficulty>('beginner');
     const [isLoading, setIsLoading] = useState(false);
     const { toast } = useToast();
+    const searchParams = useSearchParams();
+
+     // This effect handles the direct start for story mode battles
+    useEffect(() => {
+        const isStoryMode = searchParams.get('story') === 'true';
+        if (isStoryMode) {
+            try {
+                const storyDeckJSON = localStorage.getItem('storyModeDeck');
+                if (storyDeckJSON) {
+                    const storyDeck = JSON.parse(storyDeckJSON) as CardData[];
+                    const storyDifficulty = searchParams.get('difficulty') as Difficulty || 'beginner';
+                    if (storyDeck.length >= 20) {
+                        onStartGame(storyDeck, storyDifficulty);
+                    } else {
+                         toast({ variant: 'destructive', title: 'ストーリーデッキの読み込みに失敗しました' });
+                    }
+                }
+            } catch (e) {
+                 toast({ variant: 'destructive', title: 'ストーリーデッキの読み込み中にエラーが発生しました' });
+            }
+        }
+    }, [searchParams, onStartGame, toast]);
 
     useEffect(() => {
         try {
@@ -148,6 +170,12 @@ function DeckSelection({ onStartGame }: { onStartGame: (deck: CardData[], diffic
             toast({ variant: 'destructive', title: 'デッキの読み込みに失敗しました' });
         }
     }, [toast]);
+    
+    // Hide deck selection if in story mode and transitioning to battle
+    if (searchParams.get('story') === 'true') {
+        return <div className="flex justify-center items-center h-64"><Loader2 className="animate-spin h-10 w-10" /><p className="ml-4">対戦を開始しています...</p></div>;
+    }
+
 
     const handleGenerateDeck = async () => {
         setIsLoading(true);
@@ -275,7 +303,7 @@ function BattleView({ initialPlayerDeck, initialOpponentDeck, forcedDifficulty, 
     const [opponentBoard, setOpponentBoard] = useState<CardData[]>([]);
     
     const [selectedCard, setSelectedCard] = useState<CardData | null>(null);
-    const [isPlayerTurn, setIsPlayerTurn] = useState(true);
+    const [isPlayerTurn, setIsPlayerTurn] = useState(isStoryMode ? false : true);
     const [statusMessage, setStatusMessage] = useState('対戦開始！');
     const [isOpponentThinking, setIsOpponentThinking] = useState(false);
     const [gameHistory, setGameHistory] = useState<GameHistoryEntry[]>([]);
@@ -741,3 +769,5 @@ function PlayerArea({ isOpponent = false, health, mana, maxMana, handCount, deck
         </div>
     )
 }
+
+    
