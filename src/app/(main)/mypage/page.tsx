@@ -27,11 +27,10 @@ import {
 } from "@/components/ui/dialog"
 import { Label } from '@/components/ui/label';
 import { AchievementsUI, type Achievement } from '@/components/ui/achievements';
-import { doc, updateDoc, collection, query, where, getDocs, orderBy } from 'firebase/firestore';
+import { doc, updateDoc, collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
 import { initializeFirebase } from '@/firebase';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { format } from 'date-fns';
-import { limit } from 'firebase/firestore';
 
 
 const LoginPage = () => {
@@ -479,6 +478,21 @@ export default function MyPage() {
                                     <li>2024/05/20: Ver 1.0.0 - 「カードクラフター」正式リリース！</li>
                                     <li>2024/05/21: Ver 1.0.1 - 新しいカードフレームと裏面デザインをショップに追加しました。</li>
                                     <li>2024/05/22: Ver 1.1.0 - 「ギルド」機能を追加しました。</li>
+                                </ul>
+                            </section>
+                             <section>
+                                <h3 className="text-lg font-semibold mb-2 border-b pb-1">次回アップデート予告</h3>
+                                <ul className="list-disc list-inside space-y-1 text-muted-foreground">
+                                    <li>カードの「進化」機能の追加</li>
+                                    <li>2vs2の「タッグバトル」モードの実装</li>
+                                    <li>ギルド間で対戦する「ギルドバトル」機能</li>
+                                    <li>カードに特殊な効果を付与する「エンチャント」システム</li>
+                                    <li>日替わりで特殊なデッキと戦う「デイリーチャレンジ」</li>
+                                    <li>作成したカードを公開・評価できる「カードギャラリー」</li>
+                                    <li>特定のカードを禁止する「特殊レギュレーション」対戦</li>
+                                    <li>ゲーム内BGMやSEのカスタマイズ機能</li>
+                                    <li>対戦中のスタンプ（エモート）機能の追加</li>
+                                    <li>新しいカード種族（例：天使、悪魔、機械）の追加</li>
                                 </ul>
                             </section>
                              <section>
