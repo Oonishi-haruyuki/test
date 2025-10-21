@@ -10,7 +10,7 @@ import { elementalDeck, goblinDeck, undeadDeck, dragonDeck, ninjaDeck } from '@/
 import { useCurrency } from '@/hooks/use-currency';
 import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, BookOpen, CheckCircle2 } from 'lucide-react';
-import BattlePage from '@/app/(main)/battle/page';
+import BattlePage from '@/app/battle/page';
 import { useUser } from '@/firebase';
 import { useInventory } from '@/hooks/use-inventory';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';

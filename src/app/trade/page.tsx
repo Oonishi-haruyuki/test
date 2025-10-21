@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -317,7 +318,7 @@ export default function TradePage() {
     
 
     return (
-        <main>
+        <>
              <Tabs defaultValue="create">
                 <TabsList className="grid w-full grid-cols-3">
                     <TabsTrigger value="create">オファー作成</TabsTrigger>
@@ -400,6 +401,6 @@ export default function TradePage() {
                      <OfferList offers={outgoingOffers} type="outgoing" />
                 </TabsContent>
             </Tabs>
-        </main>
+        </>
     )
 }
