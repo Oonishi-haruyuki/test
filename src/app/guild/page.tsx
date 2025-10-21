@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -9,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, PlusCircle, LogOut, Users, Send } from 'lucide-react';
 import { createGuild, joinGuild, leaveGuild, sendChatMessage } from '@/lib/guild-actions';
-import { collection, query, where, onSnapshot, getDocs, doc, orderBy } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, getDocs, doc, orderBy, limit } from 'firebase/firestore';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 
@@ -26,6 +27,7 @@ type Guild = {
 
 type ChatMessage = {
     id: string;
+    guildId: string;
     userId: string;
     userLoginId: string;
     text: string;
@@ -241,16 +243,21 @@ function MemberList({ memberIds }: { memberIds: string[] }) {
 
     useEffect(() => {
         const fetchMembers = async () => {
-            const memberData = await Promise.all(
-                memberIds.map(async (id) => {
-                    const userDoc = await getDocs(query(collection(firestore, 'users'), where('__name__', '==', id)));
-                    if (!userDoc.empty) {
-                        return { id, ...userDoc.docs[0].data() };
-                    }
-                    return { id, loginId: '不明なユーザー' };
-                })
-            );
-            setMembers(memberData);
+             if (memberIds.length === 0) {
+                setMembers([]);
+                return;
+            }
+            const q = query(collection(firestore, 'users'), where('__name__', 'in', memberIds));
+            const userDocs = await getDocs(q);
+            const memberData = userDocs.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+            // Preserve original order from memberIds
+            const sortedMembers = memberIds.map(id => {
+                const found = memberData.find(m => m.id === id);
+                return found || { id, loginId: '不明なユーザー' };
+            });
+            
+            setMembers(sortedMembers);
         };
         fetchMembers();
     }, [memberIds, firestore]);
@@ -277,10 +284,18 @@ function GuildChat({ guildId }: { guildId: string }) {
     }, []);
 
     useEffect(() => {
-        const messagesQuery = query(collection(firestore, 'guilds', guildId, 'messages'), orderBy('createdAt', 'asc'), where('createdAt', '!=', null));
+        const messagesQuery = query(
+            collection(firestore, 'guilds', guildId, 'messages'), 
+            orderBy('createdAt', 'asc'),
+            limit(50) // Limit messages to avoid performance issues
+        );
         const unsubscribe = onSnapshot(messagesQuery, (snapshot) => {
-            const msgs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ChatMessage));
+            const msgs = snapshot.docs
+                .filter(doc => doc.data().createdAt) // Ensure createdAt is not null
+                .map(doc => ({ id: doc.id, ...doc.data() } as ChatMessage));
             setMessages(msgs);
+        }, (error) => {
+            console.error("Error fetching chat messages: ", error);
         });
         return () => unsubscribe();
     }, [guildId, firestore]);
@@ -289,8 +304,12 @@ function GuildChat({ guildId }: { guildId: string }) {
         e.preventDefault();
         if (!newMessage.trim() || !user || !profile?.loginId) return;
         setIsSending(true);
-        await sendChatMessage(guildId, profile.loginId, newMessage);
-        setNewMessage('');
+        const result = await sendChatMessage(guildId, user.uid, profile.loginId, newMessage);
+        if(result.success) {
+            setNewMessage('');
+        } else {
+            // Handle error, maybe show a toast
+        }
         setIsSending(false);
     };
 
@@ -327,5 +346,3 @@ function GuildChat({ guildId }: { guildId: string }) {
         </Card>
     );
 }
-
-    

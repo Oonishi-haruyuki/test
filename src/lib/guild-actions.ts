@@ -10,7 +10,9 @@ import {
     serverTimestamp,
     runTransaction,
     arrayUnion,
-    arrayRemove
+    arrayRemove,
+    getDoc,
+    writeBatch
 } from 'firebase/firestore';
 import { initializeFirebase } from '@/firebase';
 
@@ -28,8 +30,6 @@ export async function createGuild(
     const { firestore } = initializeFirebase();
     
     try {
-        let success = false;
-        let message = '';
         let guildId: string | undefined = undefined;
 
         await runTransaction(firestore, async (transaction) => {
@@ -55,6 +55,10 @@ export async function createGuild(
 
             transaction.update(userRef, { guildId: guildId });
         });
+
+        if (!guildId) {
+            throw new Error("ギルドIDの作成に失敗しました。");
+        }
 
         return { success: true, message: 'ギルドを作成しました。', guildId };
 
@@ -106,21 +110,21 @@ export async function leaveGuild(guildId: string, userId: string): Promise<{ suc
 
             const guildDoc = await transaction.get(guildRef);
             if (!guildDoc.exists()) {
-                // Guild might have been deleted already, just clean up user profile
                 transaction.update(userRef, { guildId: null });
                 return;
             }
             
             const guildData = guildDoc.data();
 
-            // If the leader leaves, disband the guild
             if (guildData.leaderId === userId) {
-                // Remove guildId from all members
+                if (guildData.memberIds.length > 1) {
+                    throw new Error('リーダーは、ギルドに他のメンバーがいる間は脱退できません。リーダーを他のメンバーに譲渡してください。');
+                }
+                // Leader is the last one, so disband the guild
                 for (const memberId of guildData.memberIds) {
                     const memberRef = doc(firestore, 'users', memberId);
                     transaction.update(memberRef, { guildId: null });
                 }
-                // Delete the guild document itself
                 transaction.delete(guildRef);
             } else {
                 // A regular member leaves
@@ -136,10 +140,9 @@ export async function leaveGuild(guildId: string, userId: string): Promise<{ suc
     }
 }
 
-export async function sendChatMessage(guildId: string, userLoginId: string, text: string): Promise<{ success: boolean, message: string }> {
-    const { auth, firestore } = initializeFirebase();
-    const user = auth.currentUser;
-    if (!user) {
+export async function sendChatMessage(guildId: string, userId: string, userLoginId: string, text: string): Promise<{ success: boolean, message: string }> {
+    const { firestore } = initializeFirebase();
+    if (!userId) {
         return { success: false, message: 'ログインが必要です。'};
     }
 
@@ -147,7 +150,7 @@ export async function sendChatMessage(guildId: string, userLoginId: string, text
         const messageRef = doc(collection(firestore, 'guilds', guildId, 'messages'));
         await setDoc(messageRef, {
             guildId,
-            userId: user.uid,
+            userId: userId,
             userLoginId,
             text,
             createdAt: serverTimestamp(),
@@ -158,5 +161,3 @@ export async function sendChatMessage(guildId: string, userLoginId: string, text
         return { success: false, message: 'メッセージの送信に失敗しました。'};
     }
 }
-
-    
