@@ -8,6 +8,8 @@ export interface GameRules {
     boardLimit?: number;
     landLimit?: number;
     disallowedCardTypes?: (CardData['cardType'])[];
+    stageId?: string;
+    reward?: number;
 }
 
 export interface BattleProps {

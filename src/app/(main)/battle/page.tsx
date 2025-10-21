@@ -31,6 +31,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useCurrency } from '@/hooks/use-currency';
 
 const MAX_MANA = 10;
 const INITIAL_HEALTH = 20;
@@ -77,6 +78,8 @@ export default function BattlePage() {
         const boardLimit = searchParams.get('boardLimit');
         const disallowedCardTypes = searchParams.get('disallowedCardTypes');
         const landLimit = searchParams.get('landLimit'); // Get land limit for creatures
+        const stageId = searchParams.get('stageId');
+        const reward = searchParams.get('reward');
 
         const gameRules: GameRules = { ...defaultGameRules };
         if (playerHealth) gameRules.playerHealth = parseInt(playerHealth, 10);
@@ -84,6 +87,8 @@ export default function BattlePage() {
         if (boardLimit) gameRules.boardLimit = parseInt(boardLimit, 10);
         if (landLimit) gameRules.landLimit = parseInt(landLimit, 10); // Pass land limit
         if (disallowedCardTypes) gameRules.disallowedCardTypes = disallowedCardTypes.split(',') as CardType[];
+        if (stageId) gameRules.stageId = stageId;
+        if (reward) gameRules.reward = parseInt(reward, 10);
 
         setBattleProps({
             initialPlayerDeck: selectedPlayerDeck,
@@ -255,6 +260,7 @@ function BattleView({ initialPlayerDeck, initialOpponentDeck, forcedDifficulty, 
     const { addWin, addLoss } = useStats();
     const { updateMissionProgress } = useMissions();
     const { user, profile } = useUser();
+    const { addCurrency } = useCurrency();
     
     // Game State
     const [turn, setTurn] = useState(1);
@@ -283,7 +289,6 @@ function BattleView({ initialPlayerDeck, initialOpponentDeck, forcedDifficulty, 
 
     const searchParams = useSearchParams();
     const isStoryMode = searchParams.has('story');
-    const chapter = searchParams.get('chapter');
 
     const effectiveGameRules = useMemo(() => ({ ...defaultGameRules, ...gameRules }), [gameRules]);
 
@@ -313,12 +318,15 @@ function BattleView({ initialPlayerDeck, initialOpponentDeck, forcedDifficulty, 
             if (winner === 'player') {
                 addWin();
                 updateMissionProgress('win-game', 1);
-                if (isStoryMode) {
-                    const challengeKey = `story-ch${chapter}-cleared`;
-                    const alreadyCleared = localStorage.getItem(challengeKey) === 'true';
+                if (isStoryMode && effectiveGameRules.stageId) {
+                    const stageKey = `story-stage-${effectiveGameRules.stageId}-cleared`;
+                    const alreadyCleared = localStorage.getItem(stageKey) === 'true';
                     if (!alreadyCleared) {
-                         updateMissionProgress('win-daily-challenge', 1); // Using this for story chapters too
-                         localStorage.setItem(challengeKey, 'true');
+                         if (effectiveGameRules.reward) {
+                             addCurrency(effectiveGameRules.reward);
+                             toast({ title: 'ステージクリア！', description: `${effectiveGameRules.reward}Gを獲得しました！` });
+                         }
+                         localStorage.setItem(stageKey, 'true');
                     }
                 }
             } else {
@@ -344,7 +352,7 @@ function BattleView({ initialPlayerDeck, initialOpponentDeck, forcedDifficulty, 
                 });
              }
         }
-    }, [onGameEnd, addWin, addLoss, updateMissionProgress, user, forcedDifficulty, toast, gameHistory, profile, chapter, isStoryMode, initialPlayerDeck, initialOpponentDeck]);
+    }, [onGameEnd, addWin, addLoss, updateMissionProgress, user, forcedDifficulty, toast, gameHistory, profile, isStoryMode, initialPlayerDeck, initialOpponentDeck, effectiveGameRules, addCurrency]);
 
 
     useEffect(() => {
@@ -560,7 +568,7 @@ function BattleView({ initialPlayerDeck, initialOpponentDeck, forcedDifficulty, 
              {activeEmote && (
                 <div className="absolute inset-0 z-50 flex items-center justify-center pointer-events-none">
                     <div className="bg-black/70 rounded-xl p-6 flex flex-col items-center gap-2 animate-in fade-in zoom-in-50">
-                        <activeEmote.icon size={48} className="text-white" />
+                        <activeEmote.emote.icon size={48} className="text-white" />
                         <p className="text-xl font-bold">{activeEmote.emote.label}</p>
                         <p className="text-sm text-muted-foreground">{activeEmote.sender === 'player' ? profile?.loginId : 'AI'}</p>
                     </div>
