@@ -21,6 +21,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useMissions } from '@/hooks/use-missions';
+import { cn } from '@/lib/utils';
 
 
 const PULL_COST = 100;
@@ -30,7 +31,7 @@ const TEN_PULL_COUNT = 10;
 export default function GachaPage() {
   const [pulledCards, setPulledCards] = useState<CardData[]>([]);
   const [isPending, startTransition] = useTransition();
-  const [animationState, setAnimationState] = useState<{ [key: number]: 'flipping' | 'revealed' }>({});
+  const [animationState, setAnimationState] = useState<{ [key: string]: 'flipping' | 'revealed' }>({});
   const { toast } = useToast();
   const { currency, spendCurrency } = useCurrency();
   const { updateMissionProgress } = useMissions();
@@ -44,18 +45,19 @@ export default function GachaPage() {
       });
       return;
     }
-    if (!spendCurrency(cost)) {
+    
+    startTransition(async () => {
+      if (!spendCurrency(cost)) {
         toast({
             variant: 'destructive',
             title: 'Gコインの支払いに失敗しました。',
         });
         return;
-    }
+      }
     
-    setPulledCards([]);
-    setAnimationState({});
+      setPulledCards([]);
+      setAnimationState({});
 
-    startTransition(async () => {
       try {
         const result: GenerateGachaPullOutput = await generateGachaPull({ count });
         const newCards = result.cards.map(card => ({
@@ -67,10 +69,13 @@ export default function GachaPage() {
         setPulledCards(newCards);
         
         // Stagger the animation
-        newCards.forEach((_, index) => {
+        newCards.forEach((card, index) => {
             setTimeout(() => {
-                setAnimationState(prev => ({ ...prev, [index]: 'flipping' }));
-            }, index * 200);
+                setAnimationState(prev => ({ ...prev, [card.id!]: 'flipping' }));
+                setTimeout(() => {
+                     setAnimationState(prev => ({ ...prev, [card.id!]: 'revealed' }));
+                }, 700);
+            }, index * 150);
         });
         updateMissionProgress('pull-gacha', count);
 
@@ -81,9 +86,7 @@ export default function GachaPage() {
           title: 'ガチャの実行に失敗しました',
           description: '時間をおいて再度お試しください。',
         });
-        // Refund currency on failure
-        // NOTE: This is a simple refund. In a real app, a more robust transaction system is needed.
-        // addCurrency(cost);
+        // In a real app, a more robust transaction system is needed for refunds.
       }
     });
   };
@@ -132,7 +135,7 @@ export default function GachaPage() {
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                     <AlertDialogCancel>キャンセル</AlertDialogCancel>
-                    <AlertDialogAction onClick={() => handlePull(1, PULL_COST)}>実行</AlertDialogAction>
+                    <AlertDialogAction onClick={() => handlePull(1, PULL_COST)} disabled={isPending}>実行</AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>
@@ -150,13 +153,13 @@ export default function GachaPage() {
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                     <AlertDialogCancel>キャンセル</AlertDialogCancel>
-                    <AlertDialogAction onClick={() => handlePull(TEN_PULL_COUNT, TEN_PULL_COST)}>実行</AlertDialogAction>
+                    <AlertDialogAction onClick={() => handlePull(TEN_PULL_COUNT, TEN_PULL_COST)} disabled={isPending}>実行</AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>
       </div>
 
-      {isPending && (
+      {isPending && !pulledCards.length && (
         <div className="flex flex-col items-center justify-center text-center my-12">
           <Loader2 className="animate-spin h-12 w-12 text-primary" />
           <p className="mt-4 text-muted-foreground">カードを生成中...</p>
@@ -169,15 +172,15 @@ export default function GachaPage() {
             {pulledCards.map((card, index) => (
                 <div key={card.id} className="perspective-[1000px]">
                     <div
-                        className="relative w-full h-full transition-transform duration-700 preserve-3d"
-                        style={{
-                            transform: animationState[index] === 'flipping' || animationState[index] === 'revealed' ? 'rotateY(180deg)' : 'rotateY(0deg)',
-                        }}
+                        className={cn(
+                            "relative w-full aspect-[3/4] transition-transform duration-700 preserve-3d",
+                            (animationState[card.id!] === 'flipping' || animationState[card.id!] === 'revealed') && "rotate-y-180",
+                        )}
                     >
                         <div className="absolute w-full h-full backface-hidden">
                            <img src={cardBackImage} alt="Card Back" className="w-full h-full object-cover rounded-2xl border-4 border-black/50" />
                         </div>
-                        <div className="absolute w-full h-full backface-hidden" style={{ transform: 'rotateY(180deg)' }}>
+                        <div className="absolute w-full h-full backface-hidden rotate-y-180">
                             <CardPreview {...card} />
                         </div>
                     </div>
@@ -202,4 +205,5 @@ export default function GachaPage() {
 .perspective-1000 { perspective: 1000px; }
 .preserve-3d { transform-style: preserve-3d; }
 .backface-hidden { backface-visibility: hidden; }
+.rotate-y-180 { transform: rotateY(180deg); }
 */

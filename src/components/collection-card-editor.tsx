@@ -92,7 +92,7 @@ export function CollectionCardEditor({ card, onSave, onCancel }: CollectionCardE
             </div>
             <div className="flex justify-between items-center">
                  <div className="text-sm font-semibold">
-                    コスト: <span className="font-bold text-primary">{cost}G</span> ({diff}文字変更)
+                    編集コスト: <span className="font-bold text-primary">{cost}G</span> ({diff}文字変更)
                 </div>
                 <div className="flex gap-4">
                     <Button variant="ghost" onClick={onCancel}>キャンセル</Button>

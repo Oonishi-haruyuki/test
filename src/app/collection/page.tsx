@@ -22,6 +22,27 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { CollectionCardEditor } from '@/components/collection-card-editor';
 import { useCurrency } from '@/hooks/use-currency';
 
+const levenshtein = (s1: string, s2: string): number => {
+    if (s1.length < s2.length) {
+      return levenshtein(s2, s1);
+    }
+    if (s2.length === 0) {
+      return s1.length;
+    }
+    let previousRow = Array.from({ length: s2.length + 1 }, (_, i) => i);
+    for (let i = 0; i < s1.length; i++) {
+      let currentRow = [i + 1];
+      for (let j = 0; j < s2.length; j++) {
+        let insertions = previousRow[j + 1] + 1;
+        let deletions = currentRow[j] + 1;
+        let substitutions = previousRow[j] + (s1[i] !== s2[j] ? 1 : 0);
+        currentRow.push(Math.min(insertions, deletions, substitutions));
+      }
+      previousRow = currentRow;
+    }
+    return previousRow[previousRow.length - 1];
+};
+
 export default function CollectionPage() {
   const [collection, setCollection] = useState<CardData[]>([]);
   const [editingCard, setEditingCard] = useState<CardData | null>(null);
@@ -44,14 +65,14 @@ export default function CollectionPage() {
   }, [toast]);
 
   const handleSaveEdit = (updatedCard: CardData) => {
-    const cost = useMemo(() => {
-        if (!editingCard) return 0;
-        const EDIT_COST_PER_CHAR = 3;
-        const nameDiff = updatedCard.name.length - editingCard.name.length;
-        const abilitiesDiff = updatedCard.abilities.length - editingCard.abilities.length;
-        const flavorTextDiff = updatedCard.flavorText.length - editingCard.flavorText.length;
-        return (Math.abs(nameDiff) + Math.abs(abilitiesDiff) + Math.abs(flavorTextDiff)) * EDIT_COST_PER_CHAR;
-    }, [editingCard, updatedCard])();
+    if (!editingCard) return;
+
+    const EDIT_COST_PER_CHAR = 3;
+    const nameDiff = levenshtein(editingCard.name, updatedCard.name);
+    const abilitiesDiff = levenshtein(editingCard.abilities, updatedCard.abilities);
+    const flavorTextDiff = levenshtein(editingCard.flavorText, updatedCard.flavorText);
+    const diff = nameDiff + abilitiesDiff + flavorTextDiff;
+    const cost = diff * EDIT_COST_PER_CHAR;
     
     if (currency < cost) {
         toast({
@@ -62,7 +83,7 @@ export default function CollectionPage() {
         return;
     }
 
-    if (!spendCurrency(cost)) {
+    if (cost > 0 && !spendCurrency(cost)) {
         toast({
             variant: "destructive",
             title: "Gコインの支払いに失敗しました。",
@@ -126,7 +147,7 @@ export default function CollectionPage() {
                         onCancel={() => setEditingCard(null)}
                     />
                 </div>
-                <div>
+                <div className="sticky top-8">
                     <CardPreview {...editingCard} />
                 </div>
              </div>
