@@ -267,6 +267,36 @@
           }
         }
       }
+    },
+    "Tournament": {
+        "title": "Tournament",
+        "description": "Represents a user-created tournament event.",
+        "type": "object",
+        "properties": {
+            "name": { "type": "string" },
+            "organizerId": { "type": "string" },
+            "organizerLoginId": { "type": "string" },
+            "status": { "type": "string", "enum": ["registering", "bracket-generated", "active", "finished"] },
+            "entryFee": { "type": "number" },
+            "prizePool": { "type": "number" },
+            "startTime": { "type": "string", "format": "date-time" },
+            "deckType": { "type": "string", "enum": ["user-created", "ai-generated"] },
+            "participants": { "type": "array", "items": { "$ref": "#/entities/TournamentParticipant" } },
+            "bracket": { "type": "object", "description": "Tournament bracket structure" },
+            "createdAt": { "type": "string", "format": "date-time" }
+        }
+    },
+    "TournamentParticipant": {
+        "title": "Tournament Participant",
+        "description": "Represents a single participant in a tournament.",
+        "type": "object",
+        "properties": {
+            "userId": { "type": "string" },
+            "userLoginId": { "type": "string" },
+            "deckId": { "type": "string" },
+            "deckName": { "type": "string" },
+            "deckCards": { "type": "array", "items": { "$ref": "#/entities/Card" } }
+        }
     }
   },
   "auth": {
@@ -302,6 +332,10 @@
     "/replays/{replayId}": {
       "schema": { "$ref": "#/entities/Replay" },
       "description": "Stores game replay data."
+    },
+    "/tournaments/{tournamentId}": {
+        "schema": { "$ref": "#/entities/Tournament" },
+        "description": "Stores user-created tournament data."
     }
   }
 }
