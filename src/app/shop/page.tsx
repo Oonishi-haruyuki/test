@@ -26,13 +26,73 @@ import {
 
 type ItemCategory = 'frames' | 'backs' | 'artifacts' | 'animations' | 'materials';
 
+type PurchasedItems = Record<ItemCategory, Set<string>>;
+
+const ShopCategory = ({ category, title, purchasedItems, currency, handlePurchase }: { 
+    category: ItemCategory, 
+    title: string, 
+    purchasedItems: PurchasedItems,
+    currency: number,
+    handlePurchase: (item: ShopItem, category: ItemCategory) => void 
+}) => {
+    const { inventory } = useInventory();
+    return (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {(shopItems[category]).map(item => (
+                <Card key={item.id} className="flex flex-col">
+                    <CardHeader>
+                        <CardTitle>{item.name}</CardTitle>
+                        {item.description && <CardDescription>{item.description}</CardDescription>}
+                    </CardHeader>
+                    <CardContent className="flex-grow flex flex-col justify-center items-center">
+                        <Image src={item.url} alt={item.name} width={200} height={200} className="rounded-md object-contain mb-4 max-h-[150px]" unoptimized/>
+                        <div className="text-lg font-bold flex items-center gap-2 text-yellow-500">
+                            <Coins className="h-5 w-5"/>
+                            <span>{item.price.toLocaleString()} G</span>
+                        </div>
+                        {category === 'materials' && (
+                            <p className="text-sm text-muted-foreground mt-2">所持数: {inventory[item.id] || 0}</p>
+                        )}
+                    </CardContent>
+                    <div className="p-4 border-t">
+                        {purchasedItems[category]?.has(item.id) && category !== 'materials' ? (
+                            <Button disabled className="w-full">
+                                <CheckCircle className="mr-2" />
+                                購入済み
+                            </Button>
+                        ) : (
+                            <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <Button className="w-full" disabled={currency < item.price}>購入する</Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle>購入確認</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                            「{item.name}」を {item.price.toLocaleString()}G で購入します。よろしいですか？
+                                        </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel>キャンセル</AlertDialogCancel>
+                                        <AlertDialogAction onClick={() => handlePurchase(item, category)}>購入</AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
+                        )}
+                    </div>
+                </Card>
+            ))}
+        </div>
+    );
+}
+
 export default function ShopPage() {
     const { user } = useUser();
     const { currency, spendCurrency } = useCurrency();
     const { toast } = useToast();
     const { inventory, addItem } = useInventory();
     
-    const [purchasedItems, setPurchasedItems] = useState<Record<ItemCategory, Set<string>>>({
+    const [purchasedItems, setPurchasedItems] = useState<PurchasedItems>({
         frames: new Set(['frame-default']),
         backs: new Set(['back-default']),
         artifacts: new Set(),
@@ -102,55 +162,11 @@ export default function ShopPage() {
         return <p className="text-center p-8">ショップを利用するには、マイページからログインしてください。</p>;
     }
 
-
-    const ShopCategory = ({ category, title }: { category: ItemCategory, title: string }) => (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {(shopItems[category]).map(item => (
-                <Card key={item.id} className="flex flex-col">
-                    <CardHeader>
-                        <CardTitle>{item.name}</CardTitle>
-                        {item.description && <CardDescription>{item.description}</CardDescription>}
-                    </CardHeader>
-                    <CardContent className="flex-grow flex flex-col justify-center items-center">
-                        <Image src={item.url} alt={item.name} width={200} height={200} className="rounded-md object-contain mb-4 max-h-[150px]" unoptimized/>
-                        <div className="text-lg font-bold flex items-center gap-2 text-yellow-500">
-                            <Coins className="h-5 w-5"/>
-                            <span>{item.price.toLocaleString()} G</span>
-                        </div>
-                         {category === 'materials' && (
-                            <p className="text-sm text-muted-foreground mt-2">所持数: {inventory[item.id] || 0}</p>
-                        )}
-                    </CardContent>
-                    <div className="p-4 border-t">
-                        {purchasedItems[category]?.has(item.id) && category !== 'materials' ? (
-                             <Button disabled className="w-full">
-                                <CheckCircle className="mr-2" />
-                                購入済み
-                             </Button>
-                        ) : (
-                            <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                    <Button className="w-full" disabled={currency < item.price}>購入する</Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                    <AlertDialogHeader>
-                                        <AlertDialogTitle>購入確認</AlertDialogTitle>
-                                        <AlertDialogDescription>
-                                            「{item.name}」を {item.price.toLocaleString()}G で購入します。よろしいですか？
-                                        </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                        <AlertDialogCancel>キャンセル</AlertDialogCancel>
-                                        <AlertDialogAction onClick={() => handlePurchase(item, category)}>購入</AlertDialogAction>
-                                    </AlertDialogFooter>
-                                </AlertDialogContent>
-                            </AlertDialog>
-                        )}
-                    </div>
-                </Card>
-            ))}
-        </div>
-    );
+    const commonShopCategoryProps = {
+        purchasedItems,
+        currency,
+        handlePurchase,
+    };
 
     return (
         <div>
@@ -164,14 +180,13 @@ export default function ShopPage() {
                     <TabsTrigger value="artifacts">アーティファクト</TabsTrigger>
                     <TabsTrigger value="animations">演出</TabsTrigger>
                     <TabsTrigger value="materials">素材</TabsTrigger>
-                </Tabs>
-                <TabsContent value="frames"><ShopCategory category="frames" title="カード表面"/></TabsContent>
-                <TabsContent value="backs"><ShopCategory category="backs" title="カード裏面"/></TabsContent>
-                <TabsContent value="artifacts"><ShopCategory category="artifacts" title="アーティファクト"/></TabsContent>
-                <TabsContent value="animations"><ShopCategory category="animations" title="演出"/></TabsContent>
-                <TabsContent value="materials"><ShopCategory category="materials" title="素材"/></TabsContent>
+                </TabsList>
+                <TabsContent value="frames"><ShopCategory category="frames" title="カード表面" {...commonShopCategoryProps} /></TabsContent>
+                <TabsContent value="backs"><ShopCategory category="backs" title="カード裏面" {...commonShopCategoryProps} /></TabsContent>
+                <TabsContent value="artifacts"><ShopCategory category="artifacts" title="アーティファクト" {...commonShopCategoryProps} /></TabsContent>
+                <TabsContent value="animations"><ShopCategory category="animations" title="演出" {...commonShopCategoryProps} /></TabsContent>
+                <TabsContent value="materials"><ShopCategory category="materials" title="素材" {...commonShopCategoryProps} /></TabsContent>
             </Tabs>
         </div>
     );
 }
-
