@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -25,6 +26,7 @@ const navLinks = [
 const secondaryLinks = [
     { href: '/draft', label: 'ドラフト' },
     { href: '/trade', label: 'トレード' },
+    { href: '/tag-battle', label: 'タッグバトル' },
     { href: '/guild', label: 'ギルド' },
     { href: '/rules', label: 'ルール' },
     { href: '/ranking', label: 'ランキング' },

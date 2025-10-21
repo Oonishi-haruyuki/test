@@ -483,16 +483,12 @@ export default function MyPage() {
                              <section>
                                 <h3 className="text-lg font-semibold mb-2 border-b pb-1">次回アップデート予告</h3>
                                 <ul className="list-disc list-inside space-y-1 text-muted-foreground">
-                                    <li>カードの「進化」機能の追加</li>
-                                    <li>2vs2の「タッグバトル」モードの実装</li>
                                     <li>ギルド間で対戦する「ギルドバトル」機能</li>
                                     <li>カードに特殊な効果を付与する「エンチャント」システム</li>
                                     <li>日替わりで特殊なデッキと戦う「デイリーチャレンジ」</li>
                                     <li>作成したカードを公開・評価できる「カードギャラリー」</li>
                                     <li>特定のカードを禁止する「特殊レギュレーション」対戦</li>
                                     <li>ゲーム内BGMやSEのカスタマイズ機能</li>
-                                    <li>対戦中のスタンプ（エモート）機能の追加</li>
-                                    <li>新しいカード種族（例：天使、悪魔、機械）の追加</li>
                                 </ul>
                             </section>
                              <section>
@@ -522,4 +518,3 @@ export default function MyPage() {
     );
 }
 
-    
