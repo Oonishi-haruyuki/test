@@ -19,16 +19,19 @@ const navLinks = [
     { href: '/gacha', label: 'ガチャ' },
     { href: '/battle', label: 'AI対戦' },
     { href: '/online-battle', label: 'オンライン対戦' },
+    { href: '/story', label: 'ストーリー' },
+    { href: '/shop', label: 'ショップ' },
+    { href: '/mypage', label: 'マイページ' },
+];
+
+const secondaryLinks = [
     { href: '/draft', label: 'ドラフト' },
     { href: '/trade', label: 'トレード' },
     { href: '/guild', label: 'ギルド' },
-    { href: '/story', label: 'ストーリー' },
     { href: '/rules', label: 'ルール' },
     { href: '/ranking', label: 'ランキング' },
-    { href: '/shop', label: 'ショップ' },
     { href: '/minigame', label: 'ミニゲーム' },
-    { href: '/mypage', label: 'マイページ' },
-];
+]
 
 export function AppHeader() {
   const pathname = usePathname();
@@ -38,13 +41,19 @@ export function AppHeader() {
 
   return (
     <header className="mb-8">
-      <div className="text-center mb-6">
+      <div className="flex justify-between items-center mb-6">
         <h1 className="text-4xl md:text-5xl font-bold text-primary">
           <Link href="/">カードクラフター</Link>
         </h1>
-        <p className="text-muted-foreground mt-2 text-md md:text-lg">
-          AIの力で、あなたのカードゲームのアイデアを形に
-        </p>
+        <div className="flex items-center gap-2 md:gap-4">
+            {user && (
+                 <div className="hidden sm:flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                    <User className="h-5 w-5"/>
+                    <span className="truncate max-w-[100px]">{user.email?.split('@')[0] || 'User'}</span>
+                </div>
+            )}
+            <CurrencyDisplay />
+        </div>
       </div>
       <div className="flex justify-between items-center mt-4 border-b pb-4">
         {/* Desktop Navigation */}
@@ -52,11 +61,11 @@ export function AppHeader() {
           {navLinks.map((link) => (
             <Button
               key={link.href}
-              variant="ghost"
+              variant={pathname === link.href ? "secondary" : "ghost"}
               asChild
               className={cn(
-                'text-xs lg:text-sm font-medium transition-colors hover:text-primary shrink-0',
-                pathname === link.href ? 'text-primary' : 'text-muted-foreground'
+                'text-sm font-medium transition-colors hover:text-primary shrink-0',
+                pathname === link.href ? 'text-primary-foreground' : 'text-muted-foreground'
               )}
             >
               <Link href={link.href}>{link.label}</Link>
@@ -74,7 +83,7 @@ export function AppHeader() {
                 </SheetTrigger>
                 <SheetContent side="left">
                      <nav className="flex flex-col space-y-2 mt-8">
-                        {navLinks.map((link) => (
+                        {[...navLinks, ...secondaryLinks].map((link) => (
                         <Button
                             key={link.href}
                             variant="ghost"
@@ -93,15 +102,21 @@ export function AppHeader() {
             </Sheet>
         </div>
         
-        <div className="flex items-center gap-2 md:gap-4">
-            {user && (
-                 <div className="hidden sm:flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                    <User className="h-5 w-5"/>
-                    <span className="truncate max-w-[100px]">{user.email?.split('@')[0] || 'User'}</span>
-                </div>
-            )}
-            <CurrencyDisplay />
-        </div>
+        <nav className="hidden md:flex items-center space-x-1 lg:space-x-2 overflow-x-auto">
+          {secondaryLinks.map((link) => (
+            <Button
+              key={link.href}
+              variant="ghost"
+              asChild
+              className={cn(
+                'text-xs lg:text-sm font-medium transition-colors hover:text-primary shrink-0',
+                pathname === link.href ? 'text-primary' : 'text-muted-foreground'
+              )}
+            >
+              <Link href={link.href}>{link.label}</Link>
+            </Button>
+          ))}
+        </nav>
       </div>
     </header>
   );
