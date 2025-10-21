@@ -29,6 +29,24 @@ async function getUserIdByLoginId(loginId: string): Promise<string | null> {
     return querySnapshot.docs[0].id;
 }
 
+export async function searchUserCollection(loginId: string): Promise<{ success: boolean; message: string; collection?: CardData[] }> {
+    const userId = await getUserIdByLoginId(loginId);
+    if (!userId) {
+        return { success: false, message: '指定されたプレイヤーが見つかりません。' };
+    }
+    
+    // In a real app, this would query a user's collection in Firestore.
+    // For this demo, we'll simulate by creating some mock data.
+    // This part is a placeholder.
+    const mockCollection: CardData[] = [
+        { id: 'mock-1', name: '相手のゴブリン', manaCost: 1, attack: 1, defense: 1, cardType: 'creature', rarity: 'common', abilities: '', flavorText: '', imageUrl: 'https://picsum.photos/seed/mock1/400/300', imageHint: 'goblin' },
+        { id: 'mock-2', name: '相手のドラゴン', manaCost: 8, attack: 8, defense: 8, cardType: 'creature', rarity: 'mythic', abilities: '飛行', flavorText: '', imageUrl: 'https://picsum.photos/seed/mock2/400/300', imageHint: 'dragon' },
+        { id: 'mock-3', name: '相手の呪文', manaCost: 3, attack: 0, defense: 0, cardType: 'spell', rarity: 'uncommon', abilities: 'カードを2枚引く', flavorText: '', imageUrl: 'https://picsum.photos/seed/mock3/400/300', imageHint: 'magic spell' }
+    ];
+
+    return { success: true, message: 'Collection found.', collection: mockCollection };
+}
+
 
 export async function createTradeOffer(
     offerorId: string, 
@@ -65,7 +83,13 @@ export async function createTradeOffer(
 }
 
 
-export async function respondToTradeOffer(tradeId: string, userId: string, response: 'accepted' | 'rejected' | 'cancelled'): Promise<{ success: boolean; message: string }> {
+export async function respondToTradeOffer(
+    tradeId: string, 
+    userId: string, 
+    response: 'accepted' | 'rejected' | 'cancelled',
+    offeredCards: CardData[], // Pass cards for accepted trades
+    requestedCards: CardData[] // Pass cards for accepted trades
+): Promise<{ success: boolean; message: string }> {
     const { firestore } = initializeFirebase();
     const tradeRef = doc(firestore, 'trades', tradeId);
 
@@ -81,39 +105,33 @@ export async function respondToTradeOffer(tradeId: string, userId: string, respo
             if (trade.status !== 'pending') {
                 throw new Error('このオファーは既に対応済みです。');
             }
-
+            
+            // --- Authorization checks ---
             if (response === 'cancelled') {
                 if (userId !== trade.offerorId) throw new Error('オファーの送信者のみがキャンセルできます。');
-                transaction.update(tradeRef, { status: 'cancelled' });
-                return;
-            }
-
-            if (userId !== trade.offereeId) {
-                throw new Error('オファーの受信者のみが承諾または拒否できます。');
+            } else if (response === 'accepted' || response === 'rejected') {
+                if (userId !== trade.offereeId) throw new Error('オファーの受信者のみが承諾または拒否できます。');
+            } else {
+                 throw new Error('無効な操作です。');
             }
             
-            if (response === 'rejected') {
-                transaction.update(tradeRef, { status: 'rejected' });
-                return;
-            }
-
             if (response === 'accepted') {
-                // This is the complex part: swapping cards between user's collections
-                // For this demo, we'll assume collections are stored in a simple way
-                // A real implementation would need more robust checks
-                
-                // IMPORTANT: In this demo, we are NOT actually modifying the card collections
-                // stored in localStorage, as server actions cannot directly access it.
-                // We'll just update the trade status. A full implementation would require
-                // either moving collection state to Firestore or using a client-side
-                // function to update localStorage after the transaction succeeds.
-
-                transaction.update(tradeRef, { status: 'accepted' });
+                // In a real application with collections in Firestore, you would:
+                // 1. Get the offeror's collection doc
+                // 2. Get the offeree's collection doc
+                // 3. Remove `offeredCards` from offeror and add `requestedCards`
+                // 4. Remove `requestedCards` from offeree and add `offeredCards`
+                // 5. Update both documents in the transaction
+                // Since collections are in localStorage, we only update the status.
+                // The client will be responsible for updating localStorage based on this success.
+                 transaction.update(tradeRef, { status: 'accepted' });
+            } else {
+                 transaction.update(tradeRef, { status: response });
             }
         });
 
         if (response === 'accepted') {
-            return { success: true, message: `トレードを承諾しました。クライアント側でカードコレクションを更新する必要があります。` };
+            return { success: true, message: `トレードを承諾しました。` };
         } else if (response === 'rejected') {
             return { success: true, message: 'トレードを拒否しました。' };
         } else {

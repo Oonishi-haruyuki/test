@@ -1,17 +1,18 @@
 
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import type { CardData } from '@/components/card-editor';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useUser, initializeFirebase } from '@/firebase';
-import { ArrowLeftRight, Loader2 } from 'lucide-react';
+import { ArrowLeftRight, Loader2, Search } from 'lucide-react';
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
-import { createTradeOffer, respondToTradeOffer } from '@/lib/trade-actions';
-import { collection, query, where, onSnapshot, doc, getDoc } from 'firebase/firestore';
+import { createTradeOffer, respondToTradeOffer, searchUserCollection } from '@/lib/trade-actions';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 type TradeOffer = {
     id: string;
@@ -35,21 +36,22 @@ const CardMini = ({ card }: { card: CardData }) => (
 export default function TradePage() {
     const { user, profile } = useUser();
     const { firestore } = initializeFirebase();
-    const [collection, setCollection] = useState<CardData[]>([]);
+    const [myCollection, setMyCollection] = useState<CardData[]>([]);
+    const [offereeCollection, setOffereeCollection] = useState<CardData[]>([]);
     const [offeredCards, setOfferedCards] = useState<CardData[]>([]);
     const [requestedCards, setRequestedCards] = useState<CardData[]>([]);
     const [offereeLoginId, setOffereeLoginId] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isSearching, setIsSearching] = useState(false);
     const { toast } = useToast();
 
     const [incomingOffers, setIncomingOffers] = useState<TradeOffer[]>([]);
     const [outgoingOffers, setOutgoingOffers] = useState<TradeOffer[]>([]);
 
-
     useEffect(() => {
         try {
             const savedCollection = JSON.parse(localStorage.getItem('cardCollection') || '[]');
-            setCollection(savedCollection);
+            setMyCollection(savedCollection);
         } catch (e) {
             console.error("Failed to load collection", e);
         }
@@ -57,9 +59,9 @@ export default function TradePage() {
 
     useEffect(() => {
         if (!user) return;
-
-        const incomingQuery = query(collection(firestore, 'trades'), where('offereeId', '==', user.uid), where('status', '==', 'pending'));
-        const outgoingQuery = query(collection(firestore, 'trades'), where('offerorId', '==', user.uid), where('status', '==', 'pending'));
+        const tradesRef = collection(firestore, 'trades');
+        const incomingQuery = query(tradesRef, where('offereeId', '==', user.uid), where('status', '==', 'pending'));
+        const outgoingQuery = query(tradesRef, where('offerorId', '==', user.uid));
 
         const unsubIncoming = onSnapshot(incomingQuery, (snapshot) => {
             const offers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as TradeOffer));
@@ -67,58 +69,76 @@ export default function TradePage() {
         });
         const unsubOutgoing = onSnapshot(outgoingQuery, (snapshot) => {
             const offers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as TradeOffer));
-            setOutgoingOffers(offers);
+            setOutgoingOffers(offers.filter(o => o.status === 'pending' || o.status === 'cancelled' || o.status === 'rejected'));
         });
 
         return () => {
             unsubIncoming();
             unsubOutgoing();
         };
-
     }, [user, firestore]);
-
-    const availableCollection = useMemo(() => {
-        const offeredIds = new Set(offeredCards.map(c => c.id));
-        return collection.filter(c => !offeredIds.has(c.id));
-    }, [collection, offeredCards]);
     
-    // We'll mock the other user's collection for the request part
-    const mockOpponentCollection = useMemo(() => {
+    const handleSearchOffereeCollection = async () => {
+        if (!offereeLoginId.trim()) {
+            toast({ variant: 'destructive', title: '相手のログインIDを入力してください。' });
+            return;
+        }
+        setIsSearching(true);
+        const result = await searchUserCollection(offereeLoginId);
+        if (result.success) {
+            setOffereeCollection(result.collection || []);
+            toast({ title: `「${offereeLoginId}」のコレクションを読み込みました。`});
+        } else {
+            toast({ variant: 'destructive', title: '検索失敗', description: result.message });
+            setOffereeCollection([]);
+        }
+        setIsSearching(false);
+    };
+
+    const myAvailableCollection = useMemo(() => {
+        const offeredIds = new Set(offeredCards.map(c => c.id));
+        return myCollection.filter(c => !offeredIds.has(c.id));
+    }, [myCollection, offeredCards]);
+    
+    const offereeAvailableCollection = useMemo(() => {
         const requestedIds = new Set(requestedCards.map(c => c.id));
-        // This is a simplified mock. A real app would need to fetch this.
-        return collection.filter(c => !requestedIds.has(c.id)).slice(0, 20);
-    }, [collection, requestedCards]);
+        return offereeCollection.filter(c => !requestedIds.has(c.id));
+    }, [offereeCollection, requestedCards]);
 
 
-    const onDragEnd = (result: DropResult) => {
+    const onDragEnd = useCallback((result: DropResult) => {
         const { source, destination } = result;
         if (!destination) return;
 
-        const sourceId = source.droppableId;
-        const destId = destination.droppableId;
+        const move = (sourceList: CardData[], destList: CardData[], sourceIndex: number, destIndex: number) => {
+            const newSource = Array.from(sourceList);
+            const newDest = Array.from(destList);
+            const [removed] = newSource.splice(sourceIndex, 1);
+            newDest.splice(destIndex, 0, removed);
+            return { newSource, newDest };
+        };
 
-        const moveCard = (sourceList: CardData[], destList: CardData[], sourceIndex: number, destIndex: number) => {
-            const newSourceList = [...sourceList];
-            const newDestList = [...destList];
-            const [movedCard] = newSourceList.splice(sourceIndex, 1);
-            newDestList.splice(destIndex, 0, movedCard);
-            return [newSourceList, newDestList];
+        // From my collection to offered
+        if (source.droppableId === 'my-collection' && destination.droppableId === 'offered') {
+            const { newDest } = move(myAvailableCollection, offeredCards, source.index, destination.index);
+            setOfferedCards(newDest);
         }
-
-        if (sourceId === 'collection' && destId === 'offered') {
-            const [newCollection, newOffered] = moveCard(availableCollection, offeredCards, source.index, destination.index);
-            setOfferedCards(newOffered);
-        } else if (sourceId === 'offered' && destId === 'collection') {
-            const [newOffered, _] = moveCard(offeredCards, availableCollection, source.index, destination.index);
-            setOfferedCards(newOffered);
-        } else if (sourceId === 'opponent-collection' && destId === 'requested') {
-            const [_, newRequested] = moveCard(mockOpponentCollection, requestedCards, source.index, destination.index);
-            setRequestedCards(newRequested);
-        } else if (sourceId === 'requested' && destId === 'opponent-collection') {
-             const [newRequested, _] = moveCard(requestedCards, mockOpponentCollection, source.index, destination.index);
-             setRequestedCards(newRequested);
+        // From offered back to my collection
+        else if (source.droppableId === 'offered' && destination.droppableId === 'my-collection') {
+            const { newSource } = move(offeredCards, myAvailableCollection, source.index, destination.index);
+            setOfferedCards(newSource);
         }
-    };
+        // From offeree's collection to requested
+        else if (source.droppableId === 'offeree-collection' && destination.droppableId === 'requested') {
+            const { newDest } = move(offereeAvailableCollection, requestedCards, source.index, destination.index);
+            setRequestedCards(newDest);
+        }
+        // From requested back to offeree's collection
+        else if (source.droppableId === 'requested' && destination.droppableId === 'offeree-collection') {
+            const { newSource } = move(requestedCards, offereeAvailableCollection, source.index, destination.index);
+            setRequestedCards(newSource);
+        }
+    }, [myAvailableCollection, offeredCards, offereeAvailableCollection, requestedCards]);
     
     const handleCreateOffer = async () => {
         if (!user || !profile?.loginId) {
@@ -140,6 +160,7 @@ export default function TradePage() {
             setOfferedCards([]);
             setRequestedCards([]);
             setOffereeLoginId('');
+            setOffereeCollection([]);
         } else {
             toast({ variant: 'destructive', title: result.message });
         }
@@ -148,31 +169,21 @@ export default function TradePage() {
     
     const handleRespondToOffer = async (tradeId: string, response: 'accepted' | 'rejected' | 'cancelled') => {
         if (!user) return;
-        
-        // Find the offer to get card details
         const offer = [...incomingOffers, ...outgoingOffers].find(o => o.id === tradeId);
         if (!offer) return;
         
-        const result = await respondToTradeOffer(tradeId, user.uid, response);
+        const result = await respondToTradeOffer(tradeId, user.uid, response, offer.offeredCards, offer.requestedCards);
+
         if (result.success) {
             toast({ title: result.message });
-            
-            // For accepted trades, we need to update localStorage on the client
             if (response === 'accepted') {
-                const myId = user.uid;
-                const otherPlayerId = offer.offerorId === myId ? offer.offereeId : offer.offerorId;
-
-                const cardsToAdd = offer.offerorId === myId ? offer.requestedCards : offer.offeredCards;
-                const cardsToRemove = offer.offerorId === myId ? offer.offeredCards : offer.requestedCards;
-                
                 try {
                     const currentCollection = JSON.parse(localStorage.getItem('cardCollection') || '[]');
-                    const cardsToRemoveIds = new Set(cardsToRemove.map(c => c.id));
+                    const cardsToRemoveIds = new Set(offer.offeredCards.map(c => c.id));
                     const newCollection = currentCollection.filter((c: CardData) => !cardsToRemoveIds.has(c.id));
-                    
-                    localStorage.setItem('cardCollection', JSON.stringify([...newCollection, ...cardsToAdd]));
-                    setCollection([...newCollection, ...cardsToAdd]); // Update local state
-                     toast({ title: "カードコレクションを更新しました！" });
+                    localStorage.setItem('cardCollection', JSON.stringify([...newCollection, ...offer.requestedCards]));
+                    setMyCollection([...newCollection, ...offer.requestedCards]);
+                     toast({ title: "あなたのカードコレクションが更新されました！" });
                 } catch(e) {
                     toast({ variant: 'destructive', title: "自分のカードコレクションの更新に失敗しました。" });
                 }
@@ -192,18 +203,23 @@ export default function TradePage() {
             <div className="space-y-8">
                 <h1 className="text-3xl font-bold">トレード</h1>
                 
-                 {/* Trade Creation */}
                 <Card>
                     <CardHeader>
                         <CardTitle>トレードを作成</CardTitle>
-                        <CardDescription>カードをドラッグしてトレードを作成します。</CardDescription>
+                        <CardDescription>カードをドラッグ＆ドロップしてトレード内容を決め、オファーを送信します。</CardDescription>
                     </CardHeader>
-                    <CardContent className="space-y-4">
-                        <Input 
-                            placeholder="相手のログインID" 
-                            value={offereeLoginId} 
-                            onChange={(e) => setOffereeLoginId(e.target.value)}
-                        />
+                    <CardContent className="space-y-6">
+                        <div className="flex gap-2 items-center">
+                            <Input 
+                                placeholder="相手のログインID" 
+                                value={offereeLoginId} 
+                                onChange={(e) => setOffereeLoginId(e.target.value)}
+                            />
+                             <Button onClick={handleSearchOffereeCollection} disabled={isSearching}>
+                                {isSearching ? <Loader2 className="animate-spin" /> : <Search />}
+                                相手のカードを検索
+                            </Button>
+                        </div>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
                              <DroppableArea droppableId="offered" title="あなたが渡すカード" cards={offeredCards} />
                              <div className="flex justify-center items-center h-full pt-10">
@@ -215,24 +231,27 @@ export default function TradePage() {
                             <Card>
                                 <CardHeader><CardTitle>あなたのコレクション</CardTitle></CardHeader>
                                 <CardContent>
-                                    <DroppableArea droppableId="collection" cards={availableCollection} isSource />
+                                    <DroppableArea droppableId="my-collection" cards={myAvailableCollection} isSource />
                                 </CardContent>
                             </Card>
                              <Card>
-                                <CardHeader><CardTitle>相手のコレクション (仮)</CardTitle></CardHeader>
+                                <CardHeader><CardTitle>相手のコレクション</CardTitle></CardHeader>
                                 <CardContent>
-                                    <DroppableArea droppableId="opponent-collection" cards={mockOpponentCollection} isSource />
+                                     {offereeCollection.length > 0 ? (
+                                        <DroppableArea droppableId="offeree-collection" cards={offereeAvailableCollection} isSource />
+                                     ) : (
+                                        <div className="text-center text-muted-foreground p-10">相手のIDを検索してください。</div>
+                                     )}
                                 </CardContent>
                             </Card>
                         </div>
-                        <Button onClick={handleCreateOffer} disabled={isSubmitting}>
+                        <Button onClick={handleCreateOffer} disabled={isSubmitting || !offereeLoginId}>
                             {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             オファーを送信
                         </Button>
                     </CardContent>
                 </Card>
 
-                {/* Pending Offers */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     <Card>
                         <CardHeader><CardTitle>受信したオファー</CardTitle></CardHeader>
@@ -261,15 +280,17 @@ export default function TradePage() {
 const DroppableArea = ({ droppableId, title, cards, isSource = false }: { droppableId: string; title?: string; cards: CardData[]; isSource?: boolean }) => (
     <Droppable droppableId={droppableId}>
         {(provided, snapshot) => (
-            <div
-                ref={provided.innerRef}
-                {...provided.droppableProps}
-                className={`p-2 rounded-lg min-h-[100px] transition-colors ${
+            <ScrollArea 
+                className={`p-2 rounded-lg min-h-[200px] transition-colors ${
                     snapshot.isDraggingOver ? 'bg-primary/20' : isSource ? 'bg-secondary/50' : 'bg-primary/10'
-                }`}
+                } ${isSource ? 'h-96' : ''}`}
             >
-                {title && <h3 className="font-semibold mb-2 text-center">{title}</h3>}
-                <div className="grid grid-cols-3 gap-1">
+                 {title && <h3 className="font-semibold mb-2 text-center">{title}</h3>}
+                <div
+                    ref={provided.innerRef}
+                    {...provided.droppableProps}
+                    className="grid grid-cols-2 lg:grid-cols-3 gap-1 min-h-[100px]"
+                >
                     {cards.map((card, index) => (
                         <Draggable key={card.id} draggableId={card.id!} index={index}>
                             {(provided) => (
@@ -283,9 +304,9 @@ const DroppableArea = ({ droppableId, title, cards, isSource = false }: { droppa
                             )}
                         </Draggable>
                     ))}
+                    {provided.placeholder}
                 </div>
-                {provided.placeholder}
-            </div>
+            </ScrollArea>
         )}
     </Droppable>
 );
@@ -293,31 +314,37 @@ const DroppableArea = ({ droppableId, title, cards, isSource = false }: { droppa
 const OfferCard = ({ offer, onRespond, type }: { offer: TradeOffer, onRespond: (tradeId: string, response: 'accepted' | 'rejected' | 'cancelled') => void, type: 'incoming' | 'outgoing' }) => {
     return (
          <div className="p-4 border rounded-lg">
-            <p className="text-sm text-muted-foreground">
-                {type === 'incoming' ? `From: ${offer.offerorLoginId}` : `To: ${offer.offereeLoginId}`}
-            </p>
+            <div className="flex justify-between items-start">
+                <p className="text-sm text-muted-foreground">
+                    {type === 'incoming' ? `From: ${offer.offerorLoginId}` : `To: ${offer.offereeLoginId}`}
+                </p>
+                 <Badge variant={offer.status === 'pending' ? 'default' : 'secondary'}>{offer.status}</Badge>
+            </div>
              <div className="grid grid-cols-3 gap-2 items-center my-2">
                 <div className="space-y-1">
-                     <h4 className="font-semibold">あなたが渡す</h4>
-                     {offer.offeredCards.map(c => <CardMini key={c.id} card={c} />)}
+                     <h4 className="font-semibold text-sm">あなたが渡す</h4>
+                     {offer.offeredCards.length > 0 ? offer.offeredCards.map(c => <CardMini key={c.id} card={c} />) : <p className="text-xs text-muted-foreground">なし</p>}
                 </div>
                 <ArrowLeftRight className="mx-auto" />
                 <div className="space-y-1">
-                     <h4 className="font-semibold">あなたがもらう</h4>
-                     {offer.requestedCards.map(c => <CardMini key={c.id} card={c} />)}
+                     <h4 className="font-semibold text-sm">あなたがもらう</h4>
+                     {offer.requestedCards.length > 0 ? offer.requestedCards.map(c => <CardMini key={c.id} card={c} />) : <p className="text-xs text-muted-foreground">なし</p>}
                 </div>
             </div>
-             {type === 'incoming' ? (
-                <div className="flex gap-2 justify-end mt-2">
-                    <Button size="sm" variant="outline" onClick={() => onRespond(offer.id, 'rejected')}>拒否</Button>
-                    <Button size="sm" onClick={() => onRespond(offer.id, 'accepted')}>承諾</Button>
-                </div>
-             ) : (
-                <div className="flex justify-end mt-2">
-                     <Button size="sm" variant="destructive" onClick={() => onRespond(offer.id, 'cancelled')}>キャンセル</Button>
-                </div>
+             {offer.status === 'pending' && (
+                <>
+                {type === 'incoming' ? (
+                    <div className="flex gap-2 justify-end mt-2">
+                        <Button size="sm" variant="outline" onClick={() => onRespond(offer.id, 'rejected')}>拒否</Button>
+                        <Button size="sm" onClick={() => onRespond(offer.id, 'accepted')}>承諾</Button>
+                    </div>
+                ) : (
+                    <div className="flex justify-end mt-2">
+                        <Button size="sm" variant="destructive" onClick={() => onRespond(offer.id, 'cancelled')}>キャンセル</Button>
+                    </div>
+                )}
+                </>
              )}
         </div>
     );
 }
-

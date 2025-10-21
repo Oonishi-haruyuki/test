@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useUser } from '@/firebase';
 import { findOrCreateGame } from '@/lib/actions';
 import { useRouter } from 'next/navigation';
@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Swords } from 'lucide-react';
-import OnlineBattlePage from '../(main)/online-battle/page';
+import OnlineBattlePage from '../online-battle/[gameId]/page';
 
 export default function OnlineMatchmakingPage() {
     const { user, profile } = useUser();
@@ -104,4 +104,3 @@ export default function OnlineMatchmakingPage() {
         </div>
     );
 }
-

@@ -2,19 +2,19 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { useUser, loginWithId, signUpWithId, loginWithGoogle, logout, changePassword } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, LogIn, UserPlus, LogOut, KeyRound } from 'lucide-react';
+import { Loader2, LogIn, UserPlus, LogOut, KeyRound, History } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useStats } from '@/hooks/use-stats';
 import { useMissions } from '@/hooks/use-missions';
 import { MissionsUI } from '@/components/ui/missions-ui';
 import { useCurrency } from '@/hooks/use-currency';
-import { allMissions } from '@/lib/missions';
 import {
   Dialog,
   DialogContent,
@@ -27,8 +27,10 @@ import {
 } from "@/components/ui/dialog"
 import { Label } from '@/components/ui/label';
 import { AchievementsUI, type Achievement } from '@/components/ui/achievements';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, collection, query, where, getDocs, orderBy } from 'firebase/firestore';
 import { initializeFirebase } from '@/firebase';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { format } from 'date-fns';
 
 
 const LoginPage = () => {
@@ -55,8 +57,7 @@ const LoginPage = () => {
         try {
             await loginWithGoogle();
              toast({ title: 'Googleアカウントでログインしました' });
-        } catch (error: any) {
-             toast({ variant: 'destructive', title: 'Googleログインに失敗しました', description: error.message });
+        } catch (error: any)             toast({ variant: 'destructive', title: 'Googleログインに失敗しました', description: error.message });
         } finally {
             setIsSubmitting(false);
         }
@@ -145,11 +146,9 @@ const PasswordChangeDialog = () => {
         try {
             await changePassword(profile.loginId, oldPassword, newPassword);
             toast({ title: 'パスワードが正常に変更されました' });
-             // Close dialog on success by resetting state
             setOldPassword('');
             setNewPassword('');
             setConfirmNewPassword('');
-            // Manually close dialog if needed, by controlling its open state from the parent
         } catch (error: any) {
             toast({ variant: 'destructive', title: 'パスワードの変更に失敗しました', description: error.message });
         } finally {
@@ -199,6 +198,74 @@ const PasswordChangeDialog = () => {
             </DialogContent>
         </Dialog>
     )
+}
+
+const ReplaysTab = () => {
+    const { user } = useUser();
+    const [replays, setReplays] = useState<any[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const { firestore } = initializeFirebase();
+
+    useEffect(() => {
+        if (!user) return;
+        const fetchReplays = async () => {
+            setIsLoading(true);
+            const replaysRef = collection(firestore, 'replays');
+            const q = query(replaysRef, where('player1Id', '==', user.uid), orderBy('createdAt', 'desc'), limit(50));
+            const querySnapshot = await getDocs(q);
+            const fetchedReplays = querySnapshot.docs.map(doc => ({id: doc.id, ...doc.data()}));
+            setReplays(fetchedReplays);
+            setIsLoading(false);
+        };
+        fetchReplays();
+    }, [user, firestore]);
+
+    return (
+         <Card>
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2"><History /> 対戦履歴</CardTitle>
+                <CardDescription>過去の対戦履歴（リプレイ）を確認できます。</CardDescription>
+            </CardHeader>
+            <CardContent>
+                {isLoading ? (
+                    <div className="flex justify-center items-center py-10"><Loader2 className="animate-spin h-8 w-8" /></div>
+                ) : replays.length === 0 ? (
+                    <p className="text-muted-foreground text-center py-10">対戦履歴はありません。</p>
+                ) : (
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>対戦相手</TableHead>
+                                <TableHead>結果</TableHead>
+                                <TableHead>日時</TableHead>
+                                <TableHead></TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {replays.map(replay => (
+                                <TableRow key={replay.id}>
+                                    <TableCell>{replay.player2LoginId}</TableCell>
+                                    <TableCell>
+                                        <span className={replay.winnerId === user?.uid ? 'text-green-500 font-bold' : 'text-red-500 font-bold'}>
+                                            {replay.winnerId === user?.uid ? '勝利' : '敗北'}
+                                        </span>
+                                    </TableCell>
+                                    <TableCell>
+                                        {replay.createdAt ? format(replay.createdAt.toDate(), 'yyyy/MM/dd HH:mm') : 'N/A'}
+                                    </TableCell>
+                                    <TableCell>
+                                        <Button asChild variant="outline" size="sm">
+                                            <Link href={`/replays/${replay.id}`}>リプレイを見る</Link>
+                                        </Button>
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                )}
+            </CardContent>
+        </Card>
+    );
 }
 
 export default function MyPage() {
@@ -256,7 +323,6 @@ export default function MyPage() {
 
 
     useEffect(() => {
-        // Reset local storage based states on logout
         if (!user && !isUserLoading) {
             try {
                 localStorage.removeItem('cardCollection');
@@ -268,8 +334,7 @@ export default function MyPage() {
                 localStorage.removeItem('purchasedCardBacks');
                 localStorage.removeItem('purchasedArtifacts');
                 localStorage.removeItem('purchasedAnimations');
-                
-                setCurrency(500); // Reset to initial guest currency
+                setCurrency(500);
             } catch (e) {
                 console.error("Error clearing localStorage on logout", e);
             }
@@ -334,16 +399,22 @@ export default function MyPage() {
                  {profile?.title && <span className="font-bold text-lg text-primary bg-primary/20 px-4 py-1 rounded-full">{profile.title}</span>}
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-                {/* Left Column */}
-                <div className="lg:col-span-1 space-y-6">
-                    <Card>
+            <Tabs defaultValue="account">
+                <TabsList className="grid w-full grid-cols-4">
+                    <TabsTrigger value="account">アカウント</TabsTrigger>
+                    <TabsTrigger value="stats">戦績</TabsTrigger>
+                    <TabsTrigger value="achievements">実績</TabsTrigger>
+                    <TabsTrigger value="missions">ミッション</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="account" className="mt-6">
+                     <Card>
                         <CardHeader>
                             <CardTitle>アカウント情報</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <p><strong>ログインID:</strong> {profile?.loginId || '読み込み中...'}</p>
-                            <p><strong>メール:</strong> {user.email}</p>
+                            <p><strong>メール:</strong> {user.email || '未設定'}</p>
                             <p><strong>レーティング:</strong> {profile?.rating || 1000}</p>
                             <div className="flex flex-col sm:flex-row gap-2">
                                 <PasswordChangeDialog />
@@ -354,41 +425,45 @@ export default function MyPage() {
                             </div>
                         </CardContent>
                     </Card>
-                     <Card>
-                        <CardHeader>
-                            <CardTitle>対戦成績</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                             <p><strong>勝利数:</strong> {wins}</p>
-                             <p><strong>敗北数:</strong> {losses}</p>
-                             <p><strong>勝率:</strong> {winRate.toFixed(1)}%</p>
-                             <div className="h-40 mt-4">
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <BarChart data={statsData} layout="vertical" margin={{ top: 5, right: 20, left: 20, bottom: 5 }}>
-                                        <XAxis type="number" hide />
-                                        <YAxis type="category" dataKey="name" axisLine={false} tickLine={false} />
-                                        <Bar dataKey="value" barSize={20} radius={[0, 4, 4, 0]} />
-                                    </BarChart>
-                                </ResponsiveContainer>
-                             </div>
-                        </CardContent>
-                    </Card>
-                </div>
-                {/* Middle Column */}
-                <div className="lg:col-span-1">
+                </TabsContent>
+
+                <TabsContent value="stats" className="mt-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>対戦成績</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <p><strong>勝利数:</strong> {wins}</p>
+                                <p><strong>敗北数:</strong> {losses}</p>
+                                <p><strong>勝率:</strong> {winRate.toFixed(1)}%</p>
+                                <div className="h-40 mt-4">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <BarChart data={statsData} layout="vertical" margin={{ top: 5, right: 20, left: 20, bottom: 5 }}>
+                                            <XAxis type="number" hide />
+                                            <YAxis type="category" dataKey="name" axisLine={false} tickLine={false} />
+                                            <Bar dataKey="value" barSize={20} radius={[0, 4, 4, 0]} />
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            </CardContent>
+                        </Card>
+                        <ReplaysTab />
+                    </div>
+                </TabsContent>
+
+                 <TabsContent value="achievements" className="mt-6">
                      <AchievementsUI 
                         achievements={achievements}
                         onClaimRewards={handleClaimRewards}
                         onTitleChange={handleTitleChange}
                     />
-                </div>
-                {/* Right Column */}
-                <div className="lg:col-span-1">
+                </TabsContent>
+
+                <TabsContent value="missions" className="mt-6">
                     <MissionsUI missions={missions} onClaimReward={claimMissionReward} />
-                </div>
-            </div>
+                </TabsContent>
+            </Tabs>
         </div>
     );
 }
-
-    
