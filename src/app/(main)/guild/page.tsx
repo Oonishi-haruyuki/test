@@ -76,7 +76,7 @@ const MemberList = ({ memberIds }: { memberIds: string[] }) => {
             setIsLoading(true);
             const fetchedMembers: Member[] = [];
             
-            // Firestore 'in' query has a limit of 10 items. Chunk the array.
+            // Firestore 'in' query has a limit of 30 items per query in latest versions. Let's use 10 for safety.
             const chunks = [];
             for (let i = 0; i < memberIds.length; i += 10) {
                 chunks.push(memberIds.slice(i, i + 10));
@@ -84,6 +84,7 @@ const MemberList = ({ memberIds }: { memberIds: string[] }) => {
 
             try {
                 for (const chunk of chunks) {
+                    if (chunk.length === 0) continue;
                     const q = query(collection(firestore, 'users'), where('__name__', 'in', chunk));
                     const querySnapshot = await getDocs(q);
                     querySnapshot.forEach((doc) => {
@@ -134,16 +135,17 @@ const GuildChat = ({ guildId }: { guildId: string }) => {
 
     useEffect(() => {
         const messagesRef = collection(firestore, 'guilds', guildId, 'messages');
-        const q = query(messagesRef, orderBy('createdAt', 'asc'), limit(50));
+        // Ensure we only query for messages that have a createdAt timestamp.
+        const q = query(messagesRef, where("createdAt", "!=", null), orderBy('createdAt', 'asc'), limit(50));
         
         const unsubscribe = onSnapshot(q, (snapshot) => {
             const fetchedMessages: ChatMessage[] = [];
             snapshot.forEach(doc => {
-                if(doc.data().createdAt) { // Only add messages with a timestamp
-                    fetchedMessages.push({ id: doc.id, ...doc.data() } as ChatMessage);
-                }
+                fetchedMessages.push({ id: doc.id, ...doc.data() } as ChatMessage);
             });
             setMessages(fetchedMessages);
+        }, (error) => {
+            console.error("Error fetching chat messages: ", error);
         });
 
         return () => unsubscribe();
@@ -211,8 +213,13 @@ export default function GuildPage() {
                 if (doc.exists()) {
                     setGuild({ id: doc.id, ...doc.data() } as Guild);
                 } else {
+                    // This can happen if the guild is deleted, or the user's profile is out of sync.
+                    // We should probably clear the guildId from the user's profile here.
                     setGuild(null);
                 }
+                setIsLoading(false);
+            }, (error) => {
+                console.error("Error fetching user's guild:", error);
                 setIsLoading(false);
             });
             return () => unsubscribe();
@@ -232,6 +239,8 @@ export default function GuildPage() {
                 fetchedGuilds.push({ id: doc.id, ...doc.data() } as Guild);
             });
             setGuilds(fetchedGuilds);
+        }, (error) => {
+            console.error("Error fetching guild list:", error);
         });
         return () => unsubscribe();
     }, [firestore]);
