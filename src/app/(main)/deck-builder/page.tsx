@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -312,7 +311,7 @@ export default function DeckBuilderPage() {
                         </DialogHeader>
                         <AlertDialogFooter>
                             <AlertDialogCancel>キャンセル</AlertDialogCancel>
-                            <AlertDialogAction onClick={handleDeleteDeck}>削除</AlertDialogAction>
+                            <AlertDialogAction onClick={handleDeleteDeck}>削除</Button>
                         </AlertDialogFooter>
                     </AlertDialogContent>
                 </AlertDialog>
