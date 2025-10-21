@@ -27,7 +27,7 @@ import {
 } from "@/components/ui/dialog"
 import { Label } from '@/components/ui/label';
 import { AchievementsUI, type Achievement } from '@/components/ui/achievements';
-import { doc, updateDoc, collection, query, where, getDocs, orderBy } from 'firebase/firestore';
+import { doc, updateDoc, collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
 import { initializeFirebase } from '@/firebase';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { format } from 'date-fns';
@@ -468,3 +468,5 @@ export default function MyPage() {
         </div>
     );
 }
+
+    
