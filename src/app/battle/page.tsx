@@ -6,7 +6,7 @@ import type { CardData, Rarity, CardType } from '@/components/card-editor';
 import { CardPreview } from '@/components/card-preview';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Swords, Shield, Heart, Sparkles, Bot, Clock, Play, SkipForward } from 'lucide-react';
+import { Swords, Shield, Heart, Sparkles, Bot, Clock, Play, SkipForward, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Progress } from '@/components/ui/progress';
 import { useSearchParams } from 'next/navigation';
@@ -27,7 +27,8 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
+} from "@/components/ui/alert-dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const MAX_MANA = 10;
 const INITIAL_HEALTH = 20;
