@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, LogIn, UserPlus, LogOut, KeyRound, History, Info } from 'lucide-react';
+import { Loader2, LogIn, UserPlus, LogOut, KeyRound, History, Info, Users, Swords, Trophy } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useStats } from '@/hooks/use-stats';
@@ -57,7 +57,7 @@ const LoginPage = () => {
         try {
             await loginWithGoogle();
              toast({ title: 'Googleアカウントでログインしました' });
-        } catch (error: any) => {
+        } catch (error: any) {
             toast({ variant: 'destructive', title: 'Googleログインに失敗しました', description: error.message });
         } finally {
             setIsSubmitting(false);
@@ -99,7 +99,7 @@ const SignUpPage = () => {
         try {
             await signUpWithId(loginId, password);
             toast({ title: 'アカウントを登録しました', description: 'ログインしてください。' });
-        } catch (error: any) => {
+        } catch (error: any) {
             toast({ variant: 'destructive', title: '登録に失敗しました', description: error.message });
         } finally {
             setIsSubmitting(false);
@@ -488,6 +488,11 @@ export default function MyPage() {
                                     <li>作成したカードを公開・評価できる「カードギャラリー」</li>
                                     <li>特定のカードを禁止する「特殊レギュレーション」対戦</li>
                                     <li>ゲーム内BGMやSEのカスタマイズ機能</li>
+                                    <li>2vs2の「タッグバトル」モードの実装</li>
+                                    <li>ギルド間で対戦する「ギルドバトル」機能</li>
+                                    <li>大会モードの実装</li>
+                                    <li>観戦モードの実装</li>
+                                    <li>カードの3Dモデル表示機能</li>
                                 </ul>
                             </section>
                              <section>
@@ -516,3 +521,5 @@ export default function MyPage() {
         </div>
     );
 }
+
+    
