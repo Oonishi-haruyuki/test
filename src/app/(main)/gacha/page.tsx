@@ -138,9 +138,9 @@ export default function GachaPage() {
       </div>
 
       <div className="flex justify-center flex-wrap gap-4 mb-8">
-        <Button size="lg" onClick={() => handlePull(1, 0, ['common', 'rare'])} disabled={isPending || !canPullFreeGacha} variant="outline">
+        <Button size="lg" onClick={() => handlePull(10, 0, ['common', 'rare'])} disabled={isPending || !canPullFreeGacha} variant="outline">
             <Gift className="mr-2" />
-            無料ガチャを引く (1日1回)
+            無料10連ガチャを引く (1日1回)
         </Button>
         <AlertDialog>
             <AlertDialogTrigger asChild>
