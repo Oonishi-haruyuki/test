@@ -61,6 +61,7 @@ export default function BattlePage() {
     const [opponentDeck, setOpponentDeck] = useState<CardData[]>([]);
     const [winner, setWinner] = useState<'player' | 'opponent' | null>(null);
     const { profile } = useUser();
+    const { toast } = useToast();
 
     // The full battle state will be derived from a single state object
     // to make it easier to manage and pass to a self-contained component.
@@ -91,9 +92,15 @@ export default function BattlePage() {
             initialPlayerDeck: selectedPlayerDeck,
             initialOpponentDeck: selectedOpponentDeck,
             forcedDifficulty: selectedDifficulty,
-            onGameEnd: (result) => {
+            onGameEnd: (result, ratingResult) => {
                 setWinner(result === 'win' ? 'player' : 'opponent');
                 setGameState('finished');
+                 if (ratingResult) {
+                    toast({
+                        title: `レーティング変動: ${ratingResult.change > 0 ? '+' : ''}${ratingResult.change}`,
+                        description: `新しいレーティング: ${ratingResult.newRating}`
+                    });
+                }
             },
             gameRules: gameRules,
         });
@@ -287,6 +294,7 @@ function BattleView({ initialPlayerDeck, initialOpponentDeck, forcedDifficulty, 
     // Game State
     const [turn, setTurn] = useState(1);
     const [activePlayer, setActivePlayer] = useState<'player' | 'opponent'>('player');
+    const [gameStatus, setGameStatus] = useState<'active' | 'finished'>('active');
 
     const [playerHealth, setPlayerHealth] = useState(gameRules?.playerHealth || INITIAL_HEALTH);
     const [playerMana, setPlayerMana] = useState(1);
@@ -334,9 +342,9 @@ function BattleView({ initialPlayerDeck, initialOpponentDeck, forcedDifficulty, 
     }, [playerHealth, opponentHealth, playerMana, opponentMana, playerMaxMana, opponentMaxMana, playerHand, opponentHand, playerBoard, opponentBoard]);
 
     const handleGameEnd = useCallback(async (winner: 'player' | 'opponent') => {
-        if (onGameEnd) {
-            onGameEnd(winner === 'player' ? 'win' : 'loss');
-        }
+        setGameStatus('finished');
+        
+        let ratingResultData;
 
         if (user && profile) {
             if (winner === 'player') {
@@ -358,11 +366,7 @@ function BattleView({ initialPlayerDeck, initialOpponentDeck, forcedDifficulty, 
             }
             updateMissionProgress('play-game', 1);
 
-            const ratingResult = await updateUserRating(user.uid, forcedDifficulty!, winner === 'player' ? 'win' : 'loss');
-            toast({
-                title: `レーティング変動: ${ratingResult.change > 0 ? '+' : ''}${ratingResult.change}`,
-                description: `新しいレーティング: ${ratingResult.newRating}`
-            });
+            ratingResultData = await updateUserRating(user.uid, forcedDifficulty!, winner === 'player' ? 'win' : 'loss');
 
             // Save replay
              if (profile.loginId && initialPlayerDeck && initialOpponentDeck) {
@@ -376,6 +380,11 @@ function BattleView({ initialPlayerDeck, initialOpponentDeck, forcedDifficulty, 
                 });
              }
         }
+        
+        if (onGameEnd) {
+            onGameEnd(winner === 'player' ? 'win' : 'loss', ratingResultData);
+        }
+
     }, [onGameEnd, addWin, addLoss, updateMissionProgress, user, forcedDifficulty, toast, gameHistory, profile, isStoryMode, initialPlayerDeck, initialOpponentDeck, effectiveGameRules, addCurrency]);
 
 
@@ -498,7 +507,7 @@ function BattleView({ initialPlayerDeck, initialOpponentDeck, forcedDifficulty, 
     
     // Opponent's turn logic
     useEffect(() => {
-        if (!isPlayerTurn && gameState === 'active') {
+        if (!isPlayerTurn && gameStatus === 'active') {
             setIsOpponentThinking(true);
             const thinkTimer = setTimeout(() => {
 
@@ -557,7 +566,7 @@ function BattleView({ initialPlayerDeck, initialOpponentDeck, forcedDifficulty, 
             }, 2000); // Simulate thinking time
             return () => clearTimeout(thinkTimer);
         }
-    }, [isPlayerTurn, gameState]);
+    }, [isPlayerTurn, gameStatus]);
 
 
     useEffect(() => {
@@ -771,5 +780,3 @@ function PlayerArea({ isOpponent = false, health, mana, maxMana, handCount, deck
         </div>
     )
 }
-
-    

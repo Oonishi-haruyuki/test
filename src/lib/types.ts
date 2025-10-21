@@ -11,10 +11,16 @@ export interface GameRules {
     reward?: number;
 }
 
+export interface RatingResult {
+    oldRating: number;
+    newRating: number;
+    change: number;
+}
+
 export interface BattleProps {
   initialPlayerDeck?: CardData[];
   initialOpponentDeck?: CardData[];
   forcedDifficulty?: Difficulty;
-  onGameEnd?: (result: 'win' | 'loss') => void;
+  onGameEnd?: (result: 'win' | 'loss', ratingResult?: RatingResult) => void;
   gameRules?: GameRules;
 }
