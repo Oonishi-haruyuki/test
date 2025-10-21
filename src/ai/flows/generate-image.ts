@@ -10,9 +10,8 @@
  * @exports    GenerateImageOutput - The output type for the generateImage function.
  */
 
-import {ai} from '@/ai/genkit';
+import {ai, googleAI} from '@/ai/genkit';
 import {z} from 'genkit';
-import { googleAI } from '@genkit-ai/googleai';
 
 const GenerateImageInputSchema = z.object({
   prompt: z.string().describe('The text prompt to generate an image from.'),
