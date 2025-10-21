@@ -303,7 +303,7 @@ function BattleView({ initialPlayerDeck, initialOpponentDeck, forcedDifficulty, 
     const [opponentBoard, setOpponentBoard] = useState<CardData[]>([]);
     
     const [selectedCard, setSelectedCard] = useState<CardData | null>(null);
-    const [isPlayerTurn, setIsPlayerTurn] = useState(isStoryMode ? false : true);
+    
     const [statusMessage, setStatusMessage] = useState('対戦開始！');
     const [isOpponentThinking, setIsOpponentThinking] = useState(false);
     const [gameHistory, setGameHistory] = useState<GameHistoryEntry[]>([]);
@@ -311,6 +311,8 @@ function BattleView({ initialPlayerDeck, initialOpponentDeck, forcedDifficulty, 
 
     const searchParams = useSearchParams();
     const isStoryMode = searchParams.has('story');
+
+    const [isPlayerTurn, setIsPlayerTurn] = useState(isStoryMode ? false : true);
 
     const effectiveGameRules = useMemo(() => ({ ...defaultGameRules, ...gameRules }), [gameRules]);
 
