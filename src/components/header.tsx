@@ -27,6 +27,7 @@ const secondaryLinks = [
     { href: '/draft', label: 'ドラフト' },
     { href: '/trade', label: 'トレード' },
     { href: '/guild', label: 'ギルド' },
+    { href: '/guild-battle', label: 'ギルドバトル' },
     { href: '/rules', label: 'ルール' },
     { href: '/ranking', label: 'ランキング' },
     { href: '/minigame', label: 'ミニゲーム' },

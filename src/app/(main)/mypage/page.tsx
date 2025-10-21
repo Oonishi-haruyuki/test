@@ -57,7 +57,7 @@ const LoginPage = () => {
         try {
             await loginWithGoogle();
              toast({ title: 'Googleアカウントでログインしました' });
-        } catch (error: any) {
+        } catch (error: any) => {
             toast({ variant: 'destructive', title: 'Googleログインに失敗しました', description: error.message });
         } finally {
             setIsSubmitting(false);
@@ -99,7 +99,7 @@ const SignUpPage = () => {
         try {
             await signUpWithId(loginId, password);
             toast({ title: 'アカウントを登録しました', description: 'ログインしてください。' });
-        } catch (error: any) {
+        } catch (error: any) => {
             toast({ variant: 'destructive', title: '登録に失敗しました', description: error.message });
         } finally {
             setIsSubmitting(false);
@@ -483,7 +483,6 @@ export default function MyPage() {
                              <section>
                                 <h3 className="text-lg font-semibold mb-2 border-b pb-1">次回アップデート予告</h3>
                                 <ul className="list-disc list-inside space-y-1 text-muted-foreground">
-                                    <li>ギルド間で対戦する「ギルドバトル」機能</li>
                                     <li>カードに特殊な効果を付与する「エンチャント」システム</li>
                                     <li>日替わりで特殊なデッキと戦う「デイリーチャレンジ」</li>
                                     <li>作成したカードを公開・評価できる「カードギャラリー」</li>
@@ -517,4 +516,3 @@ export default function MyPage() {
         </div>
     );
 }
-
