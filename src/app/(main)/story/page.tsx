@@ -18,7 +18,6 @@ type Stage = {
     playerHealth: number;
     opponentHealth: number;
     boardLimit: number;
-    landLimit: number;
     disallowedCardTypes: string[];
   };
   reward: number;
@@ -45,7 +44,6 @@ const generateStages = (chapterId: number): Stage[] => {
                 playerHealth: 20,
                 opponentHealth: healthPool[i-1],
                 boardLimit: 3 + Math.floor(i/3),
-                landLimit: 2 + Math.floor(i/4),
                 disallowedCardTypes: i > 5 ? [] : ['artifact'],
             },
             reward: 10,
@@ -122,16 +120,14 @@ export default function StoryPage() {
 
   const handleStartStage = (stage: Stage) => {
     const params = new URLSearchParams({
-        story: 'true',
         stageId: stage.id,
         playerHealth: stage.rules.playerHealth.toString(),
         opponentHealth: stage.rules.opponentHealth.toString(),
         boardLimit: stage.rules.boardLimit.toString(),
-        landLimit: stage.rules.landLimit.toString(),
         disallowedCardTypes: stage.rules.disallowedCardTypes.join(','),
         reward: stage.reward.toString(),
     });
-    router.push(`/battle?${params.toString()}`);
+    router.push(`/story-battle?${params.toString()}`);
   };
 
   const handleClaimChapterReward = (chapter: Chapter) => {

@@ -6,7 +6,6 @@ export interface GameRules {
     playerHealth?: number;
     opponentHealth?: number;
     boardLimit?: number;
-    landLimit?: number;
     disallowedCardTypes?: (CardData['cardType'])[];
     stageId?: string;
     reward?: number;

@@ -50,7 +50,6 @@ const defaultGameRules: GameRules = {
   playerHealth: INITIAL_HEALTH,
   opponentHealth: INITIAL_HEALTH,
   boardLimit: 5,
-  landLimit: 5, // Not explicitly used, but can be
   disallowedCardTypes: [],
 }
 
@@ -77,7 +76,6 @@ export default function BattlePage() {
         const opponentHealth = searchParams.get('opponentHealth');
         const boardLimit = searchParams.get('boardLimit');
         const disallowedCardTypes = searchParams.get('disallowedCardTypes');
-        const landLimit = searchParams.get('landLimit'); // Get land limit for creatures
         const stageId = searchParams.get('stageId');
         const reward = searchParams.get('reward');
 
@@ -85,7 +83,6 @@ export default function BattlePage() {
         if (playerHealth) gameRules.playerHealth = parseInt(playerHealth, 10);
         if (opponentHealth) gameRules.opponentHealth = parseInt(opponentHealth, 10);
         if (boardLimit) gameRules.boardLimit = parseInt(boardLimit, 10);
-        if (landLimit) gameRules.landLimit = parseInt(landLimit, 10); // Pass land limit
         if (disallowedCardTypes) gameRules.disallowedCardTypes = disallowedCardTypes.split(',') as CardType[];
         if (stageId) gameRules.stageId = stageId;
         if (reward) gameRules.reward = parseInt(reward, 10);
@@ -138,9 +135,6 @@ function DeckSelection({ onStartGame }: { onStartGame: (deck: CardData[], diffic
     const [difficulty, setDifficulty] = useState<Difficulty>('beginner');
     const [isLoading, setIsLoading] = useState(false);
     const { toast } = useToast();
-    const searchParams = useSearchParams();
-
-    const isStoryMode = searchParams.has('story');
 
     useEffect(() => {
         try {
@@ -187,8 +181,8 @@ function DeckSelection({ onStartGame }: { onStartGame: (deck: CardData[], diffic
 
     return (
         <div className="max-w-4xl mx-auto">
-            <h1 className="text-3xl font-bold text-center mb-2">{isStoryMode ? "対戦準備" : "AI対戦"}</h1>
-            <p className="text-muted-foreground text-center mb-8">{isStoryMode ? "ストーリーに挑むデッキを選択してください。" : "使用するデッキとAIの難易度を選択してください。"}</p>
+            <h1 className="text-3xl font-bold text-center mb-2">AI対戦</h1>
+            <p className="text-muted-foreground text-center mb-8">使用するデッキとAIの難易度を選択してください。</p>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div>
