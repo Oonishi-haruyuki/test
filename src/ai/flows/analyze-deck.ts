@@ -21,6 +21,7 @@ const CardForAnalysisSchema = z.object({
   attack: z.number(),
   defense: z.number(),
   cardType: z.enum(['creature', 'spell', 'artifact', 'land']),
+  creatureType: z.enum(['none', 'angel', 'demon', 'machine']).optional().describe('クリーチャーの種族'),
   abilities: z.string(),
 });
 
@@ -49,7 +50,7 @@ const analyzeDeckPrompt = ai.definePrompt({
 
 デッキリスト:
 {{#each deck}}
-- {{name}} (コスト:{{manaCost}}, ATK:{{attack}}, DEF:{{defense}}, タイプ:{{cardType}}, 能力:{{abilities}})
+- {{name}} (コスト:{{manaCost}}, ATK:{{attack}}, DEF:{{defense}}, タイプ:{{cardType}}{{#if creatureType}} - {{creatureType}}{{/if}}, 能力:{{abilities}})
 {{/each}}
 
 分析項目:

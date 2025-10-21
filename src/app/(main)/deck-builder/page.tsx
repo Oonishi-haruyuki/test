@@ -153,6 +153,7 @@ export default function DeckBuilderPage() {
             attack: c.attack,
             defense: c.defense,
             cardType: c.cardType,
+            creatureType: c.creatureType,
             abilities: c.abilities,
         }));
         const result = await analyzeDeck({ deck: deckForAnalysis });

@@ -4,7 +4,7 @@ import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { Gem, Shield, Sparkles, Swords } from 'lucide-react';
 import Image from 'next/image';
-import type { CardData, Rarity, CardType } from './card-editor';
+import type { CardData, Rarity, CardType, CreatureType } from './card-editor';
 import React from 'react';
 
 const rarityColorVar: Record<Rarity, string> = {
@@ -28,6 +28,14 @@ const cardTypeJapanese: Record<CardType, string> = {
     land: '土地',
 };
 
+const creatureTypeJapanese: Record<CreatureType, string> = {
+    none: '',
+    angel: '天使',
+    demon: '悪魔',
+    machine: '機械',
+};
+
+
 export const CardPreview = React.forwardRef<HTMLDivElement, CardData>(({
   theme,
   name,
@@ -35,6 +43,7 @@ export const CardPreview = React.forwardRef<HTMLDivElement, CardData>(({
   attack,
   defense,
   cardType,
+  creatureType,
   rarity,
   abilities,
   flavorText,
@@ -110,7 +119,10 @@ export const CardPreview = React.forwardRef<HTMLDivElement, CardData>(({
               'flex justify-between items-center px-2 py-1 rounded-sm',
               frameImageUrl ? 'bg-black/30' : 'bg-card-foreground/10'
             )}>
-              <p className="font-semibold capitalize">{cardTypeJapanese[cardType]}</p>
+              <p className="font-semibold capitalize">
+                {cardTypeJapanese[cardType]}
+                {creatureType && creatureType !== 'none' && ` - ${creatureTypeJapanese[creatureType]}`}
+              </p>
               <div className="flex items-center gap-1.5">
                 <span className="text-xs font-bold uppercase">{rarityJapanese[rarity]}</span>
                 <Gem className="h-3 w-3" style={{ color: rarityColorVar[rarity] }} />
@@ -156,5 +168,3 @@ export const CardPreview = React.forwardRef<HTMLDivElement, CardData>(({
 });
 
 CardPreview.displayName = "CardPreview";
-
-    

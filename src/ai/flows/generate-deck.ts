@@ -21,6 +21,7 @@ const CardSchemaForGeneration = z.object({
     attack: z.number().describe('クリーチャーの攻撃力。呪文の場合は0。'),
     defense: z.number().describe('クリーチャーの防御力。呪文の場合は0。'),
     cardType: z.enum(['creature', 'spell']).describe('カードの種類。「クリーチャー」または「呪文」のいずれか。'),
+    creatureType: z.enum(['none', 'angel', 'demon', 'machine']).optional().describe('クリーチャーの場合の種族。「天使」「悪魔」「機械」または「なし」。呪文の場合は常に"none"。'),
     rarity: z.enum(['common', 'uncommon', 'rare', 'mythic']).describe('カードのレアリティ。「コモン」、「アンコモン」、「レア」、「神話レア」のいずれか。'),
     abilities: z.string().describe('カードの能力。簡潔に記述する。'),
     flavorText: z.string().describe('カードのフレーバーテキスト。世界観を表す短いテキスト。'),
@@ -53,6 +54,7 @@ const generateDeckPrompt = ai.definePrompt({
 
 以下のガイドラインに従って、多様なカードを生成してください:
 - クリーチャーカードと呪文カードをバランス良く含めてください。
+- クリーチャーカードを生成する際は、適切な種族(creatureType: 'angel', 'demon', 'machine' または 'none')を設定してください。呪文の場合はcreatureTypeを'none'にしてください。
 - マナコスト、レアリティを多様にしてください。
 - カード名はテーマに沿った、ユニークで喚情的なものにしてください。
 - 能力はテーマに合致し、面白く、バランスが取れているべきです。

@@ -38,6 +38,7 @@ import { useMissions } from '@/hooks/use-missions';
 // Type definitions
 export type Theme = 'fantasy' | 'sci-fi' | 'modern' | 'custom';
 export type CardType = 'creature' | 'spell' | 'artifact' | 'land';
+export type CreatureType = 'none' | 'angel' | 'demon' | 'machine';
 export type Rarity = 'common' | 'uncommon' | 'rare' | 'mythic';
 
 export interface CardData {
@@ -48,6 +49,7 @@ export interface CardData {
   attack: number;
   defense: number;
   cardType: CardType;
+  creatureType?: CreatureType;
   rarity: Rarity;
   abilities: string;
   flavorText: string;
@@ -411,6 +413,20 @@ export function CardEditor({ cardData, setCardData, cardPreviewRef }: CardEditor
                   </SelectContent>
                 </Select>
               </div>
+               {cardData.cardType === 'creature' && (
+                <div className="space-y-2">
+                    <Label>クリーチャー種族</Label>
+                    <Select name="creatureType" value={cardData.creatureType || 'none'} onValueChange={handleSelectChange('creatureType')}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="none">なし</SelectItem>
+                            <SelectItem value="angel">天使</SelectItem>
+                            <SelectItem value="demon">悪魔</SelectItem>
+                            <SelectItem value="machine">機械</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+               )}
               <div className="space-y-2">
                 <Label>レアリティ</Label>
                 <Select name="rarity" value={cardData.rarity} onValueChange={handleSelectChange('rarity')}>
@@ -579,5 +595,3 @@ export function CardEditor({ cardData, setCardData, cardPreviewRef }: CardEditor
       </div>
   );
 }
-
-    
