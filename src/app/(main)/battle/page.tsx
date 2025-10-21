@@ -285,11 +285,11 @@ function DeckSelection({ onStartGame }: { onStartGame: (deck: CardData[], diffic
 
 // Main Battle View Component
 function BattleView({ initialPlayerDeck, initialOpponentDeck, forcedDifficulty, onGameEnd, gameRules }: BattleProps) {
-    const { toast } = useToast();
     const { addWin, addLoss } = useStats();
     const { updateMissionProgress } = useMissions();
     const { user, profile } = useUser();
     const { addCurrency } = useCurrency();
+    const { toast } = useToast();
     
     // Game State
     const [turn, setTurn] = useState(1);
