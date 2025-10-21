@@ -3,7 +3,7 @@
 
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowRight, BrainCircuit, Bot, HelpCircle, Gamepad2, SortAsc, Brain } from 'lucide-react';
+import { ArrowRight, BrainCircuit, Bot, HelpCircle, Gamepad2, SortAsc, Brain, Shapes } from 'lucide-react';
 
 type Minigame = {
   title: string;
@@ -13,12 +13,6 @@ type Minigame = {
 };
 
 const minigames: Minigame[] = [
-    {
-        title: '神経衰弱',
-        description: '同じ絵柄のカードを揃えてGコインをゲット！',
-        href: '/minigame/memory',
-        icon: BrainCircuit,
-    },
     {
         title: 'ハイ＆ロー',
         description: '次のカードのマナは高い？低い？運試しで報酬ゲット！',
@@ -30,6 +24,12 @@ const minigames: Minigame[] = [
         description: 'カードの絵と名前からマナコストを当てよう！',
         href: '/minigame/guess-cost',
         icon: HelpCircle,
+    },
+    {
+        title: '種族当てクイズ',
+        description: 'カードの情報から種族（タイプ）を当てよう！',
+        href: '/minigame/guess-type',
+        icon: Shapes,
     },
 ];
 
