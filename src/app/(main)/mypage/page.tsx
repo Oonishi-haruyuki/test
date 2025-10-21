@@ -57,7 +57,8 @@ const LoginPage = () => {
         try {
             await loginWithGoogle();
              toast({ title: 'Googleアカウントでログインしました' });
-        } catch (error: any)             toast({ variant: 'destructive', title: 'Googleログインに失敗しました', description: error.message });
+        } catch (error: any) {
+            toast({ variant: 'destructive', title: 'Googleログインに失敗しました', description: error.message });
         } finally {
             setIsSubmitting(false);
         }
