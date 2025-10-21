@@ -11,7 +11,6 @@ import { shopItems, type ShopItem } from '@/lib/shop-items';
 import Image from 'next/image';
 import { Coins, CheckCircle } from 'lucide-react';
 import { useUser } from '@/firebase';
-import { useInventory } from '@/hooks/use-inventory';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,7 +23,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 
-type ItemCategory = 'frames' | 'backs' | 'artifacts' | 'animations' | 'materials';
+type ItemCategory = 'frames' | 'backs' | 'artifacts' | 'animations';
 
 type PurchasedItems = Record<ItemCategory, Set<string>>;
 
@@ -35,7 +34,6 @@ const ShopCategory = ({ category, title, purchasedItems, currency, handlePurchas
     currency: number,
     handlePurchase: (item: ShopItem, category: ItemCategory) => void 
 }) => {
-    const { inventory } = useInventory();
     return (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {(shopItems[category]).map(item => (
@@ -52,12 +50,9 @@ const ShopCategory = ({ category, title, purchasedItems, currency, handlePurchas
                             <Coins className="h-5 w-5"/>
                             <span>{item.price.toLocaleString()} G</span>
                         </div>
-                        {category === 'materials' && (
-                            <p className="text-sm text-muted-foreground mt-2">所持数: {inventory[item.id] || 0}</p>
-                        )}
                     </CardContent>
                     <div className="p-4 border-t">
-                        {purchasedItems[category]?.has(item.id) && category !== 'materials' ? (
+                        {purchasedItems[category]?.has(item.id) ? (
                             <Button disabled className="w-full">
                                 <CheckCircle className="mr-2" />
                                 購入済み
@@ -92,14 +87,12 @@ export default function ShopPage() {
     const { user } = useUser();
     const { currency, spendCurrency } = useCurrency();
     const { toast } = useToast();
-    const { inventory, addItem } = useInventory();
     
     const [purchasedItems, setPurchasedItems] = useState<PurchasedItems>({
         frames: new Set(['frame-default']),
         backs: new Set(['back-default']),
         artifacts: new Set(),
         animations: new Set(['anim-flip']),
-        materials: new Set(),
     });
 
     useEffect(() => {
@@ -115,12 +108,11 @@ export default function ShopPage() {
                 backs: savedBacks,
                 artifacts: savedArtifacts,
                 animations: savedAnimations,
-                materials: new Set(Object.keys(inventory)),
             });
         } catch (e) {
             console.error("Failed to load purchased items", e);
         }
-    }, [user, inventory]);
+    }, [user]);
 
     const handlePurchase = (item: ShopItem, category: ItemCategory) => {
         if (currency < item.price) {
@@ -133,24 +125,20 @@ export default function ShopPage() {
              return;
         }
 
-        if (category === 'materials') {
-            addItem(item.id, 1);
-        } else {
-             const newPurchased = new Set(purchasedItems[category]);
-             newPurchased.add(item.id);
-     
-             const updatedItems = { ...purchasedItems, [category]: newPurchased };
-             setPurchasedItems(updatedItems);
-     
-             try {
-                if (category === 'frames') localStorage.setItem('purchasedCardFrames', JSON.stringify(Array.from(newPurchased)));
-                if (category === 'backs') localStorage.setItem('purchasedCardBacks', JSON.stringify(Array.from(newPurchased)));
-                if (category === 'artifacts') localStorage.setItem('purchasedArtifacts', JSON.stringify(Array.from(newPurchased)));
-                if (category === 'animations') localStorage.setItem('purchasedAnimations', JSON.stringify(Array.from(newPurchased)));
+        const newPurchased = new Set(purchasedItems[category]);
+        newPurchased.add(item.id);
 
-             } catch (e) {
-                 console.error("Failed to save purchase", e);
-             }
+        const updatedItems = { ...purchasedItems, [category]: newPurchased };
+        setPurchasedItems(updatedItems);
+
+        try {
+           if (category === 'frames') localStorage.setItem('purchasedCardFrames', JSON.stringify(Array.from(newPurchased)));
+           if (category === 'backs') localStorage.setItem('purchasedCardBacks', JSON.stringify(Array.from(newPurchased)));
+           if (category === 'artifacts') localStorage.setItem('purchasedArtifacts', JSON.stringify(Array.from(newPurchased)));
+           if (category === 'animations') localStorage.setItem('purchasedAnimations', JSON.stringify(Array.from(newPurchased)));
+
+        } catch (e) {
+            console.error("Failed to save purchase", e);
         }
 
 
@@ -176,18 +164,16 @@ export default function ShopPage() {
             <p className="text-muted-foreground mb-6">Gコインを使って、新しいカスタマイズアイテムや便利な道具を手に入れよう。</p>
             
             <Tabs defaultValue="frames" className="w-full">
-                <TabsList className="grid w-full grid-cols-5 mb-6">
+                <TabsList className="grid w-full grid-cols-4 mb-6">
                     <TabsTrigger value="frames">カード表面</TabsTrigger>
                     <TabsTrigger value="backs">カード裏面</TabsTrigger>
                     <TabsTrigger value="artifacts">アーティファクト</TabsTrigger>
                     <TabsTrigger value="animations">演出</TabsTrigger>
-                    <TabsTrigger value="materials">素材</TabsTrigger>
                 </TabsList>
                 <TabsContent value="frames"><ShopCategory category="frames" title="カード表面" {...commonShopCategoryProps} /></TabsContent>
                 <TabsContent value="backs"><ShopCategory category="backs" title="カード裏面" {...commonShopCategoryProps} /></TabsContent>
                 <TabsContent value="artifacts"><ShopCategory category="artifacts" title="アーティファクト" {...commonShopCategoryProps} /></TabsContent>
                 <TabsContent value="animations"><ShopCategory category="animations" title="演出" {...commonShopCategoryProps} /></TabsContent>
-                <TabsContent value="materials"><ShopCategory category="materials" title="素材" {...commonShopCategoryProps} /></TabsContent>
             </Tabs>
         </div>
     );

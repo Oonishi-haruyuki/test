@@ -33,7 +33,6 @@ export const signUpWithId = async (loginId: string, password: string): Promise<v
             loginId: loginId.trim(),
             rating: 1000,
             lastMatchDate: new Date(0).toISOString(),
-            inventory: {},
         });
     }
 };
@@ -69,7 +68,6 @@ export const loginWithGoogle = async (): Promise<void> => {
                 loginId: user.displayName || user.email || `user_${user.uid.substring(0,5)}`,
                 rating: 1000,
                 lastMatchDate: new Date(0).toISOString(),
-                inventory: {},
              });
         }
     } catch (error: any) {

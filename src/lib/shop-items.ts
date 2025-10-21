@@ -12,7 +12,6 @@ interface ShopItems {
     backs: ShopItem[];
     artifacts: ShopItem[];
     animations: ShopItem[];
-    materials: ShopItem[];
 }
 
 export const shopItems: ShopItems = {
@@ -131,13 +130,4 @@ export const shopItems: ShopItems = {
             price: 2000,
         }
     ],
-    materials: [
-        {
-            id: 'dragon-soul',
-            name: '竜の魂',
-            description: 'ドラゴンの進化に必要とされる貴重な素材。',
-            url: 'https://storage.googleapis.com/card-crafter-studio.appspot.com/materials/dragon_soul.png',
-            price: 2500,
-        }
-    ]
 };

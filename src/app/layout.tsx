@@ -6,7 +6,6 @@ import { ReactNode } from "react";
 import { CurrencyProvider } from "@/components/currency-provider";
 import { StatsProvider } from "@/components/stats-provider";
 import { MissionsProvider } from "@/components/missions-provider";
-import { InventoryProvider } from "@/components/inventory-provider";
 import { Toaster } from "@/components/ui/toaster";
 
 export const metadata: Metadata = {
@@ -28,14 +27,12 @@ export default function RootLayout({
           <CurrencyProvider>
             <StatsProvider>
               <MissionsProvider>
-                <InventoryProvider>
                   <div className="min-h-screen bg-background text-foreground">
                     <div className="container mx-auto px-4 py-8">
                       {children}
                     </div>
                     <Toaster />
                   </div>
-                </InventoryProvider>
               </MissionsProvider>
             </StatsProvider>
           </CurrencyProvider>
