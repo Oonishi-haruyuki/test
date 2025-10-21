@@ -114,4 +114,3 @@
 -   `/guilds/{guildId}`: ギルド情報（名前, メンバーリストなど）
 -   `/guilds/{guildId}/messages/{messageId}`: ギルドのチャットメッセージ
 -   `/replays/{replayId}`: 対戦のリプレイデータ
-
