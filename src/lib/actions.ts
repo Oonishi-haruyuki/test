@@ -1,7 +1,7 @@
 
 'use server';
 
-import { getFirestore, collection, query, where, limit, getDocs, doc, setDoc, updateDoc, writeBatch, serverTimestamp } from 'firebase/firestore';
+import { getFirestore, collection, query, where, limit, getDocs, doc, setDoc, updateDoc, writeBatch, serverTimestamp, runTransaction as firestoreRunTransaction } from 'firebase/firestore';
 import { initializeFirebase } from '@/firebase';
 import type { CardData } from '@/components/card-editor';
 
@@ -64,6 +64,7 @@ export async function findOrCreateGame(userId: string, userLoginId: string, deck
             player2MaxMana: 1,
             createdAt: serverTimestamp(),
             lastAction: `${userLoginId} が対戦相手を待っています...`,
+            lastEmote: null,
         });
 
         return gameId;
@@ -75,7 +76,7 @@ export async function playCardAction(gameId: string, card: CardData, playerId: s
     const gameRef = doc(firestore, 'games', gameId);
     
     try {
-        await runTransaction(firestore, async (transaction) => {
+        await firestoreRunTransaction(firestore, async (transaction) => {
             const gameDoc = await transaction.get(gameRef);
             if (!gameDoc.exists()) throw new Error('Game not found');
             const gameData = gameDoc.data();
@@ -130,7 +131,7 @@ export async function endTurnAction(gameId: string, playerId: string) {
     const gameRef = doc(firestore, 'games', gameId);
     
     try {
-        await runTransaction(firestore, async (transaction) => {
+        await firestoreRunTransaction(firestore, async (transaction) => {
             const gameDoc = await transaction.get(gameRef);
             if (!gameDoc.exists()) throw new Error('Game not found');
             const gameData = gameDoc.data();
@@ -190,7 +191,7 @@ export async function attackAction(gameId: string, playerId: string) {
     
     try {
         let shouldEndTurn = true;
-        await runTransaction(firestore, async (transaction) => {
+        await firestoreRunTransaction(firestore, async (transaction) => {
             const gameDoc = await transaction.get(gameRef);
             if (!gameDoc.exists()) throw new Error('Game not found');
             const gameData = gameDoc.data();
@@ -236,5 +237,23 @@ export async function attackAction(gameId: string, playerId: string) {
 
     } catch (error) {
         console.error("Attack action failed:", error);
+    }
+}
+
+
+export async function sendEmoteAction(gameId: string, senderId: string, emoteId: string) {
+    const { firestore } = initializeFirebase();
+    const gameRef = doc(firestore, 'games', gameId);
+
+    try {
+        await updateDoc(gameRef, {
+            lastEmote: {
+                id: emoteId,
+                senderId: senderId,
+                timestamp: serverTimestamp() // To ensure it's a new emote
+            }
+        });
+    } catch (error) {
+        console.error("Send emote action failed:", error);
     }
 }

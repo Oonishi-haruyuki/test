@@ -9,8 +9,8 @@ import { doc, onSnapshot } from 'firebase/firestore';
 import type { CardData } from '@/components/card-editor';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Swords, Shield, Heart, Sparkles, Play, SkipForward } from 'lucide-react';
-import { playCardAction, endTurnAction, attackAction } from '@/lib/actions';
+import { Swords, Heart, Sparkles, Play, SkipForward, MessageSquare } from 'lucide-react';
+import { playCardAction, endTurnAction, attackAction, sendEmoteAction } from '@/lib/actions';
 import { CardPreview } from '@/components/card-preview';
 import {
   AlertDialog,
@@ -23,9 +23,13 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { cn } from '@/lib/utils';
-import { useMissions } from '@/hooks/use-missions';
-import { useStats } from '@/hooks/use-stats';
-import { updateUserRating } from '@/lib/rating-system';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { emotes, type Emote } from '@/lib/emotes';
+
+interface EmoteState {
+  id: string;
+  senderId: string;
+}
 
 interface GameState {
     id: string;
@@ -40,6 +44,7 @@ interface GameState {
     activePlayerId: string;
     winnerId?: string;
     lastAction: string;
+    lastEmote: EmoteState | null;
     player1Deck: CardData[];
     player2Deck: CardData[];
     player1Hand: CardData[];
@@ -53,14 +58,13 @@ interface GameState {
 }
 
 export default function OnlineBattlePage({ params }: { params: { gameId: string } }) {
-    const { user, profile } = useUser();
+    const { user } = useUser();
     const router = useRouter();
     const { toast } = useToast();
     const [gameState, setGameState] = useState<GameState | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [selectedCard, setSelectedCard] = useState<CardData | null>(null);
-    const { addWin, addLoss } = useStats();
-    const { updateMissionProgress } = useMissions();
+    const [activeEmote, setActiveEmote] = useState<{ emote: Emote, sender: string } | null>(null);
 
     useEffect(() => {
         if (!params.gameId) {
@@ -74,6 +78,16 @@ export default function OnlineBattlePage({ params }: { params: { gameId: string 
         const unsubscribe = onSnapshot(gameRef, (docSnap) => {
             if (docSnap.exists()) {
                 const gameData = { id: docSnap.id, ...docSnap.data() } as GameState;
+                
+                // Emote logic
+                if (gameData.lastEmote && gameState?.lastEmote?.id !== gameData.lastEmote.id) {
+                    const emote = emotes.find(e => e.id === gameData.lastEmote!.id);
+                    if (emote) {
+                        const senderName = gameData.lastEmote.senderId === gameData.player1Id ? gameData.player1LoginId : gameData.player2LoginId;
+                        showEmote(emote, senderName);
+                    }
+                }
+
                 setGameState(gameData);
 
                 if (gameData.status === 'finished' && user) {
@@ -92,7 +106,12 @@ export default function OnlineBattlePage({ params }: { params: { gameId: string 
         });
 
         return () => unsubscribe();
-    }, [params.gameId, user, toast]);
+    }, [params.gameId, user, toast, gameState]);
+
+    const showEmote = (emote: Emote, senderName: string) => {
+        setActiveEmote({ emote, sender: senderName });
+        setTimeout(() => setActiveEmote(null), 3000);
+    };
 
     const handlePlayCard = async (card: CardData) => {
         if (!user || !gameState || user.uid !== gameState.activePlayerId) return;
@@ -110,6 +129,11 @@ export default function OnlineBattlePage({ params }: { params: { gameId: string 
         await attackAction(gameState.id, user.uid);
     }
     
+    const handleEmoteSelect = async (emote: Emote) => {
+        if (!user || !gameState) return;
+        await sendEmoteAction(gameState.id, user.uid, emote.id);
+    }
+
     if (isLoading) {
         return <div className="flex justify-center items-center h-screen">対戦情報を読み込み中...</div>;
     }
@@ -141,6 +165,7 @@ export default function OnlineBattlePage({ params }: { params: { gameId: string 
     const myTurn = user?.uid === gameState.activePlayerId;
 
     const myState = {
+        loginId: isPlayer1 ? gameState.player1LoginId : gameState.player2LoginId,
         health: isPlayer1 ? gameState.player1Health : gameState.player2Health,
         mana: isPlayer1 ? gameState.player1Mana : gameState.player2Mana,
         maxMana: isPlayer1 ? gameState.player1MaxMana : gameState.player2MaxMana,
@@ -158,7 +183,19 @@ export default function OnlineBattlePage({ params }: { params: { gameId: string 
     };
 
     return (
-        <div className="flex flex-col h-[calc(100vh-10rem)] w-full max-w-7xl mx-auto bg-gray-800 text-white p-4 rounded-lg shadow-2xl">
+        <div className="flex flex-col h-[calc(100vh-10rem)] w-full max-w-7xl mx-auto bg-gray-800 text-white p-4 rounded-lg shadow-2xl relative">
+            
+            {/* Emote Display */}
+            {activeEmote && (
+                <div className="absolute inset-0 z-50 flex items-center justify-center pointer-events-none">
+                    <div className="bg-black/70 rounded-xl p-6 flex flex-col items-center gap-2 animate-in fade-in zoom-in-50">
+                        <activeEmote.emote.icon size={48} className="text-white" />
+                        <p className="text-xl font-bold">{activeEmote.emote.label}</p>
+                        <p className="text-sm text-muted-foreground">{activeEmote.sender}</p>
+                    </div>
+                </div>
+            )}
+
             {/* Opponent Area */}
             <PlayerArea isOpponent {...opponentState} />
             
@@ -169,12 +206,9 @@ export default function OnlineBattlePage({ params }: { params: { gameId: string 
 
             {/* My Area */}
             <PlayerArea 
-                health={myState.health}
-                mana={myState.mana}
-                maxMana={myState.maxMana}
-                hand={myState.hand}
-                board={myState.board}
+                {...myState}
                 onCardClick={setSelectedCard}
+                onEmoteSelect={handleEmoteSelect}
             />
 
             {/* Player Actions */}
@@ -223,13 +257,13 @@ export default function OnlineBattlePage({ params }: { params: { gameId: string 
     )
 }
 
-function PlayerArea({ isOpponent = false, loginId, health, mana, maxMana, handCount, hand, board, onCardClick }: any) {
+function PlayerArea({ isOpponent = false, loginId, health, mana, maxMana, handCount, hand, board, onCardClick, onEmoteSelect }: any) {
     return (
         <div className={cn('flex-1 flex flex-col', isOpponent ? 'flex-col-reverse' : '')}>
             <div className="flex justify-center items-center h-48">
                  {hand ? (
                      hand.map((card: CardData, i: number) => (
-                        <div key={i} onClick={() => onCardClick?.(card)} className="cursor-pointer hover:scale-105 hover:-translate-y-4 transition-transform duration-200">
+                        <div key={card.id || i} onClick={() => onCardClick?.(card)} className="cursor-pointer hover:scale-105 hover:-translate-y-4 transition-transform duration-200">
                              <CardPreview {...card} />
                         </div>
                      ))
@@ -243,14 +277,31 @@ function PlayerArea({ isOpponent = false, loginId, health, mana, maxMana, handCo
             </div>
             <div className="flex-1 bg-black/20 rounded-lg p-2 flex items-center">
                 <div className="flex items-center gap-4 w-full">
-                    <div className="flex flex-col items-center gap-4 w-32">
-                        {isOpponent && <p className="font-bold truncate">{loginId}</p>}
+                    <div className="flex flex-col items-center justify-between h-full gap-4 w-32">
+                        <p className="font-bold truncate">{loginId}</p>
                         <div className="flex items-center gap-2 text-2xl font-bold"><Heart className="text-red-500 fill-red-500"/> {health}</div>
                         <div className="flex items-center gap-2 text-2xl font-bold"><Sparkles className="text-blue-400 fill-blue-400"/> <span>{mana}/{maxMana}</span></div>
+                        {!isOpponent && (
+                             <Popover>
+                                <PopoverTrigger asChild>
+                                    <Button variant="outline" size="icon" className="rounded-full"><MessageSquare /></Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-2">
+                                    <div className="grid grid-cols-2 gap-2">
+                                        {emotes.map(emote => (
+                                            <Button key={emote.id} variant="ghost" className="flex flex-col h-auto p-2" onClick={() => onEmoteSelect(emote)}>
+                                                <emote.icon size={24} />
+                                                <span className="text-xs">{emote.label}</span>
+                                            </Button>
+                                        ))}
+                                    </div>
+                                </PopoverContent>
+                            </Popover>
+                        )}
                     </div>
                     <div className="flex-1 grid grid-cols-5 gap-2">
                         {board.map((card: CardData, i: number) => (
-                            <div key={i} className={cn("transition-all")}>
+                            <div key={card.id || i} className={cn("transition-all")}>
                                 <CardPreview {...card} />
                             </div>
                         ))}

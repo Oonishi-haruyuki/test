@@ -6,7 +6,7 @@ import type { CardData, Rarity, CardType } from '@/components/card-editor';
 import { CardPreview } from '@/components/card-preview';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Swords, Shield, Heart, Sparkles, Bot, Clock, Play, SkipForward, Loader2 } from 'lucide-react';
+import { Swords, Shield, Heart, Sparkles, Bot, Clock, Play, SkipForward, Loader2, MessageSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Progress } from '@/components/ui/progress';
 import { useSearchParams } from 'next/navigation';
@@ -18,6 +18,8 @@ import { updateUserRating } from '@/lib/rating-system';
 import { useUser } from '@/firebase';
 import type { BattleProps, Difficulty, GameRules } from '@/lib/types';
 import { saveReplay, type GameHistoryEntry } from '@/lib/replay-actions';
+import { emotes, type Emote } from '@/lib/emotes';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -277,6 +279,7 @@ function BattleView({ initialPlayerDeck, initialOpponentDeck, forcedDifficulty, 
     const [statusMessage, setStatusMessage] = useState('対戦開始！');
     const [isOpponentThinking, setIsOpponentThinking] = useState(false);
     const [gameHistory, setGameHistory] = useState<GameHistoryEntry[]>([]);
+    const [activeEmote, setActiveEmote] = useState<{ emote: Emote, sender: 'player' | 'opponent' } | null>(null);
 
     const searchParams = useSearchParams();
     const isStoryMode = searchParams.has('story');
@@ -533,8 +536,36 @@ function BattleView({ initialPlayerDeck, initialOpponentDeck, forcedDifficulty, 
         }
     }, [playerHealth, opponentHealth, handleGameEnd]);
 
+    const showEmote = (emote: Emote, sender: 'player' | 'opponent') => {
+        setActiveEmote({ emote, sender });
+        setTimeout(() => setActiveEmote(null), 3000);
+    };
+
+    const handleEmoteSelect = (emote: Emote) => {
+        showEmote(emote, 'player');
+        // AI responds to certain emotes
+        if (emote.id === 'hello') {
+            setTimeout(() => showEmote(emotes.find(e => e.id === 'hello')!, 'opponent'), 1000);
+        }
+        if (emote.id === 'thanks') {
+            setTimeout(() => showEmote(emotes.find(e => e.id === 'gg')!, 'opponent'), 1000);
+        }
+    };
+
+
     return (
-        <div className="flex flex-col h-[calc(100vh-10rem)] w-full max-w-7xl mx-auto bg-gray-800 text-white p-4 rounded-lg shadow-2xl">
+        <div className="flex flex-col h-[calc(100vh-10rem)] w-full max-w-7xl mx-auto bg-gray-800 text-white p-4 rounded-lg shadow-2xl relative">
+
+             {/* Emote Display */}
+             {activeEmote && (
+                <div className="absolute inset-0 z-50 flex items-center justify-center pointer-events-none">
+                    <div className="bg-black/70 rounded-xl p-6 flex flex-col items-center gap-2 animate-in fade-in zoom-in-50">
+                        <activeEmote.icon size={48} className="text-white" />
+                        <p className="text-xl font-bold">{activeEmote.emote.label}</p>
+                        <p className="text-sm text-muted-foreground">{activeEmote.sender === 'player' ? profile?.loginId : 'AI'}</p>
+                    </div>
+                </div>
+            )}
 
             {/* Opponent's Area */}
             <PlayerArea
@@ -546,6 +577,7 @@ function BattleView({ initialPlayerDeck, initialOpponentDeck, forcedDifficulty, 
                 deckCount={opponentDeck.length}
                 board={opponentBoard}
                 gameRules={effectiveGameRules}
+                onEmoteSelect={(emote) => showEmote(emote, 'opponent')}
             />
 
             {/* Middle Area */}
@@ -565,6 +597,7 @@ function BattleView({ initialPlayerDeck, initialOpponentDeck, forcedDifficulty, 
                 hand={playerHand}
                 onCardClick={setSelectedCard}
                 gameRules={effectiveGameRules}
+                onEmoteSelect={handleEmoteSelect}
             />
 
             {/* Player Actions */}
@@ -628,9 +661,10 @@ interface PlayerAreaProps {
   hand?: CardData[];
   onCardClick?: (card: CardData) => void;
   gameRules: GameRules;
+  onEmoteSelect: (emote: Emote) => void;
 }
 
-function PlayerArea({ isOpponent = false, health, mana, maxMana, handCount, deckCount, board, hand, onCardClick, gameRules }: PlayerAreaProps) {
+function PlayerArea({ isOpponent = false, health, mana, maxMana, handCount, deckCount, board, hand, onCardClick, gameRules, onEmoteSelect }: PlayerAreaProps) {
     const boardLimit = gameRules.boardLimit || 5;
 
     return (
@@ -655,8 +689,8 @@ function PlayerArea({ isOpponent = false, health, mana, maxMana, handCount, deck
             {/* Board */}
             <div className="flex-1 bg-black/20 rounded-lg p-2 flex items-center">
                  <div className="flex items-center gap-4 w-full">
-                    {/* Stats */}
-                     <div className="flex flex-col items-center gap-4 w-32">
+                    {/* Stats & Emotes */}
+                     <div className="flex flex-col items-center justify-between gap-4 w-32 h-full">
                          <div className="flex items-center gap-2 text-2xl font-bold">
                             <Heart className="text-red-500 fill-red-500"/> 
                             {health}
@@ -665,6 +699,25 @@ function PlayerArea({ isOpponent = false, health, mana, maxMana, handCount, deck
                             <Sparkles className="text-blue-400 fill-blue-400"/> 
                             <span>{mana}/{maxMana}</span>
                          </div>
+
+                        {!isOpponent && (
+                             <Popover>
+                                <PopoverTrigger asChild>
+                                    <Button variant="outline" size="icon" className="rounded-full"><MessageSquare /></Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-2">
+                                    <div className="grid grid-cols-2 gap-2">
+                                        {emotes.map(emote => (
+                                            <Button key={emote.id} variant="ghost" className="flex flex-col h-auto p-2" onClick={() => onEmoteSelect(emote)}>
+                                                <emote.icon size={24} />
+                                                <span className="text-xs">{emote.label}</span>
+                                            </Button>
+                                        ))}
+                                    </div>
+                                </PopoverContent>
+                            </Popover>
+                        )}
+                        
                          <div className="text-center">
                             <p>デッキ</p>
                             <p>{deckCount}</p>
