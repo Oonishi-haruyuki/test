@@ -461,12 +461,12 @@ function BattleView({ initialPlayerDeck, initialOpponentDeck, forcedDifficulty, 
             if (card.abilities.includes('引く')) {
                 const drawCount = (card.abilities.match(/(\d+)枚引く/) || [])[1] || '1';
                 let newDeck = playerDeck;
-                let newHand = newHand;
+                let latestHand = newHand;
                 for (let i = 0; i < parseInt(drawCount); i++) {
-                    [newDeck, newHand] = drawCard(newDeck, newHand);
+                    [newDeck, latestHand] = drawCard(newDeck, latestHand);
                 }
                 setPlayerDeck(newDeck);
-                setPlayerHand(newHand);
+                setPlayerHand(latestHand);
             }
              if (card.abilities.includes('ダメージ')) {
                 const damage = parseInt((card.abilities.match(/(\d+)ダメージ/) || [])[1] || '0');

@@ -39,10 +39,10 @@ const generateImageFlow = ai.defineFlow(
         prompt: `Generate a card game artwork with the following theme: ${prompt}. Fantasy art style.`,
     });
     
-    if (!media?.url) {
+    const imageUrl = media?.url;
+    if (!imageUrl) {
         throw new Error('Image generation failed.');
     }
-    const imageUrl = media.url;
 
     return { imageUrl };
   }
