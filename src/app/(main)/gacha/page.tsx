@@ -1,13 +1,13 @@
 
 'use client';
 
-import { useState, useTransition } from 'react';
-import type { CardData } from '@/components/card-editor';
+import { useState, useTransition, useEffect } from 'react';
+import type { CardData, Rarity } from '@/components/card-editor';
 import { CardPreview } from '@/components/card-preview';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { generateGachaPull, type GenerateGachaPullOutput } from '@/ai/flows/generate-gacha-pull';
-import { Loader2, Dices, Save } from 'lucide-react';
+import { Loader2, Dices, Save, Gift } from 'lucide-react';
 import { useCurrency } from '@/hooks/use-currency';
 import {
   AlertDialog,
@@ -35,9 +35,19 @@ export default function GachaPage() {
   const { toast } = useToast();
   const { currency, spendCurrency } = useCurrency();
   const { updateMissionProgress } = useMissions();
+  const [canPullFreeGacha, setCanPullFreeGacha] = useState(false);
 
-  const handlePull = (count: number, cost: number) => {
-    if (currency < cost) {
+  useEffect(() => {
+    const lastPullDate = localStorage.getItem('lastFreeGachaPull');
+    const today = new Date().toDateString();
+    if (lastPullDate !== today) {
+      setCanPullFreeGacha(true);
+    }
+  }, []);
+
+
+  const handlePull = (count: number, cost: number, allowedRarities?: Rarity[]) => {
+    if (cost > 0 && currency < cost) {
       toast({
         variant: 'destructive',
         title: 'Gコインが足りません！',
@@ -47,19 +57,25 @@ export default function GachaPage() {
     }
     
     startTransition(async () => {
-      if (!spendCurrency(cost)) {
+      if (cost > 0 && !spendCurrency(cost)) {
         toast({
             variant: 'destructive',
             title: 'Gコインの支払いに失敗しました。',
         });
         return;
       }
+      
+      if (cost === 0) { // Free gacha logic
+        const today = new Date().toDateString();
+        localStorage.setItem('lastFreeGachaPull', today);
+        setCanPullFreeGacha(false);
+      }
     
       setPulledCards([]);
       setAnimationState({});
 
       try {
-        const result: GenerateGachaPullOutput = await generateGachaPull({ count });
+        const result: GenerateGachaPullOutput = await generateGachaPull({ count, allowedRarities });
         const newCards = result.cards.map(card => ({
             ...card,
             id: self.crypto.randomUUID(),
@@ -121,7 +137,11 @@ export default function GachaPage() {
         <p className="text-muted-foreground mt-2">運命の一枚を引き当てよう！</p>
       </div>
 
-      <div className="flex justify-center gap-4 mb-8">
+      <div className="flex justify-center flex-wrap gap-4 mb-8">
+        <Button size="lg" onClick={() => handlePull(1, 0, ['common', 'rare'])} disabled={isPending || !canPullFreeGacha} variant="outline">
+            <Gift className="mr-2" />
+            無料ガチャを引く (1日1回)
+        </Button>
         <AlertDialog>
             <AlertDialogTrigger asChild>
                 <Button size="lg" disabled={isPending}><Dices />1回引く ({PULL_COST}G)</Button>

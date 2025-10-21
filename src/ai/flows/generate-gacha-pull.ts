@@ -32,6 +32,7 @@ type CardForGacha = z.infer<typeof CardSchemaForGacha>;
 
 const GenerateGachaPullInputSchema = z.object({
   count: z.number().describe('生成するカードの枚数。'),
+  allowedRarities: z.array(z.enum(['common', 'uncommon', 'rare', 'mythic'])).optional().describe('許可されるレアリティのリスト。指定しない場合は全レアリティが対象。'),
 });
 export type GenerateGachaPullInput = z.infer<typeof GenerateGachaPullInputSchema>;
 
@@ -75,7 +76,7 @@ const generateGachaPullFlow = ai.defineFlow(
     inputSchema: GenerateGachaPullInputSchema,
     outputSchema: GenerateGachaPullOutputSchema,
   },
-  async ({ count }) => {
+  async ({ count, allowedRarities }) => {
     const rarityProbabilities: { [key in Rarity]: number } = {
         common: 0.75,
         uncommon: 0.20,
@@ -84,16 +85,34 @@ const generateGachaPullFlow = ai.defineFlow(
     };
 
     const determineRarity = (): Rarity => {
-        const rand = Math.random();
-        let cumulative = 0;
-        for (const r in rarityProbabilities) {
-            const rarity = r as Rarity;
-            cumulative += rarityProbabilities[rarity];
-            if (rand < cumulative) {
-                return rarity;
+        let probabilities = rarityProbabilities;
+        let availableRarities: Rarity[] = ['common', 'uncommon', 'rare', 'mythic'];
+
+        if (allowedRarities && allowedRarities.length > 0) {
+            availableRarities = allowedRarities;
+            const total = availableRarities.reduce((sum, r) => sum + (rarityProbabilities[r] || 0), 0);
+            if (total > 0) {
+                 probabilities = {} as { [key in Rarity]: number };
+                 availableRarities.forEach(r => {
+                     probabilities[r] = (rarityProbabilities[r] || 0) / total;
+                 });
+            } else {
+                // If filtered rarities have no probability, distribute equally.
+                 availableRarities.forEach(r => {
+                     probabilities[r] = 1 / availableRarities.length;
+                 });
             }
         }
-        return 'common'; // Fallback
+
+        const rand = Math.random();
+        let cumulative = 0;
+        for (const r of availableRarities) {
+            cumulative += probabilities[r] || 0;
+            if (rand < cumulative) {
+                return r;
+            }
+        }
+        return availableRarities[availableRarities.length - 1] || 'common'; // Fallback
     };
     
     const cardPromises: Promise<CardForGacha>[] = [];
@@ -122,5 +141,3 @@ const generateGachaPullFlow = ai.defineFlow(
 export async function generateGachaPull(input: GenerateGachaPullInput): Promise<GenerateGachaPullOutput> {
     return generateGachaPullFlow(input);
 }
-
-    
