@@ -1,24 +1,19 @@
 
-
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useUser, initializeFirebase } from '@/firebase';
-import { CardData } from '@/components/card-editor';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { useState, useEffect, useMemo } from 'react';
+import type { CardData } from '@/components/card-editor';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Send, ArrowRightLeft, Check, X, Inbox, CornerUpLeft } from 'lucide-react';
-import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { useUser, initializeFirebase } from '@/firebase';
+import { ArrowLeftRight, Loader2 } from 'lucide-react';
+import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
 import { createTradeOffer, respondToTradeOffer } from '@/lib/trade-actions';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { CardPreview } from '@/components/card-preview';
-import { Badge } from '@/components/ui/badge';
+import { collection, query, where, onSnapshot, doc, getDoc } from 'firebase/firestore';
 
-interface TradeOffer {
+type TradeOffer = {
     id: string;
     offerorId: string;
     offerorLoginId: string;
@@ -28,89 +23,52 @@ interface TradeOffer {
     requestedCards: CardData[];
     status: 'pending' | 'accepted' | 'rejected' | 'cancelled';
     createdAt: any;
-}
+};
 
-
-const OfferCard = ({ card, onRemove, context }: { card: CardData, onRemove?: (cardId: string) => void, context: 'offer' | 'request' }) => (
-    <div className="relative border p-2 rounded-md bg-background">
-        <p className="text-sm font-semibold truncate pr-6">{card.name}</p>
-        <p className="text-xs text-muted-foreground">{card.cardType} / {card.rarity}</p>
-         {onRemove && (
-            <Button
-                variant="destructive" size="icon"
-                className="absolute top-1 right-1 h-5 w-5"
-                onClick={() => onRemove(card.id!)}
-            >
-                <X className="h-3 w-3" />
-            </Button>
-        )}
+const CardMini = ({ card }: { card: CardData }) => (
+    <div className="p-2 border rounded-md bg-background text-xs">
+        <p className="font-semibold truncate">{card.name}</p>
+        <p className="text-muted-foreground">C:{card.manaCost} A:{card.attack} D:{card.defense}</p>
     </div>
 );
 
-
 export default function TradePage() {
-    const { user, profile, isUserLoading } = useUser();
-    const { toast } = useToast();
-    const [isClient, setIsClient] = useState(false);
-    
-    // Trade Creation State
-    const [myCollection, setMyCollection] = useState<CardData[]>([]);
-    const [offereeLoginId, setOffereeLoginId] = useState('');
-    const [offereeCollection, setOffereeCollection] = useState<CardData[]>([]);
+    const { user, profile } = useUser();
+    const { firestore } = initializeFirebase();
+    const [collection, setCollection] = useState<CardData[]>([]);
     const [offeredCards, setOfferedCards] = useState<CardData[]>([]);
     const [requestedCards, setRequestedCards] = useState<CardData[]>([]);
+    const [offereeLoginId, setOffereeLoginId] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [isFetchingCollection, setIsFetchingCollection] = useState(false);
+    const { toast } = useToast();
 
-    // Trade Viewing State
     const [incomingOffers, setIncomingOffers] = useState<TradeOffer[]>([]);
     const [outgoingOffers, setOutgoingOffers] = useState<TradeOffer[]>([]);
-    
-    const { firestore } = initializeFirebase();
 
-    // Load my collection
+
     useEffect(() => {
-        setIsClient(true);
-        if (user) {
-            try {
-                const collectionFromStorage: CardData[] = JSON.parse(localStorage.getItem('cardCollection') || '[]');
-                setMyCollection(collectionFromStorage);
-            } catch (error) {
-                console.error("Failed to load my collection", error);
-            }
+        try {
+            const savedCollection = JSON.parse(localStorage.getItem('cardCollection') || '[]');
+            setCollection(savedCollection);
+        } catch (e) {
+            console.error("Failed to load collection", e);
         }
-    }, [user]);
+    }, []);
 
-    // Listen for trade offers
     useEffect(() => {
-        if (!user || !firestore) return;
+        if (!user) return;
 
-        const sortOffers = (offers: TradeOffer[]) => {
-            return offers.sort((a, b) => {
-                const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : 0;
-                const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : 0;
-                return dateB - dateA;
-            });
-        };
+        const incomingQuery = query(collection(firestore, 'trades'), where('offereeId', '==', user.uid), where('status', '==', 'pending'));
+        const outgoingQuery = query(collection(firestore, 'trades'), where('offerorId', '==', user.uid), where('status', '==', 'pending'));
 
-        // Incoming offers
-        const incomingQuery = query(collection(firestore, 'trades'), where('offereeId', '==', user.uid));
         const unsubIncoming = onSnapshot(incomingQuery, (snapshot) => {
             const offers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as TradeOffer));
-            setIncomingOffers(sortOffers(offers));
-        }, (error) => {
-            console.error("Error fetching incoming trades:", error);
+            setIncomingOffers(offers);
         });
-
-        // Outgoing offers
-        const outgoingQuery = query(collection(firestore, 'trades'), where('offerorId', '==', user.uid));
         const unsubOutgoing = onSnapshot(outgoingQuery, (snapshot) => {
             const offers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as TradeOffer));
-            setOutgoingOffers(sortOffers(offers));
-        }, (error) => {
-            console.error("Error fetching outgoing trades:", error);
+            setOutgoingOffers(offers);
         });
-
 
         return () => {
             unsubIncoming();
@@ -119,288 +77,247 @@ export default function TradePage() {
 
     }, [user, firestore]);
 
-    const handleSearchOfferee = async () => {
+    const availableCollection = useMemo(() => {
+        const offeredIds = new Set(offeredCards.map(c => c.id));
+        return collection.filter(c => !offeredIds.has(c.id));
+    }, [collection, offeredCards]);
+    
+    // We'll mock the other user's collection for the request part
+    const mockOpponentCollection = useMemo(() => {
+        const requestedIds = new Set(requestedCards.map(c => c.id));
+        // This is a simplified mock. A real app would need to fetch this.
+        return collection.filter(c => !requestedIds.has(c.id)).slice(0, 20);
+    }, [collection, requestedCards]);
+
+
+    const onDragEnd = (result: DropResult) => {
+        const { source, destination } = result;
+        if (!destination) return;
+
+        const sourceId = source.droppableId;
+        const destId = destination.droppableId;
+
+        const moveCard = (sourceList: CardData[], destList: CardData[], sourceIndex: number, destIndex: number) => {
+            const newSourceList = [...sourceList];
+            const newDestList = [...destList];
+            const [movedCard] = newSourceList.splice(sourceIndex, 1);
+            newDestList.splice(destIndex, 0, movedCard);
+            return [newSourceList, newDestList];
+        }
+
+        if (sourceId === 'collection' && destId === 'offered') {
+            const [newCollection, newOffered] = moveCard(availableCollection, offeredCards, source.index, destination.index);
+            setOfferedCards(newOffered);
+        } else if (sourceId === 'offered' && destId === 'collection') {
+            const [newOffered, _] = moveCard(offeredCards, availableCollection, source.index, destination.index);
+            setOfferedCards(newOffered);
+        } else if (sourceId === 'opponent-collection' && destId === 'requested') {
+            const [_, newRequested] = moveCard(mockOpponentCollection, requestedCards, source.index, destination.index);
+            setRequestedCards(newRequested);
+        } else if (sourceId === 'requested' && destId === 'opponent-collection') {
+             const [newRequested, _] = moveCard(requestedCards, mockOpponentCollection, source.index, destination.index);
+             setRequestedCards(newRequested);
+        }
+    };
+    
+    const handleCreateOffer = async () => {
+        if (!user || !profile?.loginId) {
+            toast({ variant: 'destructive', title: 'ログインが必要です。' });
+            return;
+        }
         if (!offereeLoginId.trim()) {
-            toast({ variant: 'destructive', title: 'プレイヤーのログインIDを入力してください。'});
+            toast({ variant: 'destructive', title: '相手のログインIDを入力してください。' });
             return;
         }
-        setIsFetchingCollection(true);
-        setOffereeCollection([]); // Clear previous results
-        try {
-            // In a real app, you'd fetch this from a server/DB.
-            // For this demo, we'll mock it by trying to load from THEIR localStorage key.
-            // This is NOT secure and only for demonstration purposes.
-            // Let's assume a user can have multiple profiles for demo-ability
-            const profiles = ['test-user', 'player-1', 'player-2'];
-            let found = false;
-            for (const p of profiles) {
-                const offereeKey = `${p}-cardCollection`;
-                // This is a hack. In reality, server actions cannot access localStorage.
-                // We are assuming the browser has access to other profiles' data for demo purposes.
-                const collectionData = localStorage.getItem(offereeKey);
-                // Also checking if the profile name matches the input
-                 if (collectionData) {
-                    const parsedData = JSON.parse(collectionData);
-                    setOffereeCollection(parsedData);
-                    found = true;
-                    toast({ title: `「${offereeLoginId}」のコレクションを読み込みました。`});
-                    break;
-                }
-            }
-            if (!found) {
-                 toast({ variant: 'destructive', title: 'プレイヤーが見つからないか、コレクションが空です。'});
-            }
-        } catch (error) {
-            console.error(error);
-            toast({ variant: 'destructive', title: 'コレクションの読み込みに失敗しました。'});
-        } finally {
-            setIsFetchingCollection(false);
-        }
-    }
-    
-    const handleAddToOffer = (card: CardData) => {
-        if(offeredCards.length >= 5) {
-            toast({ variant: 'destructive', title: '一度にオファーできるのは5枚までです。'});
-            return;
-        }
-        setOfferedCards(prev => [...prev, card]);
-        setMyCollection(prev => prev.filter(c => c.id !== card.id));
-    };
-
-    const handleRemoveFromOffer = (cardId: string) => {
-        const card = offeredCards.find(c => c.id === cardId);
-        if(card) {
-            setOfferedCards(prev => prev.filter(c => c.id !== cardId));
-            setMyCollection(prev => [...prev, card]);
-        }
-    };
-    
-    const handleAddToRequest = (card: CardData) => {
-        if(requestedCards.length >= 5) {
-            toast({ variant: 'destructive', title: '一度に要求できるのは5枚までです。'});
-            return;
-        }
-        setRequestedCards(prev => [...prev, card]);
-        setOffereeCollection(prev => prev.filter(c => c.id !== card.id));
-    };
-
-    const handleRemoveFromRequest = (cardId: string) => {
-        const card = requestedCards.find(c => c.id === cardId);
-        if(card) {
-            setRequestedCards(prev => prev.filter(c => c.id !== cardId));
-            setOffereeCollection(prev => [...prev, card]);
-        }
-    };
-    
-    const handleSubmitOffer = async () => {
-        if (!user || !profile?.loginId) return;
-        if (offeredCards.length === 0 || requestedCards.length === 0) {
-            toast({ variant: 'destructive', title: '交換するカードを両方選択してください。' });
+        if (offeredCards.length === 0 && requestedCards.length === 0) {
+            toast({ variant: 'destructive', title: 'トレードするカードを選択してください。' });
             return;
         }
         setIsSubmitting(true);
         const result = await createTradeOffer(user.uid, profile.loginId, offereeLoginId, offeredCards, requestedCards);
         if (result.success) {
-            toast({ title: 'オファー成功', description: result.message });
-            // Reset state
+            toast({ title: 'トレードオファーを送信しました。' });
             setOfferedCards([]);
             setRequestedCards([]);
             setOffereeLoginId('');
-            // Repopulate my collection with offered cards as the offer is now "sent"
-            setMyCollection(prev => [...prev, ...offeredCards]);
-            setOffereeCollection([]);
         } else {
-            toast({ variant: 'destructive', title: 'オファー失敗', description: result.message });
+            toast({ variant: 'destructive', title: result.message });
         }
         setIsSubmitting(false);
     };
-
-    const handleOfferResponse = async (tradeId: string, response: 'accepted' | 'rejected' | 'cancelled') => {
+    
+    const handleRespondToOffer = async (tradeId: string, response: 'accepted' | 'rejected' | 'cancelled') => {
         if (!user) return;
         
-        // Optimistically update UI
-        const offer = incomingOffers.find(o => o.id === tradeId) || outgoingOffers.find(o => o.id === tradeId);
+        // Find the offer to get card details
+        const offer = [...incomingOffers, ...outgoingOffers].find(o => o.id === tradeId);
         if (!offer) return;
-        
-        const originalStatus = offer.status;
-        offer.status = response; // Temporarily update status for UI feedback
         
         const result = await respondToTradeOffer(tradeId, user.uid, response);
         if (result.success) {
-            toast({ title: `トレードを${response === 'accepted' ? '承諾' : response === 'rejected' ? '拒否' : 'キャンセル'}しました。` });
+            toast({ title: result.message });
             
-            // If accepted, we need to manually update localStorage for this demo
+            // For accepted trades, we need to update localStorage on the client
             if (response === 'accepted') {
-                const myCurrentCollection = JSON.parse(localStorage.getItem('cardCollection') || '[]');
-                // Remove offered cards, add requested cards
-                const finalCollection = myCurrentCollection
-                    .filter((mc: CardData) => !offer.requestedCards.some(rc => rc.id === mc.id))
-                    .concat(offer.offeredCards);
-                localStorage.setItem('cardCollection', JSON.stringify(finalCollection));
-                setMyCollection(finalCollection);
-                toast({title: 'カードを交換しました！', description: 'あなたのコレクションが更新されました。'});
-            }
+                const myId = user.uid;
+                const otherPlayerId = offer.offerorId === myId ? offer.offereeId : offer.offerorId;
 
+                const cardsToAdd = offer.offerorId === myId ? offer.requestedCards : offer.offeredCards;
+                const cardsToRemove = offer.offerorId === myId ? offer.offeredCards : offer.requestedCards;
+                
+                try {
+                    const currentCollection = JSON.parse(localStorage.getItem('cardCollection') || '[]');
+                    const cardsToRemoveIds = new Set(cardsToRemove.map(c => c.id));
+                    const newCollection = currentCollection.filter((c: CardData) => !cardsToRemoveIds.has(c.id));
+                    
+                    localStorage.setItem('cardCollection', JSON.stringify([...newCollection, ...cardsToAdd]));
+                    setCollection([...newCollection, ...cardsToAdd]); // Update local state
+                     toast({ title: "カードコレクションを更新しました！" });
+                } catch(e) {
+                    toast({ variant: 'destructive', title: "自分のカードコレクションの更新に失敗しました。" });
+                }
+            }
         } else {
-            offer.status = originalStatus; // Revert optimistic update
-            toast({ variant: 'destructive', title: '処理失敗', description: result.message });
+            toast({ variant: 'destructive', title: result.message });
         }
     };
-    
-    if (!isClient || isUserLoading) {
-        return <main className="text-center p-10"><Loader2 className="animate-spin" /> ロード中...</main>
-    }
+
 
     if (!user) {
-        return (
-             <main className="text-center p-10">
-                <Card className="max-w-md mx-auto">
-                    <CardHeader><CardTitle>ログインが必要です</CardTitle></CardHeader>
-                    <CardContent><p>カードトレード機能を利用するには、マイページからログインしてください。</p></CardContent>
-                </Card>
-            </main>
-        )
+        return <div className="text-center p-8">トレード機能を利用するには、マイページからログインしてください。</div>
     }
-    
-    const OfferList = ({ offers, type }: { offers: TradeOffer[], type: 'incoming' | 'outgoing' }) => (
-        <ul className="space-y-4">
-            {offers.length === 0 && <p className="text-muted-foreground text-center py-8">オファーはありません。</p>}
-            {offers.map(offer => (
-                <li key={offer.id}>
-                    <Card className="bg-secondary/30">
-                        <CardHeader>
-                            <CardTitle className="text-lg flex justify-between items-center">
-                                {type === 'incoming' ? (
-                                    <span>From: {offer.offerorLoginId}</span>
-                                ) : (
-                                    <span>To: {offer.offereeLoginId}</span>
-                                )}
-                                <Badge variant={
-                                    offer.status === 'pending' ? 'default' :
-                                    offer.status === 'accepted' ? 'secondary' : 'destructive'
-                                }>{offer.status}</Badge>
-                            </CardTitle>
-                             <CardDescription>{offer.createdAt?.toDate ? new Date(offer.createdAt.toDate()).toLocaleString() : '日付不明'}</CardDescription>
-                        </CardHeader>
-                        <CardContent className="grid grid-cols-1 md:grid-cols-3 items-center gap-4">
-                            {/* Offered Cards */}
-                            <div className="col-span-1 space-y-2">
-                                <h4 className="font-semibold text-sm">{type === 'incoming' ? '相手の提示カード' : 'あなたの提示カード'}</h4>
-                                {offer.offeredCards.map(c => <OfferCard key={c.id} card={c} context="offer" />)}
-                            </div>
-                            
-                            <ArrowRightLeft className="text-muted-foreground justify-self-center hidden md:block" />
-
-                            {/* Requested Cards */}
-                             <div className="col-span-1 space-y-2">
-                                 <h4 className="font-semibold text-sm">{type === 'incoming' ? 'あなたの提示カード' : '相手の希望カード'}</h4>
-                                {offer.requestedCards.map(c => <OfferCard key={c.id} card={c} context="request" />)}
-                            </div>
-                        </CardContent>
-                        {offer.status === 'pending' && (
-                             <CardFooter className="justify-end gap-2">
-                                {type === 'incoming' && (
-                                    <>
-                                        <Button variant="destructive" onClick={() => handleOfferResponse(offer.id, 'rejected')}>拒否</Button>
-                                        <Button variant="default" onClick={() => handleOfferResponse(offer.id, 'accepted')}>承諾</Button>
-                                    </>
-                                )}
-                                {type === 'outgoing' && (
-                                     <Button variant="ghost" onClick={() => handleOfferResponse(offer.id, 'cancelled')}>キャンセル</Button>
-                                )}
-                            </CardFooter>
-                        )}
-                    </Card>
-                </li>
-            ))}
-        </ul>
-    );
-    
 
     return (
-        <>
-             <Tabs defaultValue="create">
-                <TabsList className="grid w-full grid-cols-3">
-                    <TabsTrigger value="create">オファー作成</TabsTrigger>
-                    <TabsTrigger value="incoming">受信箱 ({incomingOffers.filter(o => o.status === 'pending').length})</TabsTrigger>
-                    <TabsTrigger value="outgoing">送信箱</TabsTrigger>
-                </TabsList>
-                <TabsContent value="create" className="pt-6">
+        <DragDropContext onDragEnd={onDragEnd}>
+            <div className="space-y-8">
+                <h1 className="text-3xl font-bold">トレード</h1>
+                
+                 {/* Trade Creation */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle>トレードを作成</CardTitle>
+                        <CardDescription>カードをドラッグしてトレードを作成します。</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <Input 
+                            placeholder="相手のログインID" 
+                            value={offereeLoginId} 
+                            onChange={(e) => setOffereeLoginId(e.target.value)}
+                        />
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
+                             <DroppableArea droppableId="offered" title="あなたが渡すカード" cards={offeredCards} />
+                             <div className="flex justify-center items-center h-full pt-10">
+                                <ArrowLeftRight className="w-10 h-10 text-muted-foreground" />
+                            </div>
+                             <DroppableArea droppableId="requested" title="あなたが欲しいカード" cards={requestedCards} />
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <Card>
+                                <CardHeader><CardTitle>あなたのコレクション</CardTitle></CardHeader>
+                                <CardContent>
+                                    <DroppableArea droppableId="collection" cards={availableCollection} isSource />
+                                </CardContent>
+                            </Card>
+                             <Card>
+                                <CardHeader><CardTitle>相手のコレクション (仮)</CardTitle></CardHeader>
+                                <CardContent>
+                                    <DroppableArea droppableId="opponent-collection" cards={mockOpponentCollection} isSource />
+                                </CardContent>
+                            </Card>
+                        </div>
+                        <Button onClick={handleCreateOffer} disabled={isSubmitting}>
+                            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            オファーを送信
+                        </Button>
+                    </CardContent>
+                </Card>
+
+                {/* Pending Offers */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     <Card>
-                        <CardHeader>
-                            <CardTitle>トレードオファーを作成</CardTitle>
-                            <CardDescription>プレイヤーと交換したいカードを選択して、オファーを送信します。</CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-6">
-                            <div className="space-y-2">
-                                <Label htmlFor="offereeId">相手のログインID</Label>
-                                <div className="flex gap-2">
-                                    <Input id="offereeId" value={offereeLoginId} onChange={e => setOffereeLoginId(e.target.value)} placeholder="例: player-2" />
-                                    <Button onClick={handleSearchOfferee} disabled={isFetchingCollection}>
-                                        {isFetchingCollection ? <Loader2 className="animate-spin"/> : 'コレクションを検索'}
-                                    </Button>
-                                </div>
-                            </div>
-                            
-                            <div className="grid md:grid-cols-2 gap-6">
-                                {/* My Collection */}
-                                <div className="space-y-4">
-                                    <h3 className="font-bold text-lg">あなたのコレクション</h3>
-                                    <Card>
-                                        <CardHeader className="p-2 border-b"><h4 className="text-sm font-semibold">提示するカード (最大5枚)</h4></CardHeader>
-                                        <CardContent className="p-2 space-y-2 h-40 overflow-y-auto">
-                                            {offeredCards.map(c => <OfferCard key={c.id} card={c} context="offer" onRemove={handleRemoveFromOffer}/>)}
-                                        </CardContent>
-                                    </Card>
-                                    <ScrollArea className="h-64 border rounded-md">
-                                        <div className="p-4 space-y-2">
-                                        {myCollection.map(card => (
-                                            <div key={card.id} className="flex items-center justify-between text-sm p-1 rounded-md hover:bg-muted">
-                                                <span>{card.name}</span>
-                                                <Button size="sm" variant="outline" onClick={() => handleAddToOffer(card)}>追加</Button>
-                                            </div>
-                                        ))}
-                                        </div>
-                                    </ScrollArea>
-                                </div>
-                                {/* Offeree Collection */}
-                                <div className="space-y-4">
-                                     <h3 className="font-bold text-lg">相手のコレクション</h3>
-                                      <Card>
-                                        <CardHeader className="p-2 border-b"><h4 className="text-sm font-semibold">要求するカード (最大5枚)</h4></CardHeader>
-                                        <CardContent className="p-2 space-y-2 h-40 overflow-y-auto">
-                                             {requestedCards.map(c => <OfferCard key={c.id} card={c} context="request" onRemove={handleRemoveFromRequest} />)}
-                                        </CardContent>
-                                    </Card>
-                                    <ScrollArea className="h-64 border rounded-md">
-                                        <div className="p-4 space-y-2">
-                                        {isFetchingCollection ? <Loader2 className="animate-spin mx-auto"/> : offereeCollection.length === 0 ? <p className="text-xs text-muted-foreground text-center">相手を検索してください。</p> : null}
-                                        {offereeCollection.map(card => (
-                                            <div key={card.id} className="flex items-center justify-between text-sm p-1 rounded-md hover:bg-muted">
-                                                <span>{card.name}</span>
-                                                <Button size="sm" variant="outline" onClick={() => handleAddToRequest(card)}>要求</Button>
-                                            </div>
-                                        ))}
-                                        </div>
-                                    </ScrollArea>
-                                </div>
-                            </div>
+                        <CardHeader><CardTitle>受信したオファー</CardTitle></CardHeader>
+                        <CardContent className="space-y-4">
+                            {incomingOffers.length === 0 && <p className="text-muted-foreground">受信したオファーはありません。</p>}
+                            {incomingOffers.map(offer => (
+                                <OfferCard key={offer.id} offer={offer} onRespond={handleRespondToOffer} type="incoming" />
+                            ))}
                         </CardContent>
-                        <CardFooter>
-                            <Button className="w-full" size="lg" onClick={handleSubmitOffer} disabled={isSubmitting || offeredCards.length === 0 || requestedCards.length === 0}>
-                                {isSubmitting ? <Loader2 className="animate-spin" /> : <Send />}
-                                オファーを送信する
-                            </Button>
-                        </CardFooter>
                     </Card>
-                </TabsContent>
-                <TabsContent value="incoming" className="pt-6">
-                    <OfferList offers={incomingOffers} type="incoming" />
-                </TabsContent>
-                <TabsContent value="outgoing" className="pt-6">
-                     <OfferList offers={outgoingOffers} type="outgoing" />
-                </TabsContent>
-            </Tabs>
-        </>
-    )
+                     <Card>
+                        <CardHeader><CardTitle>送信したオファー</CardTitle></CardHeader>
+                        <CardContent className="space-y-4">
+                             {outgoingOffers.length === 0 && <p className="text-muted-foreground">送信したオファーはありません。</p>}
+                             {outgoingOffers.map(offer => (
+                                <OfferCard key={offer.id} offer={offer} onRespond={handleRespondToOffer} type="outgoing" />
+                            ))}
+                        </CardContent>
+                    </Card>
+                </div>
+            </div>
+        </DragDropContext>
+    );
 }
+
+const DroppableArea = ({ droppableId, title, cards, isSource = false }: { droppableId: string; title?: string; cards: CardData[]; isSource?: boolean }) => (
+    <Droppable droppableId={droppableId}>
+        {(provided, snapshot) => (
+            <div
+                ref={provided.innerRef}
+                {...provided.droppableProps}
+                className={`p-2 rounded-lg min-h-[100px] transition-colors ${
+                    snapshot.isDraggingOver ? 'bg-primary/20' : isSource ? 'bg-secondary/50' : 'bg-primary/10'
+                }`}
+            >
+                {title && <h3 className="font-semibold mb-2 text-center">{title}</h3>}
+                <div className="grid grid-cols-3 gap-1">
+                    {cards.map((card, index) => (
+                        <Draggable key={card.id} draggableId={card.id!} index={index}>
+                            {(provided) => (
+                                <div
+                                    ref={provided.innerRef}
+                                    {...provided.draggableProps}
+                                    {...provided.dragHandleProps}
+                                >
+                                    <CardMini card={card} />
+                                </div>
+                            )}
+                        </Draggable>
+                    ))}
+                </div>
+                {provided.placeholder}
+            </div>
+        )}
+    </Droppable>
+);
+
+const OfferCard = ({ offer, onRespond, type }: { offer: TradeOffer, onRespond: (tradeId: string, response: 'accepted' | 'rejected' | 'cancelled') => void, type: 'incoming' | 'outgoing' }) => {
+    return (
+         <div className="p-4 border rounded-lg">
+            <p className="text-sm text-muted-foreground">
+                {type === 'incoming' ? `From: ${offer.offerorLoginId}` : `To: ${offer.offereeLoginId}`}
+            </p>
+             <div className="grid grid-cols-3 gap-2 items-center my-2">
+                <div className="space-y-1">
+                     <h4 className="font-semibold">あなたが渡す</h4>
+                     {offer.offeredCards.map(c => <CardMini key={c.id} card={c} />)}
+                </div>
+                <ArrowLeftRight className="mx-auto" />
+                <div className="space-y-1">
+                     <h4 className="font-semibold">あなたがもらう</h4>
+                     {offer.requestedCards.map(c => <CardMini key={c.id} card={c} />)}
+                </div>
+            </div>
+             {type === 'incoming' ? (
+                <div className="flex gap-2 justify-end mt-2">
+                    <Button size="sm" variant="outline" onClick={() => onRespond(offer.id, 'rejected')}>拒否</Button>
+                    <Button size="sm" onClick={() => onRespond(offer.id, 'accepted')}>承諾</Button>
+                </div>
+             ) : (
+                <div className="flex justify-end mt-2">
+                     <Button size="sm" variant="destructive" onClick={() => onRespond(offer.id, 'cancelled')}>キャンセル</Button>
+                </div>
+             )}
+        </div>
+    );
+}
+

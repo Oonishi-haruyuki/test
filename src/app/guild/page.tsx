@@ -1,26 +1,19 @@
 
-
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
 import { useUser, initializeFirebase } from '@/firebase';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Send, Users, Shield, LogOut, PlusCircle, Crown, Search, Coins, Star, Clock, Milestone, StickyNote } from 'lucide-react';
-import { collection, query, where, onSnapshot, doc, getDoc, getDocs, orderBy, limit, startAfter, updateDoc } from 'firebase/firestore';
+import { Loader2, PlusCircle, LogOut, Users, Send } from 'lucide-react';
 import { createGuild, joinGuild, leaveGuild, sendChatMessage } from '@/lib/guild-actions';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from '@/components/ui/dialog';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { formatDistanceToNow } from 'date-fns';
-import { ja } from 'date-fns/locale';
-import { useCurrency } from '@/hooks/use-currency';
+import { collection, query, where, onSnapshot, getDocs, doc, orderBy } from 'firebase/firestore';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
 
-interface Guild {
+type Guild = {
     id: string;
     name: string;
     description: string;
@@ -29,423 +22,309 @@ interface Guild {
     activityTime?: string;
     genderRatio?: string;
     notes?: string;
-}
+};
 
-interface ChatMessage {
+type ChatMessage = {
     id: string;
     userId: string;
     userLoginId: string;
     text: string;
     createdAt: any;
-}
-
-const GUILD_CREATION_COST = 5000;
-
-const GuildChat = ({ guildId, userLoginId }: { guildId: string, userLoginId: string }) => {
-    const [messages, setMessages] = useState<ChatMessage[]>([]);
-    const [newMessage, setNewMessage] = useState('');
-    const [isSending, setIsSending] = useState(false);
-    const { firestore } = initializeFirebase();
-    const { toast } = useToast();
-
-    useEffect(() => {
-        const messagesRef = collection(firestore, 'guilds', guildId, 'messages');
-        const q = query(messagesRef, orderBy('createdAt', 'desc'), limit(50));
-
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-            const msgs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ChatMessage)).reverse();
-            setMessages(msgs);
-        });
-
-        return () => unsubscribe();
-    }, [guildId, firestore]);
-
-    const handleSendMessage = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!newMessage.trim()) return;
-
-        setIsSending(true);
-        const result = await sendChatMessage(guildId, userLoginId, newMessage);
-        if (result.success) {
-            setNewMessage('');
-        } else {
-            toast({ variant: 'destructive', title: '送信失敗', description: result.message });
-        }
-        setIsSending(false);
-    };
-
-    return (
-        <div className="flex flex-col h-[500px]">
-            <ScrollArea className="flex-grow p-4 border rounded-md">
-                <div className="space-y-4">
-                    {messages.map(msg => (
-                        <div key={msg.id}>
-                            <span className="font-bold text-sm">{msg.userLoginId}</span>
-                            <span className="text-xs text-muted-foreground ml-2">
-                                {msg.createdAt?.toDate ? formatDistanceToNow(msg.createdAt.toDate(), { addSuffix: true, locale: ja }) : ''}
-                            </span>
-                            <p className="bg-muted p-2 rounded-md">{msg.text}</p>
-                        </div>
-                    ))}
-                </div>
-            </ScrollArea>
-            <form onSubmit={handleSendMessage} className="flex gap-2 mt-4">
-                <Input value={newMessage} onChange={(e) => setNewMessage(e.target.value)} placeholder="メッセージを入力..." disabled={isSending} />
-                <Button type="submit" disabled={isSending}>
-                    {isSending ? <Loader2 className="animate-spin" /> : <Send />}
-                </Button>
-            </form>
-        </div>
-    );
 };
 
 export default function GuildPage() {
     const { user, profile, isUserLoading } = useUser();
-    const { currency, spendCurrency } = useCurrency();
-    const { toast } = useToast();
-    const [myGuild, setMyGuild] = useState<Guild | null>(null);
-    const [guildMembers, setGuildMembers] = useState<any[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
-    const [isProcessing, setIsProcessing] = useState(false);
-
     const { firestore } = initializeFirebase();
+    const { toast } = useToast();
 
-    // Guild Creation
-    const [newGuildName, setNewGuildName] = useState('');
-    const [newGuildDesc, setNewGuildDesc] = useState('');
-    const [activityTime, setActivityTime] = useState('all-day');
-    const [genderRatio, setGenderRatio] = useState('any');
-    const [notes, setNotes] = useState('');
-
-    // Guild Search
-    const [searchTerm, setSearchTerm] = useState('');
-    const [searchResults, setSearchResults] = useState<Guild[]>([]);
-    const [isSearching, setIsSearching] = useState(false);
-    const [suggestedGuilds, setSuggestedGuilds] = useState<Guild[]>([]);
-
-    const fetchMyGuildData = useCallback(async (guildId: string) => {
-        const guildRef = doc(firestore, 'guilds', guildId);
-        const guildSnap = await getDoc(guildRef);
-        if (guildSnap.exists()) {
-            const guildData = { id: guildSnap.id, ...guildSnap.data() } as Guild;
-            setMyGuild(guildData);
-
-            // Fetch member profiles
-            const memberProfiles: any[] = [];
-            for (const memberId of guildData.memberIds) {
-                const userRef = doc(firestore, 'users', memberId);
-                const userSnap = await getDoc(userRef);
-                if (userSnap.exists()) {
-                    memberProfiles.push({ id: userSnap.id, ...userSnap.data() });
-                }
-            }
-            setGuildMembers(memberProfiles);
-
-        } else {
-            // User has a guildId but guild doesn't exist, likely deleted. Clear from user profile.
-             if (user) {
-                const userRef = doc(firestore, 'users', user.uid);
-                await updateDoc(userRef, { guildId: null });
-             }
-        }
-        setIsLoading(false);
-    }, [firestore, user]);
-
-    // Fetch suggested guilds on mount
-    useEffect(() => {
-        const fetchSuggestedGuilds = async () => {
-            try {
-                // Fetch top 3 guilds by member count as suggestions
-                const q = query(collection(firestore, 'guilds'), orderBy('memberIds', 'desc'), limit(3));
-                const docSnaps = await getDocs(q);
-                const guilds = docSnaps.docs.map(doc => ({ id: doc.id, ...doc.data() } as Guild));
-                setSuggestedGuilds(guilds);
-            } catch (error) {
-                console.error("Failed to fetch suggested guilds:", error);
-            }
-        };
-
-        if (!profile?.guildId) {
-            fetchSuggestedGuilds();
-        }
-    }, [firestore, profile]);
+    const [userGuild, setUserGuild] = useState<Guild | null>(null);
+    const [guilds, setGuilds] = useState<Guild[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
         if (isUserLoading) return;
+        setIsLoading(true);
         if (profile?.guildId) {
-            fetchMyGuildData(profile.guildId);
+            const guildRef = doc(firestore, 'guilds', profile.guildId);
+            const unsubscribe = onSnapshot(guildRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    setUserGuild({ id: docSnap.id, ...docSnap.data() } as Guild);
+                } else {
+                    // Guild might have been disbanded, clear from user profile
+                    setUserGuild(null);
+                }
+                setIsLoading(false);
+            });
+            return () => unsubscribe();
         } else {
-            setMyGuild(null);
-            setIsLoading(false);
+            setUserGuild(null);
+            // Fetch all guilds for joining
+            const guildsQuery = query(collection(firestore, 'guilds'));
+            const unsubscribe = onSnapshot(guildsQuery, (snapshot) => {
+                const allGuilds = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Guild));
+                setGuilds(allGuilds);
+                setIsLoading(false);
+            });
+            return () => unsubscribe();
         }
-    }, [profile, isUserLoading, fetchMyGuildData]);
+    }, [profile, firestore, isUserLoading]);
 
-    const handleCreateGuild = async () => {
-        if (!user || !profile?.loginId) return;
-        if (!newGuildName.trim()) {
-            toast({ variant: 'destructive', title: 'ギルド名を入力してください。' });
-            return;
-        }
-
-        if (currency < GUILD_CREATION_COST) {
-            toast({ variant: 'destructive', title: 'Gコインが足りません！', description: `ギルド作成には ${GUILD_CREATION_COST}G が必要です。` });
-            return;
-        }
-
-        setIsProcessing(true);
-        if (spendCurrency(GUILD_CREATION_COST)) {
-            const result = await createGuild(user.uid, profile.loginId, newGuildName, newGuildDesc, activityTime, genderRatio, notes);
-            if (result.success && result.guildId) {
-                toast({ title: 'ギルドを作成しました！', description: `${GUILD_CREATION_COST}G を消費しました。` });
-                fetchMyGuildData(result.guildId);
-            } else {
-                toast({ variant: 'destructive', title: '作成失敗', description: result.message });
-            }
-        } else {
-             toast({ variant: 'destructive', title: 'Gコインの支払いに失敗しました。' });
-        }
-        setIsProcessing(false);
-    };
-    
-    const handleSearchGuilds = async () => {
-        setIsSearching(true);
-        setSearchResults([]);
-        
-        let q;
-        if(searchTerm.trim()) {
-            q = query(collection(firestore, 'guilds'), where('name', '>=', searchTerm.trim()), where('name', '<=', searchTerm.trim() + '\uf8ff'), limit(10));
-        } else {
-            q = query(collection(firestore, 'guilds'), orderBy('name'), limit(10));
-        }
-        
-        const docSnaps = await getDocs(q);
-        const guilds = docSnaps.docs.map(doc => ({ id: doc.id, ...doc.data() } as Guild));
-        setSearchResults(guilds);
-        setIsSearching(false);
-    }
-    
     const handleJoinGuild = async (guildId: string) => {
-        if (!user || !profile?.loginId) return;
-        setIsProcessing(true);
-        const result = await joinGuild(guildId, user.uid);
-         if (result.success) {
-            toast({ title: 'ギルドに参加しました！' });
-            fetchMyGuildData(guildId);
-        } else {
-            toast({ variant: 'destructive', title: '参加失敗', description: result.message });
-        }
-        setIsProcessing(false);
-    }
-    
-    const handleLeaveGuild = async () => {
-        if (!user || !myGuild) return;
-         setIsProcessing(true);
-        const result = await leaveGuild(myGuild.id, user.uid);
-         if (result.success) {
-            toast({ title: 'ギルドを脱退しました。' });
-            setMyGuild(null);
-            setGuildMembers([]);
-        } else {
-            toast({ variant: 'destructive', title: '脱退失敗', description: result.message });
-        }
-        setIsProcessing(false);
-    }
-
-    const GuildListItem = ({ guild }: { guild: Guild }) => (
-         <li className="flex justify-between items-center p-2 bg-secondary rounded-md">
-            <div>
-                <p className="font-bold">{guild.name}</p>
-                <p className="text-sm text-muted-foreground flex items-center gap-1">
-                    <Users className="h-4 w-4" />{guild.memberIds.length}人
-                </p>
-            </div>
-            <Button size="sm" onClick={() => handleJoinGuild(guild.id)} disabled={isProcessing}>参加</Button>
-        </li>
-    );
+        if (!user) return;
+        const { success, message } = await joinGuild(guildId, user.uid);
+        toast({ title: message, variant: success ? 'default' : 'destructive' });
+    };
 
     if (isLoading) {
-        return <main className="text-center p-10"><Loader2 className="animate-spin" /> ロード中...</main>;
+        return <div className="flex justify-center items-center p-8"><Loader2 className="animate-spin h-10 w-10" /></div>;
     }
 
-    if (!user) {
-        return (
-             <main className="text-center p-10">
-                <Card className="max-w-md mx-auto">
-                    <CardHeader><CardTitle>ログインが必要です</CardTitle></CardHeader>
-                    <CardContent><p>ギルド機能を利用するには、マイページからログインしてください。</p></CardContent>
-                </Card>
-            </main>
-        );
+    if (userGuild) {
+        return <GuildDashboard guild={userGuild} />;
     }
+    
+    return <GuildBrowser guilds={guilds} onJoin={handleJoinGuild} />;
+}
 
-    if (myGuild) {
-        return (
-            <Card>
-                <CardHeader>
-                    <CardTitle className="text-3xl flex items-center justify-between">
-                        {myGuild.name}
-                         <Dialog>
-                            <DialogTrigger asChild>
-                                <Button variant="destructive" size="sm" disabled={isProcessing}><LogOut /> 脱退</Button>
-                            </DialogTrigger>
-                            <DialogContent>
-                                <DialogHeader>
-                                    <DialogTitle>本当にギルドを脱退しますか？</DialogTitle>
-                                    <DialogDescription>リーダーが脱退するとギルドは解散します。この操作は元に戻せません。</DialogDescription>
-                                </DialogHeader>
-                                <DialogFooter>
-                                    <DialogClose asChild>
-                                        <Button variant="secondary">キャンセル</Button>
-                                    </DialogClose>
-                                    <DialogClose asChild>
-                                         <Button variant="destructive" onClick={handleLeaveGuild}>脱退する</Button>
-                                    </DialogClose>
-                                </DialogFooter>
-                            </DialogContent>
-                        </Dialog>
-                    </CardTitle>
-                    <CardDescription>{myGuild.description || '説明がありません。'}</CardDescription>
-                </CardHeader>
-                <CardContent className="grid md:grid-cols-3 gap-6">
-                    <div className="md:col-span-1 space-y-4">
-                        <div>
-                            <h3 className="font-bold mb-2 flex items-center gap-2"><Users />メンバー ({myGuild.memberIds.length})</h3>
-                            <ScrollArea className="h-60 border rounded-md p-4">
-                                <ul className="space-y-2">
-                                    {guildMembers.map(member => (
-                                        <li key={member.id} className="flex items-center gap-2 text-sm">
-                                            {member.id === myGuild.leaderId ? <Crown className="text-yellow-500"/> : <Shield />}
-                                            {member.loginId}
-                                        </li>
-                                    ))}
-                                </ul>
-                            </ScrollArea>
-                        </div>
-                        <div className="space-y-2">
-                            <h3 className="font-bold mb-2 flex items-center gap-2"><Clock />活動時間帯</h3>
-                            <p className="text-sm bg-muted p-2 rounded-md">{myGuild.activityTime || '未設定'}</p>
-                        </div>
-                         <div className="space-y-2">
-                            <h3 className="font-bold mb-2 flex items-center gap-2"><Milestone />男女比率</h3>
-                            <p className="text-sm bg-muted p-2 rounded-md">{myGuild.genderRatio || '未設定'}</p>
-                        </div>
-                        <div className="space-y-2">
-                            <h3 className="font-bold mb-2 flex items-center gap-2"><StickyNote />記載事項</h3>
-                            <p className="text-sm bg-muted p-2 rounded-md whitespace-pre-wrap">{myGuild.notes || '記載事項はありません。'}</p>
-                        </div>
-                    </div>
-                     <div className="md:col-span-2">
-                        <h3 className="font-bold mb-2">ギルドチャット</h3>
-                         <GuildChat guildId={myGuild.id} userLoginId={profile?.loginId || '匿名'} />
-                    </div>
-                </CardContent>
-            </Card>
-        );
-    }
+// Component to browse and create guilds
+function GuildBrowser({ guilds, onJoin }: { guilds: Guild[], onJoin: (guildId: string) => void }) {
+    const { user, profile } = useUser();
+    const { toast } = useToast();
+    const [isCreating, setIsCreating] = useState(false);
+    const [guildName, setGuildName] = useState('');
+    const [description, setDescription] = useState('');
+    const [activityTime, setActivityTime] = useState('');
+    const [genderRatio, setGenderRatio] = useState('');
+    const [notes, setNotes] = useState('');
+
+    const handleCreateGuild = async () => {
+        if (!user || !profile?.loginId) {
+            toast({ title: 'ログインが必要です', variant: 'destructive' });
+            return;
+        }
+        if (!guildName.trim() || !description.trim()) {
+            toast({ title: 'ギルド名と説明は必須です', variant: 'destructive' });
+            return;
+        }
+        setIsCreating(true);
+        const { success, message } = await createGuild(user.uid, profile.loginId, guildName, description, activityTime, genderRatio, notes);
+        toast({ title: message, variant: success ? 'default' : 'destructive' });
+        if (success) {
+            setGuildName('');
+            setDescription('');
+            setActivityTime('');
+            setGenderRatio('');
+            setNotes('');
+        }
+        setIsCreating(false);
+    };
 
     return (
-        <Card>
-            <CardHeader>
-                <CardTitle>ギルドに参加しよう</CardTitle>
-                <CardDescription>ギルドを作成するか、既存のギルドに参加して仲間と交流しよう。</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-8">
-                <div>
-                     <Dialog>
-                        <DialogTrigger asChild>
-                           <Button className="w-full" size="lg"><PlusCircle /> ギルドを作成</Button>
-                        </DialogTrigger>
-                        <DialogContent className="max-w-md">
-                            <DialogHeader>
-                                <DialogTitle>新しいギルドを作成</DialogTitle>
-                                <DialogDescription>ギルドの作成には {GUILD_CREATION_COST.toLocaleString()}G が必要です。</DialogDescription>
-                            </DialogHeader>
-                            <div className="space-y-4 py-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="guild-name">ギルド名</Label>
-                                    <Input id="guild-name" value={newGuildName} onChange={e => setNewGuildName(e.target.value)} />
+        <div className="space-y-8">
+            <h1 className="text-3xl font-bold">ギルドを探す・作成する</h1>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {/* Find Guild */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle>ギルド一覧</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4 max-h-[500px] overflow-y-auto">
+                        {guilds.map(guild => (
+                            <div key={guild.id} className="flex items-center justify-between p-3 border rounded-lg">
+                                <div>
+                                    <p className="font-semibold">{guild.name}</p>
+                                    <p className="text-sm text-muted-foreground">{guild.description}</p>
+                                    <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1"><Users className="h-3 w-3" />{guild.memberIds.length} / 50</p>
                                 </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="guild-desc">ギルド紹介文</Label>
-                                    <Textarea id="guild-desc" value={newGuildDesc} onChange={e => setNewGuildDesc(e.target.value)} />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="activity-time">活動時間帯</Label>
-                                    <Select value={activityTime} onValueChange={setActivityTime}>
-                                        <SelectTrigger id="activity-time">
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="all-day">終日</SelectItem>
-                                            <SelectItem value="morning">朝</SelectItem>
-                                            <SelectItem value="afternoon">昼</SelectItem>
-                                            <SelectItem value="night">夜</SelectItem>
-                                            <SelectItem value="late-night">深夜</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                 <div className="space-y-2">
-                                    <Label htmlFor="gender-ratio">男女比率</Label>
-                                    <Select value={genderRatio} onValueChange={setGenderRatio}>
-                                        <SelectTrigger id="gender-ratio">
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="any">問わない</SelectItem>
-                                            <SelectItem value="male-only">男性のみ</SelectItem>
-                                            <SelectItem value="female-only">女性のみ</SelectItem>
-                                            <SelectItem value="balanced">半々</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="notes">記載事項</Label>
-                                    <Textarea id="notes" value={notes} onChange={e => setNotes(e.target.value)} placeholder="エンジョイ勢、初心者歓迎など" />
-                                </div>
+                                <Button size="sm" onClick={() => onJoin(guild.id)}>参加</Button>
                             </div>
-                            <DialogFooter>
-                                <DialogClose asChild>
-                                    <Button variant="secondary">キャンセル</Button>
-                                </DialogClose>
-                                <DialogClose asChild>
-                                    <Button onClick={handleCreateGuild} disabled={isProcessing || !newGuildName}>
-                                        {isProcessing && <Loader2 className="animate-spin mr-2" />}作成する
-                                    </Button>
-                                </DialogClose>
-                            </DialogFooter>
-                        </DialogContent>
-                    </Dialog>
+                        ))}
+                         {guilds.length === 0 && <p className="text-muted-foreground text-center">参加可能なギルドはありません。</p>}
+                    </CardContent>
+                </Card>
+
+                {/* Create Guild */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle>ギルドを設立</CardTitle>
+                        <CardDescription>新しいコミュニティを作りましょう。</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="guildName">ギルド名</Label>
+                            <Input id="guildName" placeholder="例: カードマスターズ" value={guildName} onChange={(e) => setGuildName(e.target.value)} />
+                        </div>
+                         <div className="space-y-2">
+                            <Label htmlFor="description">ギルド紹介</Label>
+                            <Textarea id="description" placeholder="例: 初心者歓迎！楽しくプレイしましょう！" value={description} onChange={(e) => setDescription(e.target.value)} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="activityTime">主な活動時間</Label>
+                            <Input id="activityTime" placeholder="例: 平日夜、週末" value={activityTime} onChange={(e) => setActivityTime(e.target.value)} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="genderRatio">男女比</Label>
+                            <Input id="genderRatio" placeholder="例: 半々、男性多め" value={genderRatio} onChange={(e) => setGenderRatio(e.g.target.value)} />
+                        </div>
+                         <div className="space-y-2">
+                            <Label htmlFor="notes">備考</Label>
+                            <Textarea id="notes" placeholder="VC(ボイスチャット)の利用方針など" value={notes} onChange={(e) => setNotes(e.target.value)} />
+                        </div>
+                        <Button onClick={handleCreateGuild} disabled={isCreating} className="w-full">
+                            {isCreating ? <Loader2 className="animate-spin" /> : <PlusCircle />}
+                            設立する
+                        </Button>
+                    </CardContent>
+                </Card>
+            </div>
+        </div>
+    );
+}
+
+// Component for the user's current guild
+function GuildDashboard({ guild }: { guild: Guild }) {
+    const { user, profile } = useUser();
+    const { toast } = useToast();
+    const [isLeaving, setIsLeaving] = useState(false);
+
+    const handleLeaveGuild = async () => {
+        if (!user) return;
+        setIsLeaving(true);
+        const { success, message } = await leaveGuild(guild.id, user.uid);
+        toast({ title: message, variant: success ? 'default' : 'destructive' });
+        // The main component will handle the state change via onSnapshot
+        setIsLeaving(false);
+    };
+
+    const isLeader = user?.uid === guild.leaderId;
+
+    return (
+        <div className="space-y-8">
+            <div>
+                <h1 className="text-3xl font-bold">{guild.name}</h1>
+                <p className="text-muted-foreground">{guild.description}</p>
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div className="lg:col-span-2">
+                    <GuildChat guildId={guild.id} />
                 </div>
-                 <div>
-                    <h3 className="text-lg font-semibold mb-4">ギルドを探す</h3>
-                    <div className="flex gap-2 mb-4">
-                        <Input placeholder="ギルド名で検索..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
-                        <Button onClick={handleSearchGuilds} disabled={isSearching}>{isSearching ? <Loader2 className="animate-spin" /> : <Search />}</Button>
+                <div className="space-y-6">
+                    <Card>
+                        <CardHeader><CardTitle>ギルド情報</CardTitle></CardHeader>
+                        <CardContent className="space-y-2 text-sm">
+                            <p><strong>リーダー:</strong> {guild.leaderId}</p>
+                            <p><strong>メンバー数:</strong> {guild.memberIds.length} / 50</p>
+                            <p><strong>活動時間:</strong> {guild.activityTime || '未設定'}</p>
+                            <p><strong>男女比:</strong> {guild.genderRatio || '未設定'}</p>
+                            <p><strong>備考:</strong> {guild.notes || 'なし'}</p>
+                        </CardContent>
+                    </Card>
+                     <Card>
+                        <CardHeader><CardTitle>メンバーリスト</CardTitle></CardHeader>
+                        <CardContent className="max-h-60 overflow-y-auto">
+                           <MemberList memberIds={guild.memberIds} />
+                        </CardContent>
+                    </Card>
+                    <Button onClick={handleLeaveGuild} variant="destructive" className="w-full" disabled={isLeaving}>
+                        {isLeaving ? <Loader2 className="animate-spin" /> : <LogOut />}
+                        {isLeader ? 'ギルドを解散する' : 'ギルドを脱退する'}
+                    </Button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function MemberList({ memberIds }: { memberIds: string[] }) {
+    const [members, setMembers] = useState<any[]>([]);
+    const { firestore } = initializeFirebase();
+
+    useEffect(() => {
+        const fetchMembers = async () => {
+            const memberData = await Promise.all(
+                memberIds.map(async (id) => {
+                    const userDoc = await getDocs(query(collection(firestore, 'users'), where('__name__', '==', id)));
+                    if (!userDoc.empty) {
+                        return { id, ...userDoc.docs[0].data() };
+                    }
+                    return { id, loginId: '不明なユーザー' };
+                })
+            );
+            setMembers(memberData);
+        };
+        fetchMembers();
+    }, [memberIds, firestore]);
+
+    return (
+        <ul className="space-y-2">
+            {members.map(member => (
+                <li key={member.id} className="text-sm p-2 bg-secondary/50 rounded-md">{member.loginId || '...'}</li>
+            ))}
+        </ul>
+    );
+}
+
+function GuildChat({ guildId }: { guildId: string }) {
+    const { user, profile } = useUser();
+    const { firestore } = initializeFirebase();
+    const [messages, setMessages] = useState<ChatMessage[]>([]);
+    const [newMessage, setNewMessage] = useState('');
+    const [isSending, setIsSending] = useState(false);
+    const messagesEndRef = useCallback((node: HTMLDivElement) => {
+        if (node) {
+            node.scrollIntoView({ behavior: "smooth" });
+        }
+    }, []);
+
+    useEffect(() => {
+        const messagesQuery = query(collection(firestore, 'guilds', guildId, 'messages'), orderBy('createdAt', 'asc'), where('createdAt', '!=', null));
+        const unsubscribe = onSnapshot(messagesQuery, (snapshot) => {
+            const msgs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ChatMessage));
+            setMessages(msgs);
+        });
+        return () => unsubscribe();
+    }, [guildId, firestore]);
+    
+    const handleSendMessage = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!newMessage.trim() || !user || !profile?.loginId) return;
+        setIsSending(true);
+        await sendChatMessage(guildId, profile.loginId, newMessage);
+        setNewMessage('');
+        setIsSending(false);
+    };
+
+    return (
+        <Card className="flex flex-col h-[600px]">
+            <CardHeader><CardTitle>ギルドチャット</CardTitle></CardHeader>
+            <CardContent className="flex-grow overflow-y-auto space-y-4 p-4">
+                {messages.map((msg) => (
+                    <div key={msg.id} className={`flex gap-2 ${msg.userId === user?.uid ? 'justify-end' : ''}`}>
+                         <div className={`max-w-[75%] p-3 rounded-lg ${msg.userId === user?.uid ? 'bg-primary text-primary-foreground' : 'bg-secondary'}`}>
+                            <p className="font-bold text-sm">{msg.userLoginId}</p>
+                            <p className="text-base whitespace-pre-wrap">{msg.text}</p>
+                            <p className="text-xs text-right opacity-70 mt-1">
+                                {msg.createdAt?.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </p>
+                        </div>
                     </div>
-
-                    {searchResults.length > 0 && (
-                        <div className="mb-6">
-                            <h4 className="font-semibold mb-2 text-md">検索結果</h4>
-                            <ul className="p-2 space-y-2 border rounded-md">
-                                {searchResults.map(guild => <GuildListItem key={guild.id} guild={guild} />)}
-                            </ul>
-                        </div>
-                    )}
-                    
-                    {searchResults.length === 0 && !isSearching && suggestedGuilds.length > 0 && (
-                        <div>
-                             <h4 className="font-semibold mb-2 text-md flex items-center gap-2"><Star className="text-yellow-500" /> おすすめギルド</h4>
-                            <ul className="p-2 space-y-2 border rounded-md bg-secondary/20">
-                               {suggestedGuilds.map(guild => <GuildListItem key={guild.id} guild={guild} />)}
-                            </ul>
-                        </div>
-                    )}
-
-                    {searchResults.length === 0 && !isSearching && suggestedGuilds.length === 0 && (
-                        <p className="text-center text-sm text-muted-foreground py-4">ギルドが見つかりません。</p>
-                    )}
-                </div>
+                ))}
+                 <div ref={messagesEndRef} />
             </CardContent>
+            <div className="p-4 border-t">
+                <form onSubmit={handleSendMessage} className="flex gap-2">
+                    <Input 
+                        value={newMessage} 
+                        onChange={(e) => setNewMessage(e.target.value)} 
+                        placeholder="メッセージを入力..."
+                        disabled={isSending}
+                    />
+                    <Button type="submit" disabled={!newMessage.trim() || isSending}>
+                        {isSending ? <Loader2 className="animate-spin" /> : <Send />}
+                    </Button>
+                </form>
+            </div>
         </Card>
     );
 }
+

@@ -1,406 +1,317 @@
 
-
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import type { CardData } from '@/components/card-editor';
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { CardPreview } from '@/components/card-preview';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { PlusCircle, MinusCircle, Save, Trash2, FilePlus, Pencil } from 'lucide-react';
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-    AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-    DialogTrigger,
-    DialogClose,
-  } from "@/components/ui/dialog"
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Label } from '@/components/ui/label';
-import { useUser } from '@/firebase';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Droppable, Draggable, DragDropContext, DropResult } from 'react-beautiful-dnd';
+import { analyzeDeck } from '@/ai/flows/analyze-deck';
+import { Loader2, Wand2 } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
+const DECK_SIZE = 20;
 
-const DECK_SIZE = 30;
-const MAX_IDENTICAL_CARDS = 2;
-const MAX_DECKS = 20;
-
-interface Deck {
-    id: string;
-    name: string;
-    cards: CardData[];
-}
+type Deck = {
+  id: string;
+  name: string;
+  cards: CardData[];
+};
 
 export default function DeckBuilderPage() {
-  const { user } = useUser();
   const [collection, setCollection] = useState<CardData[]>([]);
   const [decks, setDecks] = useState<Deck[]>([]);
-  const [activeDeckId, setActiveDeckId] = useState<string | null>(null);
+  const [selectedDeck, setSelectedDeck] = useState<Deck | null>(null);
   const [newDeckName, setNewDeckName] = useState('');
-  const [isClient, setIsClient] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [analysisResult, setAnalysisResult] = useState<any>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const { toast } = useToast();
 
-  const activeDeck = decks.find(d => d.id === activeDeckId);
-
   useEffect(() => {
-    setIsClient(true);
-    if (user) {
-        try {
-        const savedCollection = JSON.parse(localStorage.getItem('cardCollection') || '[]');
-        const savedDecks = JSON.parse(localStorage.getItem('decks') || '[]');
-        setCollection(savedCollection);
-
-        if (savedDecks.length > 0) {
-            setDecks(savedDecks);
-            setActiveDeckId(savedDecks[0].id);
-        } else {
-            // Create a default deck if none exist
-            const defaultDeck: Deck = { id: self.crypto.randomUUID(), name: 'マイデッキ 1', cards: [] };
-            setDecks([defaultDeck]);
-            setActiveDeckId(defaultDeck.id);
-        }
-        } catch (error) {
-        console.error("Failed to load data from localStorage", error);
-        setCollection([]);
-        const defaultDeck: Deck = { id: self.crypto.randomUUID(), name: 'マイデッキ 1', cards: [] };
-        setDecks([defaultDeck]);
-        setActiveDeckId(defaultDeck.id);
-        }
-    } else {
-        setCollection([]);
-        setDecks([]);
-        setActiveDeckId(null);
-    }
-  }, [user]);
-
-  const getCardCountInDeck = (cardId?: string) => {
-    if (!cardId || !activeDeck) return 0;
-    return activeDeck.cards.filter(card => card.id === cardId).length;
-  }
-
-  const updateDecks = (newDecks: Deck[]) => {
-    setDecks(newDecks);
-    if(user) {
-        localStorage.setItem('decks', JSON.stringify(newDecks));
-    }
-  }
-
-  const addToDeck = (card: CardData) => {
-    if (!activeDeck) return;
-
-    if (activeDeck.cards.length >= DECK_SIZE) {
-      toast({
-        variant: 'destructive',
-        title: 'デッキがいっぱいです',
-        description: `デッキには${DECK_SIZE}枚までしかカードを追加できません。`,
-      });
-      return;
-    }
-    
-    const count = getCardCountInDeck(card.id);
-    if (count >= MAX_IDENTICAL_CARDS) {
-        toast({
-            variant: 'destructive',
-            title: 'カードの追加制限',
-            description: `同じカードは${MAX_IDENTICAL_CARDS}枚までしか追加できません。`,
-        });
-        return;
-    }
-
-    const newDecks = decks.map(d => 
-        d.id === activeDeckId 
-        ? { ...d, cards: [...d.cards, card] }
-        : d
-    );
-    updateDecks(newDecks);
-  };
-
-  const removeFromDeck = (cardId?: string) => {
-    if (!cardId || !activeDeck) return;
-    
-    const cardIndex = activeDeck.cards.findIndex(c => c.id === cardId);
-    if (cardIndex > -1) {
-        const newCards = [...activeDeck.cards];
-        newCards.splice(cardIndex, 1);
-        const newDecks = decks.map(d => 
-            d.id === activeDeckId 
-            ? { ...d, cards: newCards }
-            : d
-        );
-        updateDecks(newDecks);
-    }
-  };
-
-  const saveDeck = () => {
-    if (!activeDeck) return;
     try {
-      if (activeDeck.cards.length !== DECK_SIZE) {
-        toast({
-            variant: 'destructive',
-            title: 'デッキの枚数が不正です',
-            description: `デッキはちょうど${DECK_SIZE}枚で構築する必要があります。`,
-        });
-        return;
+      const savedCollection = JSON.parse(localStorage.getItem('cardCollection') || '[]');
+      const savedDecks = JSON.parse(localStorage.getItem('cardDecks') || '[]');
+      setCollection(savedCollection);
+      setDecks(savedDecks);
+      if (savedDecks.length > 0) {
+        setSelectedDeck(savedDecks[0]);
+      } else {
+        // If no decks, create a new empty one to start
+        const newDeck = { id: `deck-${Date.now()}`, name: '新しいデッキ', cards: [] };
+        setDecks([newDeck]);
+        setSelectedDeck(newDeck);
       }
-      // The deck is already saved on every change, so just give feedback
-      toast({
-        title: 'デッキを保存しました',
-        description: `「${activeDeck.name}」の現在の構成が保存されました。`,
-      });
-    } catch (error) {
-      console.error("Failed to save deck to localStorage", error);
-      toast({
-        variant: 'destructive',
-        title: '保存に失敗しました',
-        description: 'デッキを保存できませんでした。',
-      });
+    } catch (e) {
+      console.error("Failed to load data from localStorage", e);
+      toast({ variant: "destructive", title: "データの読み込みに失敗しました" });
     }
-  };
+  }, [toast]);
 
-  const handleAddNewDeck = () => {
-    if (!newDeckName.trim()) {
-        toast({ variant: 'destructive', title: 'デッキ名を入力してください。'});
-        return;
-    }
-    if (decks.length >= MAX_DECKS) {
-        toast({ variant: 'destructive', title: 'これ以上デッキを作成できません。'});
-        return;
-    }
-    const newDeck: Deck = { id: self.crypto.randomUUID(), name: newDeckName.trim(), cards: [] };
-    const newDecks = [...decks, newDeck];
-    updateDecks(newDecks);
-    setActiveDeckId(newDeck.id);
-    setNewDeckName('');
-    toast({ title: `デッキ「${newDeck.name}」を作成しました。`});
-  };
-
-  const handleDeleteDeck = () => {
-    if (!activeDeckId || decks.length <= 1) {
-        toast({ variant: 'destructive', title: '最後のデッキは削除できません。'});
-        return;
-    }
-    const deckToDelete = decks.find(d => d.id === activeDeckId);
-    const newDecks = decks.filter(d => d.id !== activeDeckId);
-    updateDecks(newDecks);
-    setActiveDeckId(newDecks[0]?.id || null);
-    toast({ title: `デッキ「${deckToDelete?.name}」を削除しました。`})
-  };
-
-  const handleRenameDeck = () => {
-    if (!activeDeck || !newDeckName.trim()) {
-        toast({ variant: 'destructive', title: '新しいデッキ名を入力してください。'});
-        return;
-    }
-    const newDecks = decks.map(d => d.id === activeDeckId ? {...d, name: newDeckName.trim()} : d);
-    updateDecks(newDecks);
-    setNewDeckName('');
-    toast({ title: 'デッキ名を変更しました。'})
-  };
-
-  const getUniqueCards = (cards: CardData[]) => {
-    if (!cards) return [];
-    const unique: { [key: string]: CardData } = {};
-    cards.forEach(card => {
-        if(card.id) {
-            unique[card.id] = card;
-        }
-    });
-    return Object.values(unique);
+  const saveDecks = (newDecks: Deck[]) => {
+    setDecks(newDecks);
+    localStorage.setItem('cardDecks', JSON.stringify(newDecks));
   };
   
-  const uniqueCollection = getUniqueCards(collection);
-
-
-  if (!isClient) {
-    return null; // Or a loading spinner
+  const handleCreateDeck = () => {
+    if (!newDeckName.trim()) {
+      toast({ variant: 'destructive', title: 'デッキ名を入力してください' });
+      return;
+    }
+    const newDeck: Deck = { id: `deck-${Date.now()}`, name: newDeckName, cards: [] };
+    const updatedDecks = [...decks, newDeck];
+    saveDecks(updatedDecks);
+    setSelectedDeck(newDeck);
+    setNewDeckName('');
+    toast({ title: '新しいデッキを作成しました' });
+  };
+  
+  const handleDeleteDeck = (deckId: string) => {
+      const updatedDecks = decks.filter(d => d.id !== deckId);
+      saveDecks(updatedDecks);
+      if (selectedDeck?.id === deckId) {
+          setSelectedDeck(updatedDecks.length > 0 ? updatedDecks[0] : null);
+      }
+      toast({ title: "デッキを削除しました"});
   }
 
-  if (!user) {
-    return (
-        <main className="text-center p-10">
-            <Card className="max-w-md mx-auto">
-                <CardHeader><CardTitle>ログインが必要です</CardTitle></CardHeader>
-                <CardContent><p>デッキを構築するには、マイページからログインしてください。</p></CardContent>
-            </Card>
-        </main>
+  const onDragEnd = (result: DropResult) => {
+    const { source, destination } = result;
+
+    if (!destination || !selectedDeck) return;
+    
+    const sourceIsDeck = source.droppableId === 'deck';
+    const destIsDeck = destination.droppableId === 'deck';
+    const sourceIsCollection = source.droppableId === 'collection';
+    const destIsCollection = destination.droppableId === 'collection';
+
+    const currentDeckCards = selectedDeck.cards;
+    const currentCollectionCards = availableCollection;
+
+    // Moving from Collection to Deck
+    if (sourceIsCollection && destIsDeck) {
+      if (currentDeckCards.length >= DECK_SIZE) {
+        toast({ variant: 'destructive', title: `デッキは${DECK_SIZE}枚までです`});
+        return;
+      }
+      const cardToAdd = currentCollectionCards[source.index];
+      const newDeckCards = [...currentDeckCards];
+      newDeckCards.splice(destination.index, 0, cardToAdd);
+      
+      const updatedDeck = { ...selectedDeck, cards: newDeckCards };
+      const newDecks = decks.map(d => d.id === selectedDeck.id ? updatedDeck : d);
+      saveDecks(newDecks);
+      setSelectedDeck(updatedDeck);
+    }
+    // Moving from Deck to Collection (or out of deck)
+    else if (sourceIsDeck && (destIsCollection || !destination)) {
+        const newDeckCards = [...currentDeckCards];
+        newDeckCards.splice(source.index, 1);
+        
+        const updatedDeck = { ...selectedDeck, cards: newDeckCards };
+        const newDecks = decks.map(d => d.id === selectedDeck.id ? updatedDeck : d);
+        saveDecks(newDecks);
+        setSelectedDeck(updatedDeck);
+    }
+    // Reordering within the deck
+    else if (sourceIsDeck && destIsDeck) {
+        const newDeckCards = [...currentDeckCards];
+        const [removed] = newDeckCards.splice(source.index, 1);
+        newDeckCards.splice(destination.index, 0, removed);
+        
+        const updatedDeck = { ...selectedDeck, cards: newDeckCards };
+        const newDecks = decks.map(d => d.id === selectedDeck.id ? updatedDeck : d);
+        saveDecks(newDecks);
+        setSelectedDeck(updatedDeck);
+    }
+  };
+
+  const availableCollection = useMemo(() => {
+    if (!selectedDeck) return collection;
+    const deckCardIds = new Set(selectedDeck.cards.map(c => c.id));
+    return collection.filter(card => 
+      !deckCardIds.has(card.id) && 
+      card.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
-  }
+  }, [collection, selectedDeck, searchTerm]);
+
+  const handleAnalyzeDeck = async () => {
+    if (!selectedDeck || selectedDeck.cards.length === 0) {
+      toast({ variant: 'destructive', title: '分析するカードがありません' });
+      return;
+    }
+    setIsAnalyzing(true);
+    setAnalysisResult(null);
+    try {
+        const deckForAnalysis = selectedDeck.cards.map(c => ({
+            name: c.name,
+            manaCost: c.manaCost,
+            attack: c.attack,
+            defense: c.defense,
+            cardType: c.cardType,
+            abilities: c.abilities,
+        }));
+        const result = await analyzeDeck({ deck: deckForAnalysis });
+        setAnalysisResult(result);
+    } catch (error) {
+        console.error(error);
+        toast({ variant: 'destructive', title: 'デッキの分析に失敗しました' });
+    } finally {
+        setIsAnalyzing(false);
+    }
+  };
+
 
   return (
-    <>
-      <div className="flex flex-col md:flex-row justify-between items-center mb-4 gap-4">
-        <h1 className="text-3xl font-bold">デッキ構築</h1>
-      </div>
-      <Card className="mb-8">
-        <CardContent className="p-4 flex flex-col md:flex-row items-center gap-4">
-            <div className="flex-grow w-full">
-                <Label htmlFor="deck-select" className="mb-2 block">編集中のデッキ</Label>
-                <Select value={activeDeckId || ''} onValueChange={setActiveDeckId}>
-                    <SelectTrigger id="deck-select">
-                        <SelectValue placeholder="デッキを選択..." />
+    <DragDropContext onDragEnd={onDragEnd}>
+        <div>
+            <h1 className="text-3xl font-bold mb-2">デッキ構築</h1>
+            <p className="text-muted-foreground mb-6">ドラッグ＆ドロップでデッキを構築・編集します。</p>
+            
+            <div className="flex flex-col md:flex-row gap-4 mb-6">
+                <Select onValueChange={(deckId) => setSelectedDeck(decks.find(d => d.id === deckId) || null)}>
+                    <SelectTrigger className="w-full md:w-[250px]">
+                        <SelectValue placeholder="デッキを選択" value={selectedDeck?.name} />
                     </SelectTrigger>
                     <SelectContent>
                         {decks.map(deck => (
-                            <SelectItem key={deck.id} value={deck.id}>{deck.name} ({deck.cards.length}/{DECK_SIZE})</SelectItem>
+                            <SelectItem key={deck.id} value={deck.id}>{deck.name}</SelectItem>
                         ))}
                     </SelectContent>
                 </Select>
+                <div className="flex gap-2">
+                    <Input 
+                        placeholder="新しいデッキ名" 
+                        value={newDeckName}
+                        onChange={(e) => setNewDeckName(e.target.value)}
+                    />
+                    <Button onClick={handleCreateDeck}>新規作成</Button>
+                </div>
+                 {selectedDeck && (
+                     <Button variant="destructive" onClick={() => handleDeleteDeck(selectedDeck.id)}>
+                        「{selectedDeck.name}」を削除
+                    </Button>
+                 )}
             </div>
-            
-            <div className="flex items-end gap-2 w-full md:w-auto flex-wrap justify-end">
-                <Dialog>
-                    <DialogTrigger asChild>
-                        <Button variant="outline"><FilePlus className="mr-2" />新規</Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                        <DialogHeader>
-                            <DialogTitle>新しいデッキを作成</DialogTitle>
-                            <DialogDescription>
-                                新しいデッキの名前を入力してください。（最大{MAX_DECKS}個まで）
-                            </DialogDescription>
-                        </DialogHeader>
-                        <Input 
-                            value={newDeckName}
-                            onChange={(e) => setNewDeckName(e.target.value)}
-                            placeholder="例: ドラゴンデッキ"
-                        />
-                        <DialogFooter>
-                            <DialogClose asChild>
-                                <Button onClick={handleAddNewDeck} disabled={!newDeckName.trim() || decks.length >= MAX_DECKS}>作成</Button>
-                            </DialogClose>
-                        </DialogFooter>
-                    </DialogContent>
-                </Dialog>
-                <Dialog>
-                    <DialogTrigger asChild><Button variant="outline" disabled={!activeDeck}><Pencil className="mr-2"/>名前変更</Button></DialogTrigger>
-                    <DialogContent>
-                        <DialogHeader><DialogTitle>デッキ名を変更</DialogTitle></DialogHeader>
-                        <Input 
-                            value={newDeckName}
-                            onChange={(e) => setNewDeckName(e.target.value)}
-                            placeholder={activeDeck?.name}
-                        />
-                        <DialogFooter>
-                            <DialogClose asChild>
-                                <Button onClick={handleRenameDeck} disabled={!newDeckName.trim()}>変更</Button>
-                            </DialogClose>
-                        </DialogFooter>
-                    </DialogContent>
-                </Dialog>
-                <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                        <Button variant="destructive" disabled={decks.length <= 1 || !activeDeck}><Trash2 className="mr-2" />削除</Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                        <DialogHeader>
-                            <DialogTitle>本当にこのデッキを削除しますか？</DialogTitle>
-                            <DialogDescription>「{activeDeck?.name}」は完全に削除されます。この操作は元に戻せません。</DialogDescription>
-                        </DialogHeader>
-                        <AlertDialogFooter>
-                            <AlertDialogCancel>キャンセル</AlertDialogCancel>
-                            <AlertDialogAction onClick={handleDeleteDeck}>削除</Button>
-                        </AlertDialogFooter>
-                    </AlertDialogContent>
-                </AlertDialog>
-                <Button onClick={saveDeck} disabled={!activeDeck || activeDeck.cards.length !== DECK_SIZE}>
-                    <Save className="mr-2" />
-                    保存
-                </Button>
-            </div>
-        </CardContent>
-      </Card>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        {/* Collection Column */}
-        <div>
-          <Card>
-            <CardHeader>
-              <CardTitle>マイカード ({uniqueCollection.length}種類)</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4 max-h-[600px] overflow-y-auto">
-              {collection.length > 0 ? (
-                uniqueCollection.map(card => (
-                  <Card key={card.id} className="flex items-center p-2">
-                    <div className="flex-grow">
-                      <p className="font-semibold">{card.name}</p>
-                      <p className="text-sm text-muted-foreground">
-                        コスト: {card.manaCost} 攻撃: {card.attack} 防御: {card.defense}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <span className="text-sm w-8 text-center">
-                           {getCardCountInDeck(card.id)}枚
-                        </span>
-                        <Button size="icon" variant="outline" onClick={() => addToDeck(card)}>
-                            <PlusCircle className="h-4 w-4" />
-                        </Button>
-                    </div>
-                  </Card>
-                ))
-              ) : (
-                <p className="text-muted-foreground text-center py-10">
-                  コレクションにカードがありません。「作成」ページでカードを作りましょう。
-                </p>
-              )}
-            </CardContent>
-          </Card>
-        </div>
 
-        {/* Deck Column */}
-        <div>
-          <Card>
-            <CardHeader>
-              <CardTitle>
-                {activeDeck ? `デッキ: ${activeDeck.name}` : 'デッキを選択'} ({activeDeck?.cards.length || 0}/{DECK_SIZE})
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4 max-h-[600px] overflow-y-auto">
-              {activeDeck && activeDeck.cards.length > 0 ? (
-                getUniqueCards(activeDeck.cards).map(card => (
-                  <Card key={card.id} className="flex items-center p-2">
-                    <div className="flex-grow">
-                      <p className="font-semibold">{card.name}</p>
-                      <p className="text-sm text-muted-foreground">
-                        コスト: {card.manaCost} 攻撃: {card.attack} 防御: {card.defense}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <span className="text-sm w-8 text-center">
-                           {getCardCountInDeck(card.id)}枚
-                        </span>
-                        <Button size="icon" variant="outline" onClick={() => removeFromDeck(card.id)}>
-                            <MinusCircle className="h-4 w-4" />
-                        </Button>
-                    </div>
-                  </Card>
-                ))
-              ) : (
-                <p className="text-muted-foreground text-center py-10">
-                  左のカードリストからデッキに追加してください。
-                </p>
-              )}
-            </CardContent>
-             {activeDeck && activeDeck.cards.length > 0 && activeDeck.cards.length !== DECK_SIZE && (
-                <CardFooter className="text-sm text-destructive-foreground bg-destructive/80 p-3 mt-4">
-                    <p>デッキは{DECK_SIZE}枚で構築する必要があります。</p>
-                </CardFooter>
-             )}
-          </Card>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* Collection */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle>マイカード ({availableCollection.length})</CardTitle>
+                        <Input 
+                            placeholder="カードを検索..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="mt-2"
+                        />
+                    </CardHeader>
+                    <CardContent>
+                        <Droppable droppableId="collection">
+                            {(provided, snapshot) => (
+                                <div
+                                    ref={provided.innerRef}
+                                    {...provided.droppableProps}
+                                    className={`min-h-[400px] p-2 rounded-lg bg-secondary/50 transition-colors ${snapshot.isDraggingOver ? 'bg-secondary' : ''}`}
+                                >
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                        {availableCollection.map((card, index) => (
+                                            <Draggable key={card.id} draggableId={card.id!} index={index}>
+                                                {(provided) => (
+                                                    <div
+                                                        ref={provided.innerRef}
+                                                        {...provided.draggableProps}
+                                                        {...provided.dragHandleProps}
+                                                    >
+                                                        <CardPreview {...card} />
+                                                    </div>
+                                                )}
+                                            </Draggable>
+                                        ))}
+                                    </div>
+                                    {provided.placeholder}
+                                </div>
+                            )}
+                        </Droppable>
+                    </CardContent>
+                </Card>
+
+                {/* Deck */}
+                <div className="space-y-4">
+                    <Card>
+                        <CardHeader>
+                        <CardTitle className="flex justify-between items-center">
+                            <span>{selectedDeck?.name || "デッキ"} ({selectedDeck?.cards.length || 0} / {DECK_SIZE})</span>
+                            <Button onClick={handleAnalyzeDeck} disabled={isAnalyzing}>
+                                {isAnalyzing ? <Loader2 className="animate-spin"/> : <Wand2/>}
+                                AIデッキ評価
+                            </Button>
+                        </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                        <Droppable droppableId="deck">
+                            {(provided, snapshot) => (
+                            <div
+                                ref={provided.innerRef}
+                                {...provided.droppableProps}
+                                className={`min-h-[400px] p-2 rounded-lg bg-primary/10 transition-colors ${snapshot.isDraggingOver ? 'bg-primary/20' : ''}`}
+                            >
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                {selectedDeck?.cards.map((card, index) => (
+                                    <Draggable key={card.id} draggableId={card.id!} index={index}>
+                                    {(provided) => (
+                                        <div
+                                            ref={provided.innerRef}
+                                            {...provided.draggableProps}
+                                            {...provided.dragHandleProps}
+                                        >
+                                            <CardPreview {...card} />
+                                        </div>
+                                    )}
+                                    </Draggable>
+                                ))}
+                                </div>
+                                {provided.placeholder}
+                            </div>
+                            )}
+                        </Droppable>
+                        </CardContent>
+                    </Card>
+
+                    {isAnalyzing && <p className="text-center">AIがデッキを評価中...</p>}
+                    
+                    {analysisResult && (
+                        <Alert>
+                            <AlertTitle className="font-bold text-lg">AIによるデッキ評価</AlertTitle>
+                            <AlertDescription>
+                                <div className="space-y-4 mt-2">
+                                    <div>
+                                        <h4 className="font-semibold">戦術</h4>
+                                        <p>{analysisResult.strategy}</p>
+                                    </div>
+                                     <div>
+                                        <h4 className="font-semibold">長所</h4>
+                                        <p>{analysisResult.strengths}</p>
+                                    </div>
+                                     <div>
+                                        <h4 className="font-semibold">弱点</h4>
+                                        <p>{analysisResult.weaknesses}</p>
+                                    </div>
+                                     <div>
+                                        <h4 className="font-semibold">カウンター戦略</h4>
+                                        <p>{analysisResult.counterStrategy}</p>
+                                    </div>
+                                </div>
+                            </AlertDescription>
+                        </Alert>
+                    )}
+                </div>
+            </div>
         </div>
-      </div>
-    </>
+    </DragDropContext>
   );
 }

@@ -1,67 +1,49 @@
 
-
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useTransition } from 'react';
 import type { CardData } from '@/components/card-editor';
 import { CardPreview } from '@/components/card-preview';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { generateGachaPull } from '@/ai/flows/generate-gacha-pull';
-import { Loader2, Save, Wand2, Coins } from 'lucide-react';
+import { generateGachaPull, type GenerateGachaPullOutput } from '@/ai/flows/generate-gacha-pull';
+import { Loader2, Dices, Save } from 'lucide-react';
 import { useCurrency } from '@/hooks/use-currency';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { useMissions } from '@/hooks/use-missions';
-import Image from 'next/image';
-import { useUser } from '@/firebase';
 
-const GACHA_COST_SINGLE = 50;
-const GACHA_COST_MULTI = 500;
 
+const PULL_COST = 100;
+const TEN_PULL_COST = 900; // 10% discount
+const TEN_PULL_COUNT = 10;
 
 export default function GachaPage() {
-  const { user } = useUser();
-  const [isPending, setIsPending] = useState(false);
   const [pulledCards, setPulledCards] = useState<CardData[]>([]);
+  const [isPending, startTransition] = useTransition();
+  const [animationState, setAnimationState] = useState<{ [key: number]: 'flipping' | 'revealed' }>({});
   const { toast } = useToast();
   const { currency, spendCurrency } = useCurrency();
   const { updateMissionProgress } = useMissions();
-  const [isClient, setIsClient] = useState(false);
-  const [cardBackImage, setCardBackImage] = useState<string | null>(null);
-  const [gachaAnimation, setGachaAnimation] = useState('anim-flip');
 
-  useEffect(() => {
-    setIsClient(true);
-    if (user) {
-        const savedCardBack = localStorage.getItem('cardBackImage');
-        if (savedCardBack) {
-            setCardBackImage(savedCardBack);
-        }
-        const savedAnimation = localStorage.getItem('selectedGachaAnimation') || 'anim-flip';
-        setGachaAnimation(savedAnimation.replace('anim-', ''));
-    }
-  }, [user]);
-
-  const handlePullGacha = async (pullCount: number) => {
-    if (!user) {
-        toast({
-            variant: 'destructive',
-            title: 'ログインが必要です',
-            description: 'ガチャを引くにはマイページからログインしてください。',
-        });
-        return;
-    }
-    const cost = pullCount === 1 ? GACHA_COST_SINGLE : GACHA_COST_MULTI;
-    
+  const handlePull = (count: number, cost: number) => {
     if (currency < cost) {
-        toast({
-            variant: 'destructive',
-            title: 'Gコインが足りません！',
-            description: `ガチャを引くには${cost}Gが必要です。`,
-        });
-        return;
+      toast({
+        variant: 'destructive',
+        title: 'Gコインが足りません！',
+        description: `ガチャを引くには ${cost}G が必要です。`,
+      });
+      return;
     }
-    
     if (!spendCurrency(cost)) {
         toast({
             variant: 'destructive',
@@ -69,141 +51,155 @@ export default function GachaPage() {
         });
         return;
     }
-
-    setIsPending(true);
+    
     setPulledCards([]);
-    try {
-      const result = await generateGachaPull({ count: pullCount });
-      const newCards: CardData[] = result.cards.map((card, index) => ({
-        ...card,
-        id: self.crypto.randomUUID(),
-        theme: 'fantasy', // Default theme for display
-        imageUrl: `https://picsum.photos/seed/gacha${Date.now()}${index}/${400}/${300}`,
-      }));
-      setPulledCards(newCards);
-      updateMissionProgress('pull-gacha', pullCount);
-      toast({
-        title: 'ガチャを引きました！',
-        description: `${pullCount}枚のカードを獲得しました。`,
-      });
-    } catch (error) {
-      console.error('Gacha pull failed', error);
-      toast({
-        variant: 'destructive',
-        title: 'ガチャの実行に失敗しました',
-        description: '時間をおいて再度お試しください。',
-      });
-      // Rollback currency if gacha fails
-    //   addCurrency(cost); // This might be desired depending on UX choice
-    } finally {
-      setIsPending(false);
-    }
+    setAnimationState({});
+
+    startTransition(async () => {
+      try {
+        const result: GenerateGachaPullOutput = await generateGachaPull({ count });
+        const newCards = result.cards.map(card => ({
+            ...card,
+            id: self.crypto.randomUUID(),
+            imageUrl: `https://picsum.photos/seed/${self.crypto.randomUUID()}/400/300`,
+            theme: 'fantasy', // Default theme, can be adjusted
+        })) as CardData[];
+        setPulledCards(newCards);
+        
+        // Stagger the animation
+        newCards.forEach((_, index) => {
+            setTimeout(() => {
+                setAnimationState(prev => ({ ...prev, [index]: 'flipping' }));
+            }, index * 200);
+        });
+        updateMissionProgress('pull-gacha', count);
+
+      } catch (error) {
+        console.error(error);
+        toast({
+          variant: 'destructive',
+          title: 'ガチャの実行に失敗しました',
+          description: '時間をおいて再度お試しください。',
+        });
+        // Refund currency on failure
+        // NOTE: This is a simple refund. In a real app, a more robust transaction system is needed.
+        // addCurrency(cost);
+      }
+    });
   };
 
-  const handleSaveToCollection = () => {
-    if (pulledCards.length === 0 || !user) return;
+  const handleSaveAll = () => {
     try {
-      const collection = JSON.parse(localStorage.getItem('cardCollection') || '[]');
-      const newCollection = [...collection, ...pulledCards];
-      localStorage.setItem('cardCollection', JSON.stringify(newCollection));
-      toast({
-        title: 'コレクションに保存しました',
-        description: `${pulledCards.length}枚のカードをマイカードに追加しました。`,
-      });
-      setPulledCards([]); // Clear pulled cards after saving
+        const collection = JSON.parse(localStorage.getItem('cardCollection') || '[]');
+        const newCollection = [...collection, ...pulledCards];
+        localStorage.setItem('cardCollection', JSON.stringify(newCollection));
+        toast({
+            title: `${pulledCards.length}枚のカードをコレクションに保存しました！`
+        });
+        setPulledCards([]); // Clear the pulled cards after saving
     } catch (error) {
-      console.error(error);
-      toast({
-        variant: 'destructive',
-        title: '保存に失敗しました',
-        description: 'カードをコレクションに保存できませんでした。',
-      });
+        console.error(error);
+        toast({
+            variant: 'destructive',
+            title: '保存に失敗しました',
+            description: 'カードをコレクションに保存できませんでした。'
+        });
     }
   };
   
-  const CardBack = () => (
-    <div className="w-full h-full bg-slate-800 rounded-2xl overflow-hidden shadow-2xl border-8 border-slate-700">
-        {cardBackImage ? (
-            <Image src={cardBackImage} alt="Card Back" width={400} height={560} className="w-full h-full object-cover" unoptimized />
-        ) : (
-            <div className="w-full h-full flex items-center justify-center text-white font-bold">CARD</div>
-        )}
-    </div>
-);
+  const defaultBack = 'https://storage.googleapis.com/card-crafter-studio.appspot.com/backs/back_default.png';
+  const cardBackImage = typeof window !== 'undefined' ? localStorage.getItem('cardBackImage') || defaultBack : defaultBack;
 
-
-  if (!isClient) {
-    return null;
-  }
 
   return (
-    <>
-      <Card className="max-w-2xl mx-auto text-center">
-        <CardHeader>
-          <CardTitle className="text-3xl">カードガチャ</CardTitle>
-          <CardDescription>新しいカードを手に入れよう！</CardDescription>
-        </CardHeader>
-        <CardContent className="flex justify-center items-stretch gap-4">
-            <Button onClick={() => handlePullGacha(1)} disabled={isPending} className="flex-1 h-auto py-4">
-                <div className="flex flex-col gap-2 items-center">
-                    {isPending ? <Loader2 className="animate-spin" /> : <Wand2 />}
-                    <span>1回ガチャを引く</span>
-                    <div className="flex items-center gap-1 font-semibold text-base">
-                        <Coins className="h-4 w-4 text-yellow-300" />
-                        <span>{GACHA_COST_SINGLE} G</span>
-                    </div>
-                </div>
-          </Button>
-          <Button onClick={() => handlePullGacha(10)} disabled={isPending} size="lg" className="flex-1 h-auto py-4">
-             <div className="flex flex-col gap-2 items-center">
-                {isPending ? <Loader2 className="animate-spin" /> : <Wand2 />}
-                <span>10連ガチャを引く</span>
-                <div className="flex items-center gap-1 font-semibold text-base">
-                    <Coins className="h-4 w-4 text-yellow-300" />
-                    <span>{GACHA_COST_MULTI} G</span>
-                </div>
-            </div>
-          </Button>
-        </CardContent>
-      </Card>
+    <div>
+      <div className="text-center mb-8">
+        <h1 className="text-3xl font-bold">カードガチャ</h1>
+        <p className="text-muted-foreground mt-2">運命の一枚を引き当てよう！</p>
+      </div>
+
+      <div className="flex justify-center gap-4 mb-8">
+        <AlertDialog>
+            <AlertDialogTrigger asChild>
+                <Button size="lg" disabled={isPending}><Dices />1回引く ({PULL_COST}G)</Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>ガチャを1回引きますか？</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        {PULL_COST}Gを消費してカードガチャを1回引きます。よろしいですか？
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel>キャンセル</AlertDialogCancel>
+                    <AlertDialogAction onClick={() => handlePull(1, PULL_COST)}>実行</AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+
+        <AlertDialog>
+            <AlertDialogTrigger asChild>
+                <Button size="lg" disabled={isPending} className="bg-accent text-accent-foreground hover:bg-accent/90"><Dices />10回引く ({TEN_PULL_COST}G)</Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>ガチャを10回引きますか？</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        {TEN_PULL_COST}Gを消費してカードガチャを10回引きます。1回分お得です！
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel>キャンセル</AlertDialogCancel>
+                    <AlertDialogAction onClick={() => handlePull(TEN_PULL_COUNT, TEN_PULL_COST)}>実行</AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+      </div>
 
       {isPending && (
-         <div className="text-center p-10">
-            <div className="flex flex-col items-center justify-center gap-4">
-                <Loader2 className="animate-spin h-10 w-10 text-primary" />
-                <p className="text-lg text-muted-foreground">カードを生成中...</p>
-            </div>
+        <div className="flex flex-col items-center justify-center text-center my-12">
+          <Loader2 className="animate-spin h-12 w-12 text-primary" />
+          <p className="mt-4 text-muted-foreground">カードを生成中...</p>
         </div>
       )}
 
       {pulledCards.length > 0 && (
-        <div className="mt-12">
-            <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold">ガチャ結果</h2>
-                <Button onClick={handleSaveToCollection}>
-                    <Save className="mr-2" />
-                    すべてコレクションに保存
-                </Button>
-            </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+        <>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
             {pulledCards.map((card, index) => (
-                <div key={card.id} className="[perspective:1000px]">
-                    <div 
-                        className="relative h-full w-full transition-transform duration-700 [transform-style:preserve-3d]" 
-                        style={{ animation: `${gachaAnimation} 1s ${index * 0.1}s 1 ease-in-out forwards`, animationName: gachaAnimation === 'flip' ? 'flip' : 'shake-and-flip' }}
+                <div key={card.id} className="perspective-[1000px]">
+                    <div
+                        className="relative w-full h-full transition-transform duration-700 preserve-3d"
+                        style={{
+                            transform: animationState[index] === 'flipping' || animationState[index] === 'revealed' ? 'rotateY(180deg)' : 'rotateY(0deg)',
+                        }}
                     >
-                         <div className="absolute [backface-visibility:hidden]">
-                             <CardBack />
-                         </div>
-                         <div className="absolute [transform:rotateY(180deg)] [backface-visibility:hidden]">
+                        <div className="absolute w-full h-full backface-hidden">
+                           <img src={cardBackImage} alt="Card Back" className="w-full h-full object-cover rounded-2xl border-4 border-black/50" />
+                        </div>
+                        <div className="absolute w-full h-full backface-hidden" style={{ transform: 'rotateY(180deg)' }}>
                             <CardPreview {...card} />
                         </div>
                     </div>
-              </div>
+                </div>
             ))}
-          </div>
-        </div>
+            </div>
+            <div className="text-center mt-8">
+                <Button size="lg" onClick={handleSaveAll} disabled={isPending}>
+                    <Save className="mr-2"/>
+                    すべてコレクションに保存
+                </Button>
+            </div>
+        </>
       )}
-    </>
+
+    </div>
   );
 }
+
+// Add these utility classes to globals.css if they don't exist
+/*
+.perspective-1000 { perspective: 1000px; }
+.preserve-3d { transform-style: preserve-3d; }
+.backface-hidden { backface-visibility: hidden; }
+*/
