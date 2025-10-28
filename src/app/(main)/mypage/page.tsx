@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -31,6 +32,8 @@ import { doc, updateDoc, collection, query, where, getDocs, orderBy, limit } fro
 import { initializeFirebase } from '@/firebase';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { format } from 'date-fns';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 
 const LoginPage = () => {
@@ -213,10 +216,23 @@ const ReplaysTab = () => {
             setIsLoading(true);
             const replaysRef = collection(firestore, 'replays');
             const q = query(replaysRef, where('player1Id', '==', user.uid), orderBy('createdAt', 'desc'), limit(50));
-            const querySnapshot = await getDocs(q);
-            const fetchedReplays = querySnapshot.docs.map(doc => ({id: doc.id, ...doc.data()}));
-            setReplays(fetchedReplays);
-            setIsLoading(false);
+            try {
+                const querySnapshot = await getDocs(q);
+                const fetchedReplays = querySnapshot.docs.map(doc => ({id: doc.id, ...doc.data()}));
+                setReplays(fetchedReplays);
+            } catch (serverError: any) {
+                if (serverError.code === 'permission-denied') {
+                    const permissionError = new FirestorePermissionError({
+                        path: replaysRef.path,
+                        operation: 'list',
+                    });
+                    errorEmitter.emit('permission-error', permissionError);
+                } else {
+                     errorEmitter.emit('permission-error', serverError);
+                }
+            } finally {
+                 setIsLoading(false);
+            }
         };
         fetchReplays();
     }, [user, firestore]);
@@ -522,4 +538,3 @@ export default function MyPage() {
     );
 }
 
-    
