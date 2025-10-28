@@ -9,7 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Droppable, Draggable, DragDropContext, DropResult } from 'react-beautiful-dnd';
+import { Droppable, Draggable, DragDropContext, DropResult } from '@hello-pangea/dnd';
 import { analyzeDeck } from '@/ai/flows/analyze-deck';
 import { Loader2, Wand2 } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';

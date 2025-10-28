@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useUser, initializeFirebase } from '@/firebase';
 import { ArrowLeftRight, Loader2, Search } from 'lucide-react';
-import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
+import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import { createTradeOffer, respondToTradeOffer, searchUserCollection } from '@/lib/trade-actions';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { ScrollArea } from '@/components/ui/scroll-area';
