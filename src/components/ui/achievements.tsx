@@ -4,14 +4,17 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select"
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from "@/components/ui/dialog"
 import { Coins, Trophy } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './select';
 
 export type Achievement = {
   id: string;
@@ -45,17 +48,30 @@ export function AchievementsUI({ achievements, onTitleChange, onClaimRewards, ch
                 <div className="space-y-6">
                     <div>
                         <h4 className="font-semibold mb-2">称号の選択</h4>
-                        <Select onValueChange={onTitleChange} defaultValue="未設定">
-                            <SelectTrigger className="w-full md:w-[280px]">
-                                <SelectValue placeholder="称号を選択" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="未設定">未設定</SelectItem>
-                                {unlockedAchievements.map(ach => (
-                                    <SelectItem key={ach.id} value={ach.name}>{ach.name}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                         <Dialog>
+                            <DialogTrigger asChild>
+                                <Button variant="outline">称号を変更する</Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                                <DialogHeader>
+                                    <DialogTitle>称号の変更</DialogTitle>
+                                    <DialogDescription>
+                                        アンロックした実績から称号を選び、プロフィールに設定できます。
+                                    </DialogDescription>
+                                </DialogHeader>
+                                <Select onValueChange={onTitleChange} defaultValue="未設定">
+                                    <SelectTrigger className="w-full">
+                                        <SelectValue placeholder="称号を選択" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="未設定">未設定</SelectItem>
+                                        {unlockedAchievements.map(ach => (
+                                            <SelectItem key={ach.id} value={ach.name}>{ach.name}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </DialogContent>
+                        </Dialog>
                     </div>
                     {children}
                     <div>
