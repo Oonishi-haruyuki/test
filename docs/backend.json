@@ -90,101 +90,6 @@
       },
       "required": ["name", "manaCost", "cardType", "rarity", "imageUrl"]
     },
-    "Game": {
-      "title": "Game",
-      "description": "Represents the state of an online card game session.",
-      "type": "object",
-      "properties": {
-        "status": {
-          "type": "string",
-          "enum": ["waiting", "active", "finished"],
-          "description": "The current status of the game."
-        },
-        "player1Id": {
-          "type": "string",
-          "description": "The UID of the first player."
-        },
-        "player2Id": {
-          "type": "string",
-          "description": "The UID of the second player."
-        },
-        "player1LoginId": {
-          "type": "string",
-          "description": "The login ID of player 1."
-        },
-        "player2LoginId": {
-          "type": "string",
-          "description": "The login ID of player 2."
-        },
-        "player1Health": {
-          "type": "number",
-          "description": "The current health of player 1."
-        },
-        "player2Health": {
-          "type": "number",
-          "description": "The current health of player 2."
-        },
-        "turn": {
-          "type": "number",
-          "description": "The current turn number."
-        },
-        "activePlayerId": {
-          "type": "string",
-          "description": "The UID of the player whose turn it is."
-        },
-        "winnerId": {
-          "type": "string",
-          "description": "The UID of the winning player, if the game is finished."
-        },
-        "lastAction": {
-          "type": "string",
-          "description": "A description of the last action taken."
-        },
-        "createdAt": {
-          "type": "string",
-          "format": "date-time",
-          "description": "The timestamp when the game was created."
-        },
-        "player1Deck": {
-          "type": "array",
-          "items": { "$ref": "#/entities/Card" }
-        },
-        "player2Deck": {
-          "type": "array",
-          "items": { "$ref": "#/entities/Card" }
-        },
-        "player1Board": {
-          "type": "array",
-          "items": { "$ref": "#/entities/Card" }
-        },
-        "player2Board": {
-          "type": "array",
-          "items": { "$ref": "#/entities/Card" }
-        },
-         "player1Hand": {
-          "type": "array",
-          "items": { "$ref": "#/entities/Card" }
-        },
-        "player2Hand": {
-          "type": "array",
-          "items": { "$ref": "#/entities/Card" }
-        },
-        "player1Mana": {
-            "type": "number",
-            "description": "Current mana for player 1."
-        },
-        "player2Mana": {
-            "type": "number",
-            "description": "Current mana for player 2."
-        },
-        "player1MaxMana": {
-          "type": "number"
-        },
-        "player2MaxMana": {
-            "type": "number"
-        }
-      }
-    },
     "TradeOffer": {
       "title": "Trade Offer",
       "description": "Represents a trade offer between two users.",
@@ -227,38 +132,6 @@
         "text": { "type": "string" },
         "createdAt": { "type": "string", "format": "date-time" }
       }
-    },
-    "Replay": {
-      "title": "Game Replay",
-      "description": "Stores the full history of a game for later playback.",
-      "type": "object",
-      "properties": {
-        "player1Id": { "type": "string" },
-        "player2Id": { "type": "string" },
-        "player1LoginId": { "type": "string" },
-        "player2LoginId": { "type": "string" },
-        "winnerId": { "type": "string" },
-        "createdAt": { "type": "string", "format": "date-time" },
-        "history": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "properties": {
-              "log": { "type": "string" },
-              "player1Health": { "type": "number" },
-              "player2Health": { "type": "number" },
-              "player1Mana": { "type": "number" },
-              "player2Mana": { "type": "number" },
-              "player1MaxMana": { "type": "number" },
-              "player2MaxMana": { "type": "number" },
-              "player1Hand": { "type": "array", "items": { "$ref": "#/entities/Card" } },
-              "player2Hand": { "type": "array", "items": { "$ref": "#/entities/Card" } },
-              "player1Board": { "type": "array", "items": { "$ref": "#/entities/Card" } },
-              "player2Board": { "type": "array", "items": { "$ref": "#/entities/Card" } }
-            }
-          }
-        }
-      }
     }
   },
   "auth": {
@@ -270,12 +143,6 @@
         "$ref": "#/entities/UserProfile"
       },
       "description": "Stores public information about a user, like their display name and rating."
-    },
-    "/games/{gameId}": {
-      "schema": {
-        "$ref": "#/entities/Game"
-      },
-      "description": "Stores individual game sessions for online battles."
     },
     "/trades/{tradeId}": {
       "schema": {
@@ -290,10 +157,6 @@
     "/guilds/{guildId}/messages/{messageId}": {
       "schema": { "$ref": "#/entities/ChatMessage" },
       "description": "Stores chat messages for a guild."
-    },
-    "/replays/{replayId}": {
-      "schema": { "$ref": "#/entities/Replay" },
-      "description": "Stores game replay data."
     }
   }
 }

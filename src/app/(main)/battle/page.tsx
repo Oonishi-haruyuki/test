@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useCallback, useMemo, Suspense } from 'react';
@@ -16,7 +17,6 @@ import { useStats } from '@/hooks/use-stats';
 import { updateUserRating } from '@/lib/rating-system';
 import { useUser } from '@/firebase';
 import type { BattleProps, Difficulty, GameRules } from '@/lib/types';
-import { saveReplay, type GameHistoryEntry } from '@/lib/replay-actions';
 import { emotes, type Emote } from '@/lib/emotes';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
@@ -321,7 +321,6 @@ function BattleView({ initialPlayerDeck, initialOpponentDeck, forcedDifficulty, 
     
     const [statusMessage, setStatusMessage] = useState('対戦開始！');
     const [isOpponentThinking, setIsOpponentThinking] = useState(false);
-    const [gameHistory, setGameHistory] = useState<GameHistoryEntry[]>([]);
     const [activeEmote, setActiveEmote] = useState<{ emote: Emote, sender: 'player' | 'opponent' } | null>(null);
 
     const searchParams = useSearchParams();
@@ -330,23 +329,6 @@ function BattleView({ initialPlayerDeck, initialOpponentDeck, forcedDifficulty, 
     const [isPlayerTurn, setIsPlayerTurn] = useState(isStoryMode ? false : true);
 
     const effectiveGameRules = useMemo(() => ({ ...defaultGameRules, ...gameRules }), [gameRules]);
-
-    const recordHistory = useCallback((log: string) => {
-        const entry: GameHistoryEntry = {
-            log,
-            player1Health: playerHealth,
-            player2Health: opponentHealth,
-            player1Mana: playerMana,
-            player2Mana: opponentMana,
-            player1MaxMana: playerMaxMana,
-            player2MaxMana: opponentMaxMana,
-            player1Hand: playerHand,
-            player2Hand: opponentHand,
-            player1Board: playerBoard,
-            player2Board: opponentBoard,
-        };
-        setGameHistory(prev => [...prev, entry]);
-    }, [playerHealth, opponentHealth, playerMana, opponentMana, playerMaxMana, opponentMaxMana, playerHand, opponentHand, playerBoard, opponentBoard]);
 
     const handleGameEnd = useCallback(async (winner: 'player' | 'opponent') => {
         setGameStatus('finished');
@@ -374,25 +356,13 @@ function BattleView({ initialPlayerDeck, initialOpponentDeck, forcedDifficulty, 
             updateMissionProgress('play-game', 1);
 
             ratingResultData = await updateUserRating(user.uid, forcedDifficulty!, winner === 'player' ? 'win' : 'loss');
-
-            // Save replay
-             if (profile.loginId && initialPlayerDeck && initialOpponentDeck) {
-                await saveReplay({
-                    player1Id: user.uid,
-                    player2Id: 'AI',
-                    player1LoginId: profile.loginId,
-                    player2LoginId: `AI (${forcedDifficulty})`,
-                    winnerId: winner === 'player' ? user.uid : 'AI',
-                    history: gameHistory,
-                });
-             }
         }
         
         if (onGameEnd) {
             onGameEnd(winner === 'player' ? 'win' : 'loss', ratingResultData);
         }
 
-    }, [onGameEnd, addWin, addLoss, updateMissionProgress, user, forcedDifficulty, toast, gameHistory, profile, isStoryMode, initialPlayerDeck, initialOpponentDeck, effectiveGameRules, addCurrency]);
+    }, [onGameEnd, addWin, addLoss, updateMissionProgress, user, forcedDifficulty, toast, profile, isStoryMode, initialPlayerDeck, initialOpponentDeck, effectiveGameRules, addCurrency]);
 
 
     useEffect(() => {
@@ -430,7 +400,6 @@ function BattleView({ initialPlayerDeck, initialOpponentDeck, forcedDifficulty, 
 
     const endTurn = useCallback(() => {
         if (!isPlayerTurn) return;
-        recordHistory('プレイヤーがターンを終了');
         setIsPlayerTurn(false);
         setActivePlayer('opponent');
         setStatusMessage("相手のターンです。");
@@ -443,7 +412,7 @@ function BattleView({ initialPlayerDeck, initialOpponentDeck, forcedDifficulty, 
         setOpponentDeck(newOpponentDeck);
         setOpponentHand(newOpponentHand);
 
-    }, [isPlayerTurn, opponentMaxMana, opponentDeck, opponentHand, recordHistory]);
+    }, [isPlayerTurn, opponentMaxMana, opponentDeck, opponentHand]);
 
     const playCard = (card: CardData) => {
         if (!isPlayerTurn || playerMana < card.manaCost || (effectiveGameRules.disallowedCardTypes?.includes(card.cardType))) {
@@ -466,8 +435,6 @@ function BattleView({ initialPlayerDeck, initialOpponentDeck, forcedDifficulty, 
         newHand.splice(cardInHandIndex, 1);
         setPlayerHand(newHand);
         
-        recordHistory(`プレイヤーが「${card.name}」をプレイ`);
-
         if (card.cardType === 'creature') {
             setPlayerBoard(prev => [...prev, { ...card, canAttack: false }]);
         } else {
@@ -500,7 +467,6 @@ function BattleView({ initialPlayerDeck, initialOpponentDeck, forcedDifficulty, 
         
         const totalAttack = attackingCreatures.reduce((sum, card) => sum + card.attack, 0);
         
-        recordHistory(`プレイヤーが合計${totalAttack}で攻撃`);
         setOpponentHealth(h => Math.max(0, h - totalAttack));
         setPlayerBoard(prev => prev.map(c => ({...c, canAttack: false })));
         setStatusMessage(`合計 ${totalAttack} のダメージを与えた！`);
@@ -531,7 +497,6 @@ function BattleView({ initialPlayerDeck, initialOpponentDeck, forcedDifficulty, 
                     if (cardToPlay.cardType === 'creature') {
                         board.push({ ...cardToPlay, canAttack: false });
                     }
-                    recordHistory(`相手が「${cardToPlay.name}」をプレイ`);
                     setStatusMessage(`相手が「${cardToPlay.name}」をプレイ！`);
                 }
                 
@@ -546,7 +511,6 @@ function BattleView({ initialPlayerDeck, initialOpponentDeck, forcedDifficulty, 
                         const totalAttack = attackingCreatures.reduce((sum, card) => sum + card.attack, 0);
                         setPlayerHealth(h => Math.max(0, h - totalAttack));
                         setOpponentBoard(b => b.map(c => ({...c, canAttack: false})));
-                        recordHistory(`相手が合計${totalAttack}で攻撃`);
                         setStatusMessage(`相手から合計 ${totalAttack} のダメージを受けた！`);
                     }
 
@@ -564,7 +528,6 @@ function BattleView({ initialPlayerDeck, initialOpponentDeck, forcedDifficulty, 
                         setPlayerDeck(newPlayerDeck);
                         setPlayerHand(newPlayerHand);
                         setStatusMessage("あなたのターンです。");
-                        recordHistory('相手がターンを終了');
                     }, 1000);
                     return () => clearTimeout(endTimer);
                 }, 1000);
@@ -573,7 +536,7 @@ function BattleView({ initialPlayerDeck, initialOpponentDeck, forcedDifficulty, 
             }, 2000); // Simulate thinking time
             return () => clearTimeout(thinkTimer);
         }
-    }, [isPlayerTurn, gameStatus]);
+    }, [isPlayerTurn, gameStatus, effectiveGameRules.boardLimit, effectiveGameRules.disallowedCardTypes, opponentHand, opponentMana, opponentBoard, playerDeck, playerHand, playerMaxMana]);
 
 
     useEffect(() => {
