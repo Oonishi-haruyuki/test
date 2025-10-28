@@ -5,6 +5,7 @@ import React, { createContext, useContext, ReactNode, useState, useEffect, useMe
 import { getAuth, onAuthStateChanged, User } from 'firebase/auth';
 import { getFirestore, doc, onSnapshot, DocumentData, getDoc, setDoc } from 'firebase/firestore';
 import { initializeFirebase } from '.';
+import { FirebaseErrorListener } from '@/components/FirebaseErrorListener';
 
 type UserProfile = {
   loginId?: string;
@@ -104,6 +105,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({ children }) 
 
   return (
     <FirebaseContext.Provider value={value}>
+      <FirebaseErrorListener />
       {children}
     </FirebaseContext.Provider>
   );
