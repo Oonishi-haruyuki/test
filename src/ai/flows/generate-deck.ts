@@ -12,8 +12,6 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
-import type { CardData, CardType, Rarity, Theme } from '@/components/card-editor';
-
 
 const CardSchemaForGeneration = z.object({
     name: z.string().describe('カードの名前。'),
@@ -78,8 +76,9 @@ const generateDeckFlow = ai.defineFlow(
   },
   async input => {
     const {output} = await generateDeckPrompt(input);
-    return output!;
+    if (!output || !output.deck || output.deck.length !== input.cardCount) {
+        throw new Error('Failed to generate the requested number of cards.');
+    }
+    return output;
   }
 );
-
-    
