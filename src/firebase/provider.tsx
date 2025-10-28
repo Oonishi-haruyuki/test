@@ -11,6 +11,7 @@ type UserProfile = {
   loginId?: string;
   rating?: number;
   lastMatchDate?: string;
+  title?: string;
 } & DocumentData;
 
 interface FirebaseContextType {
@@ -32,9 +33,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({ children }) 
   const [isUserLoading, setIsUserLoading] = useState(true);
   const [userError, setUserError] = useState<Error | null>(null);
   
-  const { firebaseApp } = initializeFirebase();
-  const auth = getAuth(firebaseApp);
-  const firestore = getFirestore(firebaseApp);
+  const { auth, firestore } = initializeFirebase();
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -53,55 +52,41 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({ children }) 
   }, [auth]);
 
   useEffect(() => {
-    const setupProfileListener = async () => {
-      if (user) {
-        const profileRef = doc(firestore, 'users', user.uid);
-        try {
-          const docSnap = await getDoc(profileRef);
-          if (!docSnap.exists()) {
+    let unsubscribe = () => {};
+    if (user) {
+      const profileRef = doc(firestore, 'users', user.uid);
+      unsubscribe = onSnapshot(profileRef,
+        (docSnap) => {
+          if (docSnap.exists()) {
+            setProfile(docSnap.data());
+          } else {
             // If profile doesn't exist (e.g. first login), create it
             const newProfileData = {
-              loginId: user.email || `user_${user.uid.substring(0, 5)}`,
+              loginId: user.email || user.displayName || `user_${user.uid.substring(0, 5)}`,
               rating: 1000, // Initial rating
               lastMatchDate: new Date(0).toISOString(), // Epoch time
+              title: '',
             };
-            await setDoc(profileRef, newProfileData);
+            setDoc(profileRef, newProfileData).catch(e => console.error("Error creating user profile:", e));
           }
-        } catch (error) {
-          console.error("Error ensuring user profile exists:", error);
-          setUserError(error instanceof Error ? error : new Error(String(error)));
           setIsUserLoading(false);
-          return;
+        },
+        (error) => {
+          console.error("Profile snapshot error:", error);
+          setUserError(error);
+          setProfile(null);
+          setIsUserLoading(false);
         }
+      );
+    } else {
+      setIsUserLoading(false);
+      setProfile(null);
+    }
 
-        const unsubscribe = onSnapshot(profileRef,
-          (docSnap) => {
-            if (docSnap.exists()) {
-              setProfile(docSnap.data());
-            } else {
-              // This case should ideally not happen after ensuring document existence
-              setProfile(null);
-            }
-            setIsUserLoading(false);
-          },
-          (error) => {
-            console.error("Profile snapshot error:", error);
-            setUserError(error);
-            setProfile(null);
-            setIsUserLoading(false);
-          }
-        );
-        return () => unsubscribe();
-      } else {
-        setProfile(null);
-        setIsUserLoading(false);
-      }
-    };
-
-    setupProfileListener();
+    return () => unsubscribe();
   }, [user, firestore]);
 
-  const value = { user, profile, isUserLoading, userError };
+  const value = useMemo(() => ({ user, profile, isUserLoading, userError }), [user, profile, isUserLoading, userError]);
 
   return (
     <FirebaseContext.Provider value={value}>
@@ -124,4 +109,4 @@ export const useFirebase = () => {};
 export const useAuth = () => {};
 export const useFirestore = () => {};
 export const useFirebaseApp = () => {};
-export const useMemoFirebase = <T,>(factory: () => T) => factory();
+export const useMemoFirebase = <T,>(factory: () => T) => useMemo(factory, []);
