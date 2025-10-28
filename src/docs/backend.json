@@ -90,109 +90,6 @@
       },
       "required": ["name", "manaCost", "cardType", "rarity", "imageUrl"]
     },
-    "Game": {
-      "title": "Game",
-      "description": "Represents the state of an online card game session.",
-      "type": "object",
-      "properties": {
-        "status": {
-          "type": "string",
-          "enum": ["waiting", "active", "finished"],
-          "description": "The current status of the game."
-        },
-        "player1Id": {
-          "type": "string",
-          "description": "The UID of the first player."
-        },
-        "player2Id": {
-          "type": "string",
-          "description": "The UID of the second player."
-        },
-        "player1LoginId": {
-          "type": "string",
-          "description": "The login ID of player 1."
-        },
-        "player2LoginId": {
-          "type": "string",
-          "description": "The login ID of player 2."
-        },
-        "player1Health": {
-          "type": "number",
-          "description": "The current health of player 1."
-        },
-        "player2Health": {
-          "type": "number",
-          "description": "The current health of player 2."
-        },
-        "turn": {
-          "type": "number",
-          "description": "The current turn number."
-        },
-        "activePlayerId": {
-          "type": "string",
-          "description": "The UID of the player whose turn it is."
-        },
-        "winnerId": {
-          "type": "string",
-          "description": "The UID of the winning player, if the game is finished."
-        },
-        "lastAction": {
-          "type": "string",
-          "description": "A description of the last action taken."
-        },
-        "lastEmote": {
-          "type": "object",
-          "properties": {
-            "id": { "type": "string" },
-            "senderId": { "type": "string" }
-          },
-          "description": "The last emote sent in the game."
-        },
-        "createdAt": {
-          "type": "string",
-          "format": "date-time",
-          "description": "The timestamp when the game was created."
-        },
-        "player1Deck": {
-          "type": "array",
-          "items": { "$ref": "#/entities/Card" }
-        },
-        "player2Deck": {
-          "type": "array",
-          "items": { "$ref": "#/entities/Card" }
-        },
-        "player1Board": {
-          "type": "array",
-          "items": { "$ref": "#/entities/Card" }
-        },
-        "player2Board": {
-          "type": "array",
-          "items": { "$ref": "#/entities/Card" }
-        },
-         "player1Hand": {
-          "type": "array",
-          "items": { "$ref": "#/entities/Card" }
-        },
-        "player2Hand": {
-          "type": "array",
-          "items": { "$ref": "#/entities/Card" }
-        },
-        "player1Mana": {
-            "type": "number",
-            "description": "Current mana for player 1."
-        },
-        "player2Mana": {
-            "type": "number",
-            "description": "Current mana for player 2."
-        },
-        "player1MaxMana": {
-          "type": "number"
-        },
-        "player2MaxMana": {
-            "type": "number"
-        }
-      }
-    },
     "TradeOffer": {
       "title": "Trade Offer",
       "description": "Represents a trade offer between two users.",
@@ -267,36 +164,6 @@
           }
         }
       }
-    },
-    "Tournament": {
-        "title": "Tournament",
-        "description": "Represents a user-created tournament event.",
-        "type": "object",
-        "properties": {
-            "name": { "type": "string" },
-            "organizerId": { "type": "string" },
-            "organizerLoginId": { "type": "string" },
-            "status": { "type": "string", "enum": ["registering", "bracket-generated", "active", "finished"] },
-            "entryFee": { "type": "number" },
-            "prizePool": { "type": "number" },
-            "startTime": { "type": "string", "format": "date-time" },
-            "deckType": { "type": "string", "enum": ["user-created", "ai-generated"] },
-            "participants": { "type": "array", "items": { "$ref": "#/entities/TournamentParticipant" } },
-            "bracket": { "type": "object", "description": "Tournament bracket structure" },
-            "createdAt": { "type": "string", "format": "date-time" }
-        }
-    },
-    "TournamentParticipant": {
-        "title": "Tournament Participant",
-        "description": "Represents a single participant in a tournament.",
-        "type": "object",
-        "properties": {
-            "userId": { "type": "string" },
-            "userLoginId": { "type": "string" },
-            "deckId": { "type": "string" },
-            "deckName": { "type": "string" },
-            "deckCards": { "type": "array", "items": { "$ref": "#/entities/Card" } }
-        }
     }
   },
   "auth": {
@@ -308,12 +175,6 @@
         "$ref": "#/entities/UserProfile"
       },
       "description": "Stores public information about a user, like their display name and rating."
-    },
-    "/games/{gameId}": {
-      "schema": {
-        "$ref": "#/entities/Game"
-      },
-      "description": "Stores individual game sessions for online battles."
     },
     "/trades/{tradeId}": {
       "schema": {
@@ -332,10 +193,6 @@
     "/replays/{replayId}": {
       "schema": { "$ref": "#/entities/Replay" },
       "description": "Stores game replay data."
-    },
-    "/tournaments/{tournamentId}": {
-        "schema": { "$ref": "#/entities/Tournament" },
-        "description": "Stores user-created tournament data."
     }
   }
 }

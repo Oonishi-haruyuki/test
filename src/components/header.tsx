@@ -18,7 +18,6 @@ const navLinks = [
     { href: '/deck-builder', label: 'デッキ構築' },
     { href: '/gacha', label: 'ガチャ' },
     { href: '/battle', label: 'AI対戦' },
-    { href: '/online-battle', label: 'オンライン対戦' },
     { href: '/story', label: 'ストーリー' },
     { href: '/tag-battle', label: 'タッグバトル' },
 ];
