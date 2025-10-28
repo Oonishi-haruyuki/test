@@ -204,87 +204,6 @@ const PasswordChangeDialog = () => {
     )
 }
 
-const ReplaysTab = () => {
-    const { user } = useUser();
-    const [replays, setReplays] = useState<any[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
-    const { firestore } = initializeFirebase();
-
-    useEffect(() => {
-        if (!user) return;
-        const fetchReplays = async () => {
-            setIsLoading(true);
-            const replaysRef = collection(firestore, 'replays');
-            const q = query(replaysRef, where('player1Id', '==', user.uid), orderBy('createdAt', 'desc'), limit(50));
-            try {
-                const querySnapshot = await getDocs(q);
-                const fetchedReplays = querySnapshot.docs.map(doc => ({id: doc.id, ...doc.data()}));
-                setReplays(fetchedReplays);
-            } catch (serverError: any) {
-                if (serverError.code === 'permission-denied') {
-                    const permissionError = new FirestorePermissionError({
-                        path: replaysRef.path,
-                        operation: 'list',
-                    });
-                    errorEmitter.emit('permission-error', permissionError);
-                } else {
-                     errorEmitter.emit('permission-error', serverError);
-                }
-            } finally {
-                 setIsLoading(false);
-            }
-        };
-        fetchReplays();
-    }, [user, firestore]);
-
-    return (
-         <Card>
-            <CardHeader>
-                <CardTitle className="flex items-center gap-2"><History /> 対戦履歴</CardTitle>
-                <CardDescription>過去の対戦履歴（リプレイ）を確認できます。</CardDescription>
-            </CardHeader>
-            <CardContent>
-                {isLoading ? (
-                    <div className="flex justify-center items-center py-10"><Loader2 className="animate-spin h-8 w-8" /></div>
-                ) : replays.length === 0 ? (
-                    <p className="text-muted-foreground text-center py-10">対戦履歴はありません。</p>
-                ) : (
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>対戦相手</TableHead>
-                                <TableHead>結果</TableHead>
-                                <TableHead>日時</TableHead>
-                                <TableHead></TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {replays.map(replay => (
-                                <TableRow key={replay.id}>
-                                    <TableCell>{replay.player2LoginId}</TableCell>
-                                    <TableCell>
-                                        <span className={replay.winnerId === user?.uid ? 'text-green-500 font-bold' : 'text-red-500 font-bold'}>
-                                            {replay.winnerId === user?.uid ? '勝利' : '敗北'}
-                                        </span>
-                                    </TableCell>
-                                    <TableCell>
-                                        {replay.createdAt ? format(replay.createdAt.toDate(), 'yyyy/MM/dd HH:mm') : 'N/A'}
-                                    </TableCell>
-                                    <TableCell>
-                                        <Button asChild variant="outline" size="sm">
-                                            <Link href={`/replays/${replay.id}`}>リプレイを見る</Link>
-                                        </Button>
-                                    </TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                )}
-            </CardContent>
-        </Card>
-    );
-}
-
 export default function MyPage() {
     const { user, profile, isUserLoading } = useUser();
     const { wins, losses } = useStats();
@@ -466,7 +385,6 @@ export default function MyPage() {
                                 </div>
                             </CardContent>
                         </Card>
-                        <ReplaysTab />
                     </div>
                 </TabsContent>
 
@@ -537,4 +455,3 @@ export default function MyPage() {
         </div>
     );
 }
-
