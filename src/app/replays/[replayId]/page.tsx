@@ -1,161 +1,75 @@
-{
-  "entities": {
-    "UserProfile": {
-      "title": "User Profile",
-      "description": "Represents a user's public profile information.",
-      "type": "object",
-      "properties": {
-        "loginId": {
-          "type": "string",
-          "description": "The user's unique login identifier."
-        },
-        "rating": {
-          "type": "number",
-          "description": "The user's ELO rating for ranked matches. Defaults to 1000."
-        },
-        "lastMatchDate": {
-            "type": "string",
-            "format": "date-time",
-            "description": "The timestamp of the user's last completed match."
-        },
-        "guildId": {
-          "type": "string",
-          "description": "The ID of the guild the user belongs to."
-        }
-      }
-    },
-    "Card": {
-      "title": "Card",
-      "description": "Represents a single card in the trading card game.",
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the card."
-        },
-        "theme": {
-          "type": "string",
-          "description": "The theme of the card (e.g., fantasy, sci-fi).",
-          "enum": ["fantasy", "sci-fi", "modern", "custom"]
-        },
-        "name": {
-          "type": "string",
-          "description": "The name of the card."
-        },
-        "manaCost": {
-          "type": "number",
-          "description": "The mana cost to play the card."
-        },
-        "attack": {
-          "type": "number",
-          "description": "The attack power of the card (for creatures)."
-        },
-        "defense": {
-          "type": "number",
-          "description": "The defense/health of the card (for creatures)."
-        },
-        "cardType": {
-          "type": "string",
-          "description": "The type of the card.",
-          "enum": ["creature", "spell", "artifact", "land"]
-        },
-        "rarity": {
-          "type": "string",
-          "description": "The rarity of the card.",
-          "enum": ["common", "uncommon", "rare", "mythic"]
-        },
-        "abilities": {
-          "type": "string",
-          "description": "The special abilities or rules text of the card."
-        },
-        "flavorText": {
-          "type": "string",
-          "description": "The thematic or story text of the card."
-        },
-        "imageUrl": {
-          "type": "string",
-          "format": "uri",
-          "description": "The URL for the card's artwork."
-        },
-        "imageHint": {
-          "type": "string",
-          "description": "A hint for generating the card's image."
-        },
-        "frameImageUrl": {
-          "type": "string",
-          "format": "uri",
-          "description": "The URL for the card's custom frame."
-        }
-      },
-      "required": ["name", "manaCost", "cardType", "rarity", "imageUrl"]
-    },
-    "TradeOffer": {
-      "title": "Trade Offer",
-      "description": "Represents a trade offer between two users.",
-      "type": "object",
-      "properties": {
-        "offerorId": { "type": "string", "description": "The UID of the user making the offer." },
-        "offerorLoginId": { "type": "string", "description": "The login ID of the offeror." },
-        "offereeId": { "type": "string", "description": "The UID of the user receiving the offer." },
-        "offereeLoginId": { "type": "string", "description": "The login ID of the offeree." },
-        "offeredCards": { "type": "array", "items": { "$ref": "#/entities/Card" } },
-        "requestedCards": { "type": "array", "items": { "$ref": "#/entities/Card" } },
-        "status": { "type": "string", "enum": ["pending", "accepted", "rejected", "cancelled"] },
-        "createdAt": { "type": "string", "format": "date-time" }
-      }
-    },
-    "Guild": {
-      "title": "Guild",
-      "description": "Represents a player guild.",
-      "type": "object",
-      "properties": {
-        "name": { "type": "string", "description": "The name of the guild." },
-        "description": { "type": "string", "description": "A short description of the guild." },
-        "leaderId": { "type": "string", "description": "The UID of the user who created the guild." },
-        "memberIds": { "type": "array", "items": { "type": "string" }, "description": "A list of UIDs of the guild members." },
-        "createdAt": { "type": "string", "format": "date-time" },
-        "activityTime": { "type": "string", "description": "The typical activity time for the guild." },
-        "genderRatio": { "type": "string", "description": "The gender ratio of the guild." },
-        "notes": { "type": "string", "description": "Additional notes or rules for the guild." }
-      },
-      "required": ["name", "leaderId", "memberIds"]
-    },
-    "ChatMessage": {
-      "title": "Chat Message",
-      "description": "Represents a single message in a guild chat.",
-      "type": "object",
-      "properties": {
-        "guildId": { "type": "string" },
-        "userId": { "type": "string" },
-        "userLoginId": { "type": "string" },
-        "text": { "type": "string" },
-        "createdAt": { "type": "string", "format": "date-time" }
-      }
+'use client';
+
+import { useState, useEffect } from 'react';
+import { doc, getDoc } from 'firebase/firestore';
+import { initializeFirebase } from '@/firebase';
+import { GameHistoryEntry } from '@/lib/replay-actions';
+
+type ReplayData = {
+    player1LoginId: string;
+    player2LoginId: string;
+    winnerId: string;
+    history: GameHistoryEntry[];
+    createdAt: any;
+};
+
+export default function ReplayPage({ params }: { params: { replayId: string } }) {
+    const [replay, setReplay] = useState<ReplayData | null>(null);
+    const [loading, setLoading] = useState(true);
+    const { firestore } = initializeFirebase();
+
+    useEffect(() => {
+        if (!params.replayId) return;
+
+        const fetchReplay = async () => {
+            setLoading(true);
+            const replayRef = doc(firestore, 'replays', params.replayId);
+            const replaySnap = await getDoc(replayRef);
+
+            if (replaySnap.exists()) {
+                setReplay(replaySnap.data() as ReplayData);
+            } else {
+                console.error("No such document!");
+            }
+            setLoading(false);
+        };
+
+        fetchReplay();
+    }, [params.replayId, firestore]);
+
+    if (loading) {
+        return <div>Loading replay...</div>;
     }
-  },
-  "auth": {
-    "providers": ["email", "google"]
-  },
-  "firestore": {
-    "/users/{userId}": {
-      "schema": {
-        "$ref": "#/entities/UserProfile"
-      },
-      "description": "Stores public information about a user, like their display name and rating."
-    },
-    "/trades/{tradeId}": {
-      "schema": {
-        "$ref": "#/entities/TradeOffer"
-      },
-      "description": "Stores trade offers between users."
-    },
-    "/guilds/{guildId}": {
-      "schema": { "$ref": "#/entities/Guild" },
-      "description": "Stores guild information."
-    },
-    "/guilds/{guildId}/messages/{messageId}": {
-      "schema": { "$ref": "#/entities/ChatMessage" },
-      "description": "Stores chat messages for a guild."
+
+    if (!replay) {
+        return <div>Replay not found.</div>;
     }
-  }
+
+    return (
+        <div className="container mx-auto p-4">
+            <h1 className="text-3xl font-bold mb-4">
+                Replay: {replay.player1LoginId} vs {replay.player2LoginId}
+            </h1>
+            <div className="text-muted-foreground mb-6">
+                Winner: {replay.winnerId === 'AI' ? replay.player2LoginId : replay.player1LoginId}
+            </div>
+            <div className="space-y-4">
+                {replay.history.map((entry, index) => (
+                    <div key={index} className="p-4 border rounded-lg">
+                        <p className="font-semibold">{entry.log}</p>
+                        <div className="grid grid-cols-2 gap-4 mt-2 text-sm">
+                            <div>
+                                <p>Player 1 Health: {entry.player1Health}</p>
+                                <p>Player 1 Mana: {entry.player1Mana}/{entry.player1MaxMana}</p>
+                            </div>
+                            <div>
+                                <p>Player 2 Health: {entry.player2Health}</p>
+                                <p>Player 2 Mana: {entry.player2Mana}/{entry.player2MaxMana}</p>
+                            </div>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
 }
