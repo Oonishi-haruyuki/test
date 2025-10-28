@@ -181,7 +181,10 @@ function CreateTournamentDialog() {
     });
 
     const handleCreate = async () => {
-        if (!user || !profile) return;
+        if (!user || !profile?.loginId) {
+            toast({ variant: 'destructive', title: 'ログイン情報が見つかりません。' });
+            return;
+        }
         if (options.name.trim() === '') {
             toast({ variant: 'destructive', title: '大会名を入力してください。' });
             return;
