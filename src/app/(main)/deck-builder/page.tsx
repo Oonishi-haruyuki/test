@@ -174,9 +174,9 @@ export default function DeckBuilderPage() {
             <p className="text-muted-foreground mb-6">ドラッグ＆ドロップでデッキを構築・編集します。</p>
             
             <div className="flex flex-col md:flex-row gap-4 mb-6">
-                <Select onValueChange={(deckId) => setSelectedDeck(decks.find(d => d.id === deckId) || null)}>
+                <Select value={selectedDeck?.id || ''} onValueChange={(deckId) => setSelectedDeck(decks.find(d => d.id === deckId) || null)}>
                     <SelectTrigger className="w-full md:w-[250px]">
-                        <SelectValue placeholder="デッキを選択" value={selectedDeck?.name} />
+                        <SelectValue placeholder="デッキを選択" />
                     </SelectTrigger>
                     <SelectContent>
                         {decks.map(deck => (
