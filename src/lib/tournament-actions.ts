@@ -49,6 +49,7 @@ export async function createTournament(
         createdAt: serverTimestamp(),
     };
 
+    // Use .catch() to handle potential permission errors from setDoc
     setDoc(newTournamentRef, tournamentData)
         .catch(async (serverError) => {
             const permissionError = new FirestorePermissionError({
