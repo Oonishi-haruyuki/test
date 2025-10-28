@@ -181,7 +181,7 @@ function CreateTournamentDialog() {
     });
 
     const handleCreate = async () => {
-        if (!user || !profile?.loginId) {
+        if (!user || !profile || !profile.loginId) {
             toast({ variant: 'destructive', title: 'ログイン情報が見つかりません。' });
             return;
         }
