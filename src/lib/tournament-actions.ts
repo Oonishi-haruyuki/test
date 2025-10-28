@@ -9,8 +9,6 @@ import {
     serverTimestamp,
 } from 'firebase/firestore';
 import { initializeFirebase } from '@/firebase';
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 
 export interface CreateTournamentOptions {
     name: string;
@@ -19,11 +17,28 @@ export interface CreateTournamentOptions {
     deckType: 'user-created' | 'ai-generated';
 }
 
+interface SuccessResponse {
+    success: true;
+    message: string;
+    tournamentId?: string;
+}
+
+interface ErrorResponse {
+    success: false;
+    message: string;
+    error?: {
+        name: string;
+        message: string;
+        details: any;
+    };
+}
+
+
 export async function createTournament(
     organizerId: string, 
     organizerLoginId: string, 
     options: CreateTournamentOptions
-): Promise<{ success: boolean; message: string; tournamentId?: string }> {
+): Promise<SuccessResponse | ErrorResponse> {
     const { firestore } = initializeFirebase();
     
     const newTournamentRef = doc(collection(firestore, 'tournaments'));
@@ -49,16 +64,30 @@ export async function createTournament(
         createdAt: serverTimestamp(),
     };
 
-    // Use .catch() to handle potential permission errors from setDoc
-    setDoc(newTournamentRef, tournamentData)
-        .catch(async (serverError) => {
-            const permissionError = new FirestorePermissionError({
+    try {
+        await setDoc(newTournamentRef, tournamentData);
+        return { success: true, message: '大会が作成されました。', tournamentId };
+    } catch (error: any) {
+        if (error.code === 'permission-denied') {
+            const context = {
                 path: newTournamentRef.path,
                 operation: 'create',
                 requestResourceData: tournamentData,
-            } satisfies SecurityRuleContext);
-            errorEmitter.emit('permission-error', permissionError);
-        });
-
-    return { success: true, message: '大会が作成されました。', tournamentId };
+            };
+            return {
+                success: false,
+                message: 'Firestoreの権限がありません。',
+                error: {
+                    name: 'FirestorePermissionError',
+                    message: `The following request was denied by Firestore Security Rules:\n${JSON.stringify(context, null, 2)}`,
+                    details: context,
+                }
+            };
+        }
+        return { 
+            success: false, 
+            message: '不明なサーバーエラーが発生しました。',
+            error: { name: error.name, message: error.message, details: {} }
+        };
+    }
 }

@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -206,6 +207,12 @@ function CreateTournamentDialog() {
             if (result.success) {
                 toast({ title: '大会を作成しました！', description: `参加コード: ${result.tournamentId}` });
                 // Here you would typically close the dialog and refresh the tournament list
+            } else if (result.error) {
+                 toast({ 
+                    variant: 'destructive', 
+                    title: result.error.name, 
+                    description: <pre className="mt-2 w-full rounded-md bg-slate-950 p-4"><code className="text-white">{result.error.message}</code></pre>
+                 });
             } else {
                 throw new Error(result.message);
             }
