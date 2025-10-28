@@ -50,7 +50,7 @@ const generateDeckPrompt = ai.definePrompt({
 テーマ: {{{theme}}}
 枚数: {{{cardCount}}}
 
-以下のガイドラインに従って、多様なカードを生成してください:
+以下のガイドラインに従って、指定された枚数のカードを持つデッキを生成してください:
 - クリーチャーカードと呪文カードをバランス良く含めてください。
 - クリーチャーカードを生成する際は、適切な種族(creatureType)を設定してください。呪文の場合はcreatureTypeを'none'にしてください。
 - マナコスト、レアリティを多様にしてください。
@@ -63,8 +63,6 @@ const generateDeckPrompt = ai.definePrompt({
 - 能力の説明は非常に簡潔にしてください。長文は避けてください。
 - 能力は「クリーチャー1体に2ダメージを与える」「カードを1枚引く」「クリーチャー1体の攻撃力を+2する」のように、シンプルで理解しやすいものにしてください。
 - プレイヤーのライフに直接ダメージを与える能力は、極力生成しないでください。クリーチャーへのダメージや能力値の変更、一時的な行動不能（束縛）などを優先してください。
-
-指定された枚数のカードを持つデッキを生成してください。
 `,
 });
 
@@ -77,7 +75,7 @@ const generateDeckFlow = ai.defineFlow(
   async input => {
     const {output} = await generateDeckPrompt(input);
     if (!output || !output.deck || output.deck.length !== input.cardCount) {
-        throw new Error('Failed to generate the requested number of cards.');
+        throw new Error(`Failed to generate the requested number of cards. Expected ${input.cardCount}, got ${output?.deck?.length || 0}.`);
     }
     return output;
   }

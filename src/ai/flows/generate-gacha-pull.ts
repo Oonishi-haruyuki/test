@@ -28,7 +28,6 @@ const CardSchemaForGacha = z.object({
     flavorText: z.string().describe('カードのフレーバーテキスト。世界観を表す短いテキスト。'),
     imageHint: z.string().describe('カードの画像生成のためのヒント（英語、最大2単語）。'),
 });
-type CardForGacha = z.infer<typeof CardSchemaForGacha>;
 
 const GenerateGachaPullInputSchema = z.object({
   count: z.number().describe('生成するカードの枚数。'),
@@ -41,26 +40,31 @@ const GenerateGachaPullOutputSchema = z.object({
 });
 export type GenerateGachaPullOutput = z.infer<typeof GenerateGachaPullOutputSchema>;
 
-
-const generateCardPrompt = ai.definePrompt({
-    name: 'generateSingleCardForGachaPrompt',
+// This prompt generates multiple cards at once for efficiency.
+const generateMultipleCardsPrompt = ai.definePrompt({
+    name: 'generateMultipleCardsForGachaPrompt',
     input: {
       schema: z.object({
-        theme: z.string(),
-        rarity: z.string(),
+        cardRequests: z.array(z.object({
+            theme: z.string(),
+            rarity: z.string(),
+        })),
       }),
     },
-    output: { schema: CardSchemaForGacha },
-    prompt: `あなたは創造的なカードゲームデザイナーです。指定されたテーマとレアリティに基づいて、ユニークなカードを1枚生成してください。すべて日本語で回答してください。
+    output: { schema: GenerateGachaPullOutputSchema },
+    prompt: `あなたは創造的なカードゲームデザイナーです。以下のリクエストリストに基づいて、複数のユニークなカードを生成してください。リスト内の各リクエストに対して1枚のカードを生成し、すべてを配列で返してください。すべて日本語で回答してください。
 
-テーマ: {{{theme}}}
-レアリティ: {{{rarity}}}
+カードリクエストリスト:
+{{#each cardRequests}}
+- テーマ: {{theme}}, レアリティ: {{rarity}}
+{{/each}}
 
-以下のガイドラインに従ってください:
+以下のガイドラインに厳密に従ってください:
+- 各リクエストで指定されたテーマとレアリティを正確に反映したカードを生成してください。
 - レアリティが高いほど、より強力でユニークな能力を持つようにしてください。
 - カード名はテーマに沿った、ユニークで喚情的なものにしてください。
 - imageHintはカードのイラストをイメージした英語のキーワード（2単語以内）にしてください。
-- 必ずしもクリーチャーである必要はありません。呪文カードも生成してください。
+- 必ずしもクリーチャーである必要はありません。呪文カードもバランス良く生成してください。
 - クリーチャーカードを生成する際は、適切な種族(creatureType)を設定してください。呪文の場合はcreatureTypeを'none'にしてください。
 
 **能力に関するルール:**
@@ -69,6 +73,7 @@ const generateCardPrompt = ai.definePrompt({
 - プレイヤーのライフに直接ダメージを与える能力は、極力生成しないでください。クリーチャーへのダメージや能力値の変更、一時的な行動不能（束縛）などを優先してください。
 `,
 });
+
 
 const generateGachaPullFlow = ai.defineFlow(
   {
@@ -85,55 +90,65 @@ const generateGachaPullFlow = ai.defineFlow(
     };
 
     const determineRarity = (): Rarity => {
-        let probabilities = rarityProbabilities;
-        let availableRarities: Rarity[] = ['common', 'uncommon', 'rare', 'mythic'];
+        const availableRarities: Rarity[] = allowedRarities && allowedRarities.length > 0
+            ? allowedRarities
+            : ['common', 'uncommon', 'rare', 'mythic'];
 
-        if (allowedRarities && allowedRarities.length > 0) {
-            availableRarities = allowedRarities;
-            const total = availableRarities.reduce((sum, r) => sum + (rarityProbabilities[r] || 0), 0);
-            if (total > 0) {
-                 probabilities = {} as { [key in Rarity]: number };
-                 availableRarities.forEach(r => {
-                     probabilities[r] = (rarityProbabilities[r] || 0) / total;
-                 });
-            } else {
-                // If filtered rarities have no probability, distribute equally.
-                 availableRarities.forEach(r => {
-                     probabilities[r] = 1 / availableRarities.length;
-                 });
-            }
+        // Create a probability distribution for the available rarities
+        const distribution = new Map<Rarity, number>();
+        let totalProb = 0;
+        for (const r of availableRarities) {
+            totalProb += rarityProbabilities[r] || 0;
+            distribution.set(r, rarityProbabilities[r] || 0);
         }
 
+        // Normalize probabilities
+        if (totalProb > 0) {
+            for (const [rarity, prob] of distribution.entries()) {
+                distribution.set(rarity, prob / totalProb);
+            }
+        } else { // Fallback for uniform distribution if total is 0
+            const equalProb = 1 / availableRarities.length;
+            for (const r of availableRarities) {
+                distribution.set(r, equalProb);
+            }
+        }
+        
         const rand = Math.random();
         let cumulative = 0;
-        for (const r of availableRarities) {
-            cumulative += probabilities[r] || 0;
+        for (const [rarity, prob] of distribution.entries()) {
+            cumulative += prob;
             if (rand < cumulative) {
-                return r;
+                return rarity;
             }
         }
         return availableRarities[availableRarities.length - 1] || 'common'; // Fallback
     };
     
-    const cardPromises: Promise<CardForGacha>[] = [];
-
+    // Create all card requests (theme + rarity) first.
+    const cardRequests = [];
     for (let i = 0; i < count; i++) {
         const rarity = determineRarity();
         const theme = THEMES[Math.floor(Math.random() * THEMES.length)];
-        
-        const cardPromise = (async () => {
-            const { output } = await generateCardPrompt({ theme, rarity });
-            if (!output) {
-                throw new Error(`Failed to generate card for theme ${theme} and rarity ${rarity}`);
-            }
-            return { ...output, rarity }; // Ensure the correct rarity is set
-        })();
-        cardPromises.push(cardPromise);
+        cardRequests.push({ theme, rarity });
     }
     
-    const cards = await Promise.all(cardPromises);
+    // Call the AI once with all requests.
+    const { output } = await generateMultipleCardsPrompt({ cardRequests });
 
-    return { cards };
+    if (!output || !output.cards || output.cards.length !== count) {
+        throw new Error(`Failed to generate the requested number of cards. Expected ${count}, got ${output?.cards?.length || 0}.`);
+    }
+
+    // Ensure the returned cards have the correct rarity as requested.
+    const finalCards = output.cards.map((card, index) => {
+        return {
+            ...card,
+            rarity: cardRequests[index].rarity,
+        };
+    });
+
+    return { cards: finalCards };
   }
 );
 
