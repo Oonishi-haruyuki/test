@@ -1,7 +1,6 @@
-
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import type { CardData } from '@/components/card-editor';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -10,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useRouter, useSearchParams } from 'next/navigation';
 import { generateDeck } from '@/ai/flows/generate-deck';
 
-export default function StoryBattlePreparationPage() {
+function StoryBattlePreparationPageContent() {
     const [decks, setDecks] = useState<{id: string, name: string, cards: CardData[]}[]>([]);
     const [selectedDeckId, setSelectedDeckId] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
@@ -114,5 +113,13 @@ export default function StoryBattlePreparationPage() {
                 </Button>
             </div>
         </div>
+    );
+}
+
+export default function StoryBattlePreparationPage() {
+    return (
+        <Suspense fallback={<div className="flex justify-center items-center h-64"><Loader2 className="animate-spin h-10 w-10" /><p className="ml-4">読み込み中...</p></div>}>
+            <StoryBattlePreparationPageContent />
+        </Suspense>
     );
 }

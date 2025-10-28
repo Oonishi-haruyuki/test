@@ -98,10 +98,10 @@ export default function ShopPage() {
     useEffect(() => {
         if (!user) return; // Only load for logged-in users
         try {
-            const savedFrames = new Set(JSON.parse(localStorage.getItem('purchasedCardFrames') || '["frame-default"]'));
-            const savedBacks = new Set(JSON.parse(localStorage.getItem('purchasedCardBacks') || '["back-default"]'));
-            const savedArtifacts = new Set(JSON.parse(localStorage.getItem('purchasedArtifacts') || '[]'));
-            const savedAnimations = new Set(JSON.parse(localStorage.getItem('purchasedAnimations') || '["anim-flip"]'));
+            const savedFrames = new Set(JSON.parse(localStorage.getItem('purchasedCardFrames') || '["frame-default"]') as string[]);
+            const savedBacks = new Set(JSON.parse(localStorage.getItem('purchasedCardBacks') || '["back-default"]') as string[]);
+            const savedArtifacts = new Set(JSON.parse(localStorage.getItem('purchasedArtifacts') || '[]') as string[]);
+            const savedAnimations = new Set(JSON.parse(localStorage.getItem('purchasedAnimations') || '["anim-flip"]') as string[]);
 
             setPurchasedItems({
                 frames: savedFrames,

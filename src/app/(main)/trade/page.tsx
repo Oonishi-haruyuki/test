@@ -4,6 +4,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import type { CardData } from '@/components/card-editor';
 import { Button } from '@/components/ui/button';
+
 import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -318,7 +319,7 @@ const OfferCard = ({ offer, onRespond, type }: { offer: TradeOffer, onRespond: (
                 <p className="text-sm text-muted-foreground">
                     {type === 'incoming' ? `From: ${offer.offerorLoginId}` : `To: ${offer.offereeLoginId}`}
                 </p>
-                 <Badge variant={offer.status === 'pending' ? 'default' : 'secondary'}>{offer.status}</Badge>
+                 
             </div>
              <div className="grid grid-cols-3 gap-2 items-center my-2">
                 <div className="space-y-1">

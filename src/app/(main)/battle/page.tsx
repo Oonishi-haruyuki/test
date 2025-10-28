@@ -1,7 +1,6 @@
-
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, Suspense } from 'react';
 import type { CardData, Rarity, CardType } from '@/components/card-editor';
 import { CardPreview } from '@/components/card-preview';
 import { Button } from '@/components/ui/button';
@@ -53,7 +52,7 @@ const defaultGameRules: GameRules = {
   disallowedCardTypes: [],
 }
 
-export default function BattlePage() {
+function BattlePageContent() {
     const searchParams = useSearchParams();
     const [difficulty, setDifficulty] = useState<Difficulty>('beginner');
     const [gameState, setGameState] = useState<'selecting' | 'loading' | 'active' | 'finished'>('selecting');
@@ -133,6 +132,14 @@ export default function BattlePage() {
     }
     
     return <DeckSelection onStartGame={startGame} />;
+}
+
+export default function BattlePage() {
+    return (
+        <Suspense fallback={<div className="flex justify-center items-center h-64"><Loader2 className="animate-spin h-10 w-10" /><p className="ml-4">読み込み中...</p></div>}>
+            <BattlePageContent />
+        </Suspense>
+    );
 }
 
 // Deck Selection Component

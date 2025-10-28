@@ -124,4 +124,4 @@ export const useFirebase = () => {};
 export const useAuth = () => {};
 export const useFirestore = () => {};
 export const useFirebaseApp = () => {};
-export const useMemoFirebase = <T>(factory: () => T) => factory();
+export const useMemoFirebase = <T,>(factory: () => T) => factory();

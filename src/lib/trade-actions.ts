@@ -39,9 +39,9 @@ export async function searchUserCollection(loginId: string): Promise<{ success: 
     // For this demo, we'll simulate by creating some mock data.
     // This part is a placeholder.
     const mockCollection: CardData[] = [
-        { id: 'mock-1', name: '相手のゴブリン', manaCost: 1, attack: 1, defense: 1, cardType: 'creature', rarity: 'common', abilities: '', flavorText: '', imageUrl: 'https://picsum.photos/seed/mock1/400/300', imageHint: 'goblin' },
-        { id: 'mock-2', name: '相手のドラゴン', manaCost: 8, attack: 8, defense: 8, cardType: 'creature', rarity: 'mythic', abilities: '飛行', flavorText: '', imageUrl: 'https://picsum.photos/seed/mock2/400/300', imageHint: 'dragon' },
-        { id: 'mock-3', name: '相手の呪文', manaCost: 3, attack: 0, defense: 0, cardType: 'spell', rarity: 'uncommon', abilities: 'カードを2枚引く', flavorText: '', imageUrl: 'https://picsum.photos/seed/mock3/400/300', imageHint: 'magic spell' }
+        { id: 'mock-1', theme: 'fantasy', name: '相手のゴブリン', manaCost: 1, attack: 1, defense: 1, cardType: 'creature', rarity: 'common', abilities: '', flavorText: '', imageUrl: 'https://picsum.photos/seed/mock1/400/300', imageHint: 'goblin' },
+        { id: 'mock-2', theme: 'fantasy', name: '相手のドラゴン', manaCost: 8, attack: 8, defense: 8, cardType: 'creature', rarity: 'mythic', abilities: '飛行', flavorText: '', imageUrl: 'https://picsum.photos/seed/mock2/400/300', imageHint: 'dragon' },
+        { id: 'mock-3', theme: 'fantasy', name: '相手の呪文', manaCost: 3, attack: 0, defense: 0, cardType: 'spell', rarity: 'uncommon', abilities: 'カードを2枚引く', flavorText: '', imageUrl: 'https://picsum.photos/seed/mock3/400/300', imageHint: 'magic spell' }
     ];
 
     return { success: true, message: 'Collection found.', collection: mockCollection };
