@@ -1,3 +1,4 @@
+
 'use client';
 
 import { firebaseConfig } from '@/firebase/config';
@@ -22,7 +23,6 @@ export function initializeFirebase() {
   
   // Guard against missing API key during server-side rendering or build.
   if (!firebaseConfig.apiKey) {
-    console.warn("Firebase API key is missing. Firebase will not be initialized.");
     // Return a mock structure to prevent crashes when destructuring.
     // This is a temporary state until the client-side re-renders with env vars.
     return {
@@ -52,3 +52,4 @@ export * from './non-blocking-updates';
 export * from './non-blocking-login';
 export * from './errors';
 export * from './error-emitter';
+

@@ -77,8 +77,8 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
 
   // Effect to subscribe to Firebase auth state changes
   useEffect(() => {
-    if (!auth) { // If no Auth service instance, cannot determine user state
-      setUserAuthState({ user: null, profile: null, isUserLoading: false, userError: new Error("Auth service not provided.") });
+    if (!auth || !firestore) { // If no Auth service instance, cannot determine user state
+      setUserAuthState({ user: null, profile: null, isUserLoading: false, userError: new Error("Auth or Firestore service not provided.") });
       return;
     }
 
@@ -139,7 +139,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
  * Hook to access core Firebase services and user authentication state.
  * Throws error if core services are not available or used outside provider.
  */
-export const useFirebase = (): FirebaseServicesAndUser => {
+export const useFirebase = (): FirebaseServicesAndUser | null => {
   const context = useContext(FirebaseContext);
 
   if (context === undefined) {
@@ -147,7 +147,7 @@ export const useFirebase = (): FirebaseServicesAndUser => {
   }
 
   if (!context.areServicesAvailable || !context.firebaseApp || !context.firestore || !context.auth) {
-    throw new Error('Firebase core services not available. Check FirebaseProvider props.');
+    return null;
   }
 
   return {
@@ -162,21 +162,21 @@ export const useFirebase = (): FirebaseServicesAndUser => {
 };
 
 /** Hook to access Firebase Auth instance. */
-export const useAuth = (): Auth => {
-  const { auth } = useFirebase();
-  return auth;
+export const useAuth = (): Auth | null => {
+  const firebase = useFirebase();
+  return firebase?.auth ?? null;
 };
 
 /** Hook to access Firestore instance. */
-export const useFirestore = (): Firestore => {
-  const { firestore } = useFirebase();
-  return firestore;
+export const useFirestore = (): Firestore | null => {
+  const firebase = useFirebase();
+  return firebase?.firestore ?? null;
 };
 
 /** Hook to access Firebase App instance. */
-export const useFirebaseApp = (): FirebaseApp => {
-  const { firebaseApp } = useFirebase();
-  return firebaseApp;
+export const useFirebaseApp = (): FirebaseApp | null => {
+  const firebase = useFirebase();
+  return firebase?.firebaseApp ?? null;
 };
 
 type MemoFirebase <T> = T & {__memo?: boolean};
@@ -196,6 +196,11 @@ export function useMemoFirebase<T>(factory: () => T, deps: DependencyList): T | 
  * @returns {UserHookResult} Object with user, isUserLoading, userError.
  */
 export const useUser = (): UserHookResult => { // Renamed from useAuthUser
-  const { user, profile, isUserLoading, userError } = useFirebase(); // Leverages the main hook
-  return { user, profile, isUserLoading, userError };
+  const context = useContext(FirebaseContext);
+  if (context === undefined) {
+    // This can happen during initial render before context is available.
+    // Return a loading state.
+    return { user: null, profile: null, isUserLoading: true, userError: null };
+  }
+  return { user: context.user, profile: context.profile, isUserLoading: context.isUserLoading, userError: context.userError };
 };
