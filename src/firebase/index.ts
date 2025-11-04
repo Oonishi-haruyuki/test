@@ -1,88 +1,50 @@
+'use client';
 
-import { initializeApp, getApps, getApp, type FirebaseApp } from 'firebase/app';
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, type Auth, signOut, EmailAuthProvider, reauthenticateWithCredential, updatePassword } from 'firebase/auth';
-import { getFirestore, doc, setDoc, getDoc, type Firestore } from 'firebase/firestore';
 import { firebaseConfig } from '@/firebase/config';
+import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
+import { getAuth } from 'firebase/auth';
+import { getFirestore } from 'firebase/firestore'
 
 // IMPORTANT: DO NOT MODIFY THIS FUNCTION
-export function initializeFirebase(): { firebaseApp: FirebaseApp, auth: Auth, firestore: Firestore } {
-  const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
-  const auth = getAuth(app);
-  const firestore = getFirestore(app);
-  return { firebaseApp: app, auth, firestore };
+export function initializeFirebase() {
+  if (!getApps().length) {
+    // Important! initializeApp() is called without any arguments because Firebase App Hosting
+    // integrates with the initializeApp() function to provide the environment variables needed to
+    // populate the FirebaseOptions in production. It is critical that we attempt to call initializeApp()
+    // without arguments.
+    let firebaseApp;
+    try {
+      // Attempt to initialize via Firebase App Hosting environment variables
+      firebaseApp = initializeApp();
+    } catch (e) {
+      // Only warn in production because it's normal to use the firebaseConfig to initialize
+      // during development
+      if (process.env.NODE_ENV === "production") {
+        console.warn('Automatic initialization failed. Falling back to firebase config object.', e);
+      }
+      firebaseApp = initializeApp(firebaseConfig);
+    }
+
+    return getSdks(firebaseApp);
+  }
+
+  // If already initialized, return the SDKs with the already initialized App
+  return getSdks(getApp());
 }
 
-const { auth, firestore } = initializeFirebase();
-
-// --- Authentication Functions ---
-
-export const loginWithId = async (loginId: string, password: string): Promise<void> => {
-    // Firebase Auth uses email for login, so we create a dummy email.
-    const email = `${loginId.trim()}@cardcrafter.app`;
-    await signInWithEmailAndPassword(auth, email, password);
-};
-
-export const signUpWithId = async (loginId: string, password: string): Promise<void> => {
-    const email = `${loginId.trim()}@cardcrafter.app`;
-    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-    const user = userCredential.user;
-    if (user) {
-        // After sign-up, create a corresponding user profile in Firestore
-        const userDocRef = doc(firestore, 'users', user.uid);
-        await setDoc(userDocRef, { 
-            loginId: loginId.trim(),
-            rating: 1000,
-            lastMatchDate: new Date(0).toISOString(),
-        });
-    }
-};
-
-export const changePassword = async (loginId: string, oldPassword: string, newPassword: string): Promise<void> => {
-    const user = auth.currentUser;
-    if (!user) {
-        throw new Error("ユーザーがログインしていません。");
-    }
-
-    // Firebase Auth requires re-authentication to change a password.
-    const email = `${loginId.trim()}@cardcrafter.app`;
-    const credential = EmailAuthProvider.credential(email, oldPassword);
-
-    // Re-authenticate the user with their old password
-    await reauthenticateWithCredential(user, credential);
-
-    // If re-authentication is successful, update the password
-    await updatePassword(user, newPassword);
-};
-
-
-export const loginWithGoogle = async (): Promise<void> => {
-    const provider = new GoogleAuthProvider();
-    try {
-        const result = await signInWithPopup(auth, provider);
-        const user = result.user;
-        const userDocRef = doc(firestore, 'users', user.uid);
-        const userDoc = await getDoc(userDocRef);
-        // If the user profile doesn't exist (first-time Google login), create it
-        if (!userDoc.exists()) {
-            await setDoc(userDocRef, { 
-                loginId: user.displayName || user.email || `user_${user.uid.substring(0,5)}`,
-                rating: 1000,
-                lastMatchDate: new Date(0).toISOString(),
-             });
-        }
-    } catch (error: any) {
-        if (error.code === 'auth/popup-blocked') {
-            alert('ポップアップがブロックされました。ブラウザの設定でポップアップを許可してください。');
-        }
-        console.error("Google sign-in error", error);
-        throw error;
-    }
-};
-
-export const logout = async (): Promise<void> => {
-    await signOut(auth);
-};
-
+export function getSdks(firebaseApp: FirebaseApp) {
+  return {
+    firebaseApp,
+    auth: getAuth(firebaseApp),
+    firestore: getFirestore(firebaseApp)
+  };
+}
 
 export * from './provider';
 export * from './client-provider';
+export * from './firestore/use-collection';
+export * from './firestore/use-doc';
+export * from './non-blocking-updates';
+export * from './non-blocking-login';
+export * from './errors';
+export * from './error-emitter';

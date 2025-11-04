@@ -1,29 +1,61 @@
-
+/**
+ * @fileoverview Firestore Security Rules for CardCrafter.
+ *
+ * Core Philosophy:
+ * This ruleset provides public read access to all data (cards and visual themes)
+ * but requires authentication for all write operations. All write operations
+ * are open to any signed-in user. This is prototyping rules, so we are not
+ * enforcing strict ownership or role-based access control.
+ *
+ * Data Structure:
+ * - /visual_themes/{visualThemeId}: Stores visual theme data.
+ * - /cards/{cardId}: Stores card data.
+ *
+ * Key Security Decisions:
+ * - Public read access is enabled for both `visual_themes` and `cards`.
+ * - Any authenticated user can create, update, or delete any card or visual theme.
+ * - No data validation is performed beyond authentication.
+ * - Listing operations are public.
+ *
+ * Denormalization for Authorization:
+ *  - Not applicable, as the security model does not currently depend on denormalized data.
+ *
+ * Structural Segregation:
+ * - Visual themes and cards are stored in separate collections, each with its
+ *   own security ruleset. This simplifies the security model and improves performance.
+ */
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    match /users/{userId} {
-      allow read: if true;
-      allow write: if request.auth.uid == userId;
+    /**
+     * @description Grants public read access to visual themes and allows any authenticated user to create, update, or delete visual themes.
+     * @path /visual_themes/{visualThemeId}
+     * @allow (get, list) Any user can read visual themes.
+     * @allow (create, update, delete) Any authenticated user can create, update, or delete visual themes.
+     * @deny  (create, update, delete) if the user is not authenticated.
+     * @principle Enables public read access for visual themes while restricting write access to authenticated users.
+     */
+    match /visual_themes/{visualThemeId} {
+      allow get, list: if true;
+      allow create, update, delete: if isSignedIn();
     }
 
-    match /trades/{tradeId} {
-      allow read: if request.auth != null;
-      allow create: if request.auth.uid == request.resource.data.offerorId;
-      allow update: if request.auth.uid == request.resource.data.offerorId || request.auth.uid == request.resource.data.offereeId;
+    /**
+     * @description Grants public read access to cards and allows any authenticated user to create, update, or delete cards.
+     * @path /cards/{cardId}
+     * @allow (get, list) Any user can read cards.
+     * @allow (create, update, delete) Any authenticated user can create, update, or delete cards.
+     * @deny  (create, update, delete) if the user is not authenticated.
+     * @principle Enables public read access for cards while restricting write access to authenticated users.
+     */
+    match /cards/{cardId} {
+      allow get, list: if true;
+      allow create, update, delete: if isSignedIn();
     }
 
-    match /guilds/{guildId} {
-      allow read: if true;
-      allow create: if request.auth.uid == request.resource.data.leaderId;
-      allow update: if request.auth.uid in resource.data.memberIds;
-      
-      match /messages/{messageId} {
-        allow read: if get(/databases/$(database)/documents/guilds/$(guildId)).data.memberIds.hasAny([request.auth.uid]);
-        allow create: if get(/databases/$(database)/documents/guilds/$(guildId)).data.memberIds.hasAny([request.auth.uid]);
-      }
+    function isSignedIn() {
+      return request.auth != null;
     }
   }
 }

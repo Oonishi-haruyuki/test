@@ -1,162 +1,157 @@
-
 {
   "entities": {
-    "UserProfile": {
-      "title": "User Profile",
-      "description": "Represents a user's public profile information.",
-      "type": "object",
-      "properties": {
-        "loginId": {
-          "type": "string",
-          "description": "The user's unique login identifier."
-        },
-        "rating": {
-          "type": "number",
-          "description": "The user's ELO rating for ranked matches. Defaults to 1000."
-        },
-        "lastMatchDate": {
-            "type": "string",
-            "format": "date-time",
-            "description": "The timestamp of the user's last completed match."
-        },
-        "guildId": {
-          "type": "string",
-          "description": "The ID of the guild the user belongs to."
-        }
-      }
-    },
     "Card": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Card",
-      "description": "Represents a single card in the trading card game.",
       "type": "object",
+      "description": "Represents a card in the card game.",
       "properties": {
         "id": {
           "type": "string",
           "description": "Unique identifier for the card."
         },
-        "theme": {
-          "type": "string",
-          "description": "The theme of the card (e.g., fantasy, sci-fi).",
-          "enum": ["fantasy", "sci-fi", "modern", "custom"]
-        },
         "name": {
           "type": "string",
           "description": "The name of the card."
+        },
+        "ability": {
+          "type": "string",
+          "description": "The ability or effect of the card."
+        },
+        "flavorText": {
+          "type": "string",
+          "description": "Descriptive flavor text for the card."
+        },
+        "attackPower": {
+          "type": "number",
+          "description": "The attack power of the card."
+        },
+        "defense": {
+          "type": "number",
+          "description": "The defense value of the card."
         },
         "manaCost": {
           "type": "number",
           "description": "The mana cost to play the card."
         },
-        "attack": {
-          "type": "number",
-          "description": "The attack power of the card (for creatures)."
-        },
-        "defense": {
-          "type": "number",
-          "description": "The defense/health of the card (for creatures)."
-        },
         "cardType": {
           "type": "string",
-          "description": "The type of the card.",
-          "enum": ["creature", "spell", "artifact", "land"]
+          "description": "The type of card (e.g., creature, spell, equipment)."
         },
-        "rarity": {
+        "cardRarity": {
           "type": "string",
-          "description": "The rarity of the card.",
-          "enum": ["common", "uncommon", "rare", "mythic"]
+          "description": "The rarity of the card (e.g., common, uncommon, rare)."
         },
-        "abilities": {
+        "visualThemeId": {
           "type": "string",
-          "description": "The special abilities or rules text of the card."
+          "description": "Reference to VisualTheme. (Relationship: VisualTheme 1:N Card)"
         },
-        "flavorText": {
+        "imagePlaceholder": {
           "type": "string",
-          "description": "The thematic or story text of the card."
-        },
-        "imageUrl": {
-          "type": "string",
-          "format": "uri",
-          "description": "The URL for the card's artwork."
-        },
-        "imageHint": {
-          "type": "string",
-          "description": "A hint for generating the card's image."
-        },
-        "frameImageUrl": {
-          "type": "string",
-          "format": "uri",
-          "description": "The URL for the card's custom frame."
+          "description": "File path or URI to the card's image placeholder."
         }
       },
-      "required": ["name", "manaCost", "cardType", "rarity", "imageUrl"]
+      "required": [
+        "id",
+        "name",
+        "ability",
+        "flavorText",
+        "attackPower",
+        "defense",
+        "manaCost",
+        "cardType",
+        "cardRarity",
+        "visualThemeId",
+        "imagePlaceholder"
+      ]
     },
-    "TradeOffer": {
-      "title": "Trade Offer",
-      "description": "Represents a trade offer between two users.",
+    "VisualTheme": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "VisualTheme",
       "type": "object",
+      "description": "Represents a visual theme that can be applied to cards.",
       "properties": {
-        "offerorId": { "type": "string", "description": "The UID of the user making the offer." },
-        "offerorLoginId": { "type": "string", "description": "The login ID of the offeror." },
-        "offereeId": { "type": "string", "description": "The UID of the user receiving the offer." },
-        "offereeLoginId": { "type": "string", "description": "The login ID of the offeree." },
-        "offeredCards": { "type": "array", "items": { "$ref": "#/entities/Card" } },
-        "requestedCards": { "type": "array", "items": { "$ref": "#/entities/Card" } },
-        "status": { "type": "string", "enum": ["pending", "accepted", "rejected", "cancelled"] },
-        "createdAt": { "type": "string", "format": "date-time" }
-      }
-    },
-    "Guild": {
-      "title": "Guild",
-      "description": "Represents a player guild.",
-      "type": "object",
-      "properties": {
-        "name": { "type": "string", "description": "The name of the guild." },
-        "description": { "type": "string", "description": "A short description of the guild." },
-        "leaderId": { "type": "string", "description": "The UID of the user who created the guild." },
-        "memberIds": { "type": "array", "items": { "type": "string" }, "description": "A list of UIDs of the guild members." },
-        "createdAt": { "type": "string", "format": "date-time" },
-        "activityTime": { "type": "string", "description": "The typical activity time for the guild." },
-        "genderRatio": { "type": "string", "description": "The gender ratio of the guild." },
-        "notes": { "type": "string", "description": "Additional notes or rules for the guild." }
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the visual theme."
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the visual theme (e.g., fantasy, sci-fi)."
+        },
+        "description": {
+          "type": "string",
+          "description": "A description of the visual theme."
+        },
+        "primaryColor": {
+          "type": "string",
+          "description": "The primary color associated with the theme (e.g., #3F51B5)."
+        },
+        "backgroundColor": {
+          "type": "string",
+          "description": "The background color associated with the theme (e.g., #F0F0F0)."
+        },
+        "accentColor": {
+          "type": "string",
+          "description": "The accent color associated with the theme (e.g., #FFC107)."
+        },
+        "fontFamily": {
+          "type": "string",
+          "description": "The font family used for the theme (e.g., 'Inter')."
+        }
       },
-      "required": ["name", "leaderId", "memberIds"]
-    },
-    "ChatMessage": {
-      "title": "Chat Message",
-      "description": "Represents a single message in a guild chat.",
-      "type": "object",
-      "properties": {
-        "guildId": { "type": "string" },
-        "userId": { "type": "string" },
-        "userLoginId": { "type": "string" },
-        "text": { "type": "string" },
-        "createdAt": { "type": "string", "format": "date-time" }
-      }
+      "required": [
+        "id",
+        "name",
+        "description",
+        "primaryColor",
+        "backgroundColor",
+        "accentColor",
+        "fontFamily"
+      ]
     }
   },
   "auth": {
-    "providers": ["email", "google"]
+    "providers": [
+      "password",
+      "anonymous"
+    ]
   },
   "firestore": {
-    "/users/{userId}": {
-      "schema": {
-        "$ref": "#/entities/UserProfile"
+    "structure": [
+      {
+        "path": "/visual_themes/{visualThemeId}",
+        "definition": {
+          "entityName": "VisualTheme",
+          "schema": {
+            "$ref": "#/backend/entities/VisualTheme"
+          },
+          "description": "Stores visual theme data. Each document represents a theme that can be applied to card designs.",
+          "params": [
+            {
+              "name": "visualThemeId",
+              "description": "Unique identifier for the visual theme."
+            }
+          ]
+        }
       },
-      "description": "Stores public information about a user, like their display name and rating."
-    },
-    "/trades/{tradeId}": {
-      "schema": {
-        "$ref": "#/entities/TradeOffer"
-      },
-      "description": "Stores trade offers between users."
-    },
-    "/guilds/{guildId}": {
-      "schema": { "$ref": "#/entities/Guild" },
-      "description": "Stores guild information."
-    },
-    "/guilds/{guildId}/messages/{messageId}": {
-      "schema": { "$ref": "#/entities/ChatMessage" },
-      "description": "Stores chat messages for a guild."
-    }
+      {
+        "path": "/cards/{cardId}",
+        "definition": {
+          "entityName": "Card",
+          "schema": {
+            "$ref": "#/backend/entities/Card"
+          },
+          "description": "Stores card data. Includes a `visualThemeId` property to reference the visual theme applied to the card.",
+          "params": [
+            {
+              "name": "cardId",
+              "description": "Unique identifier for the card."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure is designed to manage card and visual theme data for the CardCrafter application. It emphasizes authorization independence by storing all necessary authorization information within the documents themselves, avoiding the need for `get()` calls in security rules. The structure follows the principle of structural segregation, ensuring that each collection serves a distinct purpose and has a homogeneous security posture. This approach simplifies security rules and enhances debuggability.\n\nThe core entities, `VisualTheme` and `Card`, are stored in separate collections. `VisualTheme` is stored at the root level in `/visual_themes/{visualThemeId}`. `Card` documents are stored in the `cards` collection at the root level: `/cards/{cardId}`. The `Card` document contains the `visualThemeId` to reference the `VisualTheme` document it uses. The design supports listing operations (`QAPs`) securely because all documents within each collection share the same security requirements."
   }
 }
