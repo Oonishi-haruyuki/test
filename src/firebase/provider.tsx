@@ -4,7 +4,7 @@
 import React, { DependencyList, createContext, useContext, ReactNode, useMemo, useState, useEffect } from 'react';
 import { FirebaseApp } from 'firebase/app';
 import { Firestore } from 'firebase/firestore';
-import { Auth, User, onAuthStateChanged } from 'firebase/auth';
+import { Auth, User, onAuthStateChanged, signInAnonymously } from 'firebase/auth';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener'
 
 interface FirebaseProviderProps {
@@ -97,7 +97,11 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
             });
             return () => unsubProfile();
         } else {
-             setUserAuthState({ user: null, profile: null, isUserLoading: false, userError: null });
+             // If no user, sign in anonymously
+             signInAnonymously(auth).catch((error) => {
+                 console.error("Anonymous sign-in failed:", error);
+                 setUserAuthState({ user: null, profile: null, isUserLoading: false, userError: error });
+             });
         }
       },
       (error) => { // Auth listener error
