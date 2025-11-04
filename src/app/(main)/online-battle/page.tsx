@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useUser, initializeFirebase, useCollection } from '@/firebase';
@@ -30,12 +30,12 @@ export default function OnlineBattleLobbyPage() {
     const [isCreating, setIsCreating] = useState(false);
 
     // Query for waiting rooms
-    const roomsQuery = query(
+    const roomsQuery = useMemo(() => query(
         collection(firestore, 'battleRooms'), 
         where('status', '==', 'waiting'),
         orderBy('createdAt', 'desc'),
         limit(20)
-    );
+    ), [firestore]);
     const { data: rooms, isLoading: isLoadingRooms } = useCollection<BattleRoom>(roomsQuery);
 
     const handleCreateRoom = async () => {
