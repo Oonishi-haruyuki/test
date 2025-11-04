@@ -359,7 +359,9 @@ function CreateGuildDialog({ onCreate }: { onCreate: (details: any) => void }) {
         <DialogContent>
             <DialogHeader>
                 <DialogTitle>新しいギルドを設立</DialogTitle>
-                <DialogDescription>ギルドの詳細情報を入力してください。</DialogDescription>
+                <DialogDescription>
+                    ギルドの詳細情報を入力してください。
+                </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
                 <div className="space-y-2">
