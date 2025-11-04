@@ -7,7 +7,6 @@ import { CurrencyProvider } from "@/components/currency-provider";
 import { StatsProvider } from "@/components/stats-provider";
 import { MissionsProvider } from "@/components/missions-provider";
 import { Toaster } from "@/components/ui/toaster";
-import { AppHeader } from "@/components/header";
 
 export const metadata: Metadata = {
   title: "カードクラフター",
@@ -30,8 +29,7 @@ export default function RootLayout({
               <MissionsProvider>
                   <div className="min-h-screen bg-background text-foreground">
                     <div className="container mx-auto px-4 py-8">
-                       <AppHeader />
-                       <main>{children}</main>
+                      {children}
                     </div>
                     <Toaster />
                   </div>
