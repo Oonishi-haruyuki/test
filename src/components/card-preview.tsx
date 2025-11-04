@@ -2,10 +2,11 @@
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
-import { Gem, Shield, Sparkles, Swords } from 'lucide-react';
+import { Gem, Shield, Sparkles, Swords, Loader2 } from 'lucide-react';
 import Image from 'next/image';
 import type { CardData, Rarity, CardType, CreatureType } from './card-editor';
 import React from 'react';
+import { Skeleton } from './ui/skeleton';
 
 const rarityColorVar: Record<Rarity, string> = {
   common: 'hsl(var(--muted-foreground))',
@@ -47,8 +48,11 @@ const creatureTypeJapanese: Record<CreatureType, string> = {
     machine: '機械',
 };
 
+interface CardPreviewProps extends CardData {
+    isImageGenerating?: boolean;
+}
 
-export const CardPreview = React.forwardRef<HTMLDivElement, CardData>(({
+export const CardPreview = React.forwardRef<HTMLDivElement, CardPreviewProps>(({
   theme,
   name,
   manaCost,
@@ -62,6 +66,7 @@ export const CardPreview = React.forwardRef<HTMLDivElement, CardData>(({
   imageUrl,
   imageHint,
   frameImageUrl,
+  isImageGenerating,
 }, ref) => {
   const showStats = cardType === 'creature';
 
@@ -118,11 +123,17 @@ export const CardPreview = React.forwardRef<HTMLDivElement, CardData>(({
 
         <CardContent className="p-0 flex-grow">
           <div className="relative aspect-[4/3] w-full bg-gray-400 mx-auto max-w-[calc(100%-1.5rem)] rounded-md overflow-hidden border-2 border-black/50">
-            <Image src={imageUrl} alt={imageHint} width={400} height={300} style={{objectFit: 'cover'}} data-ai-hint={imageHint} 
-              className={cn('w-full h-auto', {'sepia-[25%]': theme === 'fantasy' && !frameImageUrl})}
-              unoptimized
-              priority
-            />
+            {isImageGenerating ? (
+                <div className="w-full h-full bg-secondary flex items-center justify-center">
+                    <Loader2 className="h-10 w-10 animate-spin text-muted-foreground"/>
+                </div>
+            ) : (
+                <Image src={imageUrl} alt={imageHint} width={400} height={300} style={{objectFit: 'cover'}} data-ai-hint={imageHint} 
+                className={cn('w-full h-auto', {'sepia-[25%]': theme === 'fantasy' && !frameImageUrl})}
+                unoptimized
+                priority
+                />
+            )}
             <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent"></div>
           </div>
 

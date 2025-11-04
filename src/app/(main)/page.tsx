@@ -24,16 +24,23 @@ export default function Home() {
     imageHint: defaultImage?.imageHint || "fantasy landscape",
   });
   const cardPreviewRef = useRef<HTMLDivElement>(null);
+  const [isImageGenerating, setIsImageGenerating] = useState(false);
 
   return (
     <main className="mt-8">
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 xl:gap-12">
         <div className="lg:col-span-2">
-          <CardEditor cardData={cardData} setCardData={setCardData} cardPreviewRef={cardPreviewRef} />
+          <CardEditor 
+            cardData={cardData} 
+            setCardData={setCardData} 
+            cardPreviewRef={cardPreviewRef} 
+            isImageGenerating={isImageGenerating}
+            setIsImageGenerating={setIsImageGenerating}
+          />
         </div>
         <div className="lg:col-span-3 flex items-start justify-center">
           <div className="sticky top-8 w-full max-w-md">
-            <CardPreview {...cardData} ref={cardPreviewRef} />
+            <CardPreview {...cardData} ref={cardPreviewRef} isImageGenerating={isImageGenerating} />
           </div>
         </div>
       </div>

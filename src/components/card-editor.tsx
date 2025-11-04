@@ -63,13 +63,14 @@ interface CardEditorProps {
   cardData: CardData;
   setCardData: React.Dispatch<React.SetStateAction<CardData>>;
   cardPreviewRef: React.RefObject<HTMLDivElement>;
+  isImageGenerating: boolean;
+  setIsImageGenerating: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
-export function CardEditor({ cardData, setCardData, cardPreviewRef }: CardEditorProps) {
+export function CardEditor({ cardData, setCardData, cardPreviewRef, isImageGenerating, setIsImageGenerating }: CardEditorProps) {
   const { user } = useUser();
   const { updateMissionProgress } = useMissions();
   const [isIdeaPending, startIdeaTransition] = useTransition();
-  const [isImagePending, startImageTransition] = useTransition();
   const [isExporting, setIsExporting] = useState(false);
   const [aiTheme, setAiTheme] = useState('パワフルな神秘のドラゴン');
   const { toast } = useToast();
@@ -204,9 +205,9 @@ export function CardEditor({ cardData, setCardData, cardPreviewRef }: CardEditor
         });
         return;
     }
-    startImageTransition(async () => {
-        try {
-            const result = await generateImage({ prompt: cardData.imageHint });
+    setIsImageGenerating(true);
+    generateImage({ prompt: cardData.imageHint })
+        .then(result => {
             setCardData(prev => ({
                 ...prev,
                 imageUrl: result.imageUrl,
@@ -214,15 +215,18 @@ export function CardEditor({ cardData, setCardData, cardPreviewRef }: CardEditor
             toast({
                 title: '画像が生成されました！',
             });
-        } catch (error) {
+        })
+        .catch(error => {
             console.error(error);
             toast({
                 variant: 'destructive',
                 title: '画像の生成に失敗しました',
                 description: '時間をおいて再度お試しください。',
             });
-        }
-    });
+        })
+        .finally(() => {
+            setIsImageGenerating(false);
+        });
   };
 
   const handleGenerateIdeas = async () => {
@@ -473,8 +477,8 @@ export function CardEditor({ cardData, setCardData, cardPreviewRef }: CardEditor
                     <Label htmlFor="imageHint">画像生成のヒント (英語)</Label>
                     <Input id="imageHint" name="imageHint" value={cardData.imageHint} onChange={handleInputChange} placeholder="例: epic dragon, magic forest" />
                 </div>
-                <Button onClick={handleGenerateImage} disabled={isImagePending} className="w-full">
-                    {isImagePending ? <Loader2 className="animate-spin" /> : <Sparkles />}
+                <Button onClick={handleGenerateImage} disabled={isImageGenerating} className="w-full">
+                    {isImageGenerating ? <Loader2 className="animate-spin" /> : <Sparkles />}
                     AIで画像を生成
                 </Button>
                 <div className="relative">
