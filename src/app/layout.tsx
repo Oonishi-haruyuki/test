@@ -1,7 +1,5 @@
-
 import type { Metadata } from "next";
 import "@/app/globals.css";
-import { FirebaseClientProvider } from "@/firebase/client-provider";
 import { ReactNode } from "react";
 import { CurrencyProvider } from "@/components/currency-provider";
 import { StatsProvider } from "@/components/stats-provider";
@@ -24,21 +22,19 @@ export default function RootLayout({
       <head>
       </head>
       <body className="antialiased">
-        <FirebaseClientProvider>
-          <CurrencyProvider>
-            <StatsProvider>
-              <MissionsProvider>
-                  <div className="min-h-screen bg-background text-foreground">
-                    <div className="container mx-auto px-4 py-8">
-                      <AppHeader />
-                      <main>{children}</main>
-                    </div>
-                    <Toaster />
-                  </div>
-              </MissionsProvider>
-            </StatsProvider>
-          </CurrencyProvider>
-        </FirebaseClientProvider>
+        <CurrencyProvider>
+          <StatsProvider>
+            <MissionsProvider>
+              <div className="min-h-screen bg-background text-foreground">
+                <div className="container mx-auto px-4 py-8">
+                  <AppHeader />
+                  <main>{children}</main>
+                </div>
+                <Toaster />
+              </div>
+            </MissionsProvider>
+          </StatsProvider>
+        </CurrencyProvider>
       </body>
     </html>
   );

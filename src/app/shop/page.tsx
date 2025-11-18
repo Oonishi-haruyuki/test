@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -10,7 +9,6 @@ import { useToast } from '@/hooks/use-toast';
 import { shopItems, type ShopItem } from '@/lib/shop-items';
 import Image from 'next/image';
 import { Coins, CheckCircle } from 'lucide-react';
-import { useUser } from '@/firebase';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -84,7 +82,6 @@ const ShopCategory = ({ category, title, purchasedItems, currency, handlePurchas
 };
 
 export default function ShopPage() {
-    const { user } = useUser();
     const { currency, spendCurrency } = useCurrency();
     const { toast } = useToast();
     
@@ -96,7 +93,6 @@ export default function ShopPage() {
     });
 
     useEffect(() => {
-        if (!user) return; // Only load for logged-in users
         try {
             const savedFrames = new Set(JSON.parse(localStorage.getItem('purchasedCardFrames') || '["frame-default"]') as string[]);
             const savedBacks = new Set(JSON.parse(localStorage.getItem('purchasedCardBacks') || '["back-default"]') as string[]);
@@ -112,7 +108,7 @@ export default function ShopPage() {
         } catch (e) {
             console.error("Failed to load purchased items", e);
         }
-    }, [user]);
+    }, []);
 
     const handlePurchase = (item: ShopItem, category: ItemCategory) => {
         if (currency < item.price) {
@@ -141,16 +137,11 @@ export default function ShopPage() {
             console.error("Failed to save purchase", e);
         }
 
-
         toast({
             title: '購入しました！',
             description: `「${item.name}」を購入しました。`,
         });
     };
-
-    if (!user) {
-        return <p className="text-center p-8">ショップを利用するには、マイページからログインしてください。</p>;
-    }
 
     const commonShopCategoryProps = {
         purchasedItems,

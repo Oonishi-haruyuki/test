@@ -1,4 +1,3 @@
-
 'use client';
 
 import { generateCardIdeas, type GenerateCardIdeasOutput } from '@/ai/flows/generate-card-ideas';
@@ -31,18 +30,16 @@ import {
 import { shopItems } from '@/lib/shop-items';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
-import { useUser } from '@/firebase';
 import { useMissions } from '@/hooks/use-missions';
 
 
-// Type definitions
 export type Theme = 'fantasy' | 'sci-fi' | 'modern' | 'custom';
 export type CardType = 'creature' | 'spell' | 'artifact' | 'land';
 export type CreatureType = 'none' | 'human' | 'elf' | 'dwarf' | 'goblin' | 'orc' | 'undead' | 'dragon' | 'beast' | 'elemental' | 'soldier' | 'wizard' | 'spirit' | 'angel' | 'demon' | 'machine';
 export type Rarity = 'common' | 'uncommon' | 'rare' | 'mythic';
 
 export interface CardData {
-  id?: string; // Add optional id for collection management
+  id?: string;
   theme: Theme;
   name: string;
   manaCost: number;
@@ -68,7 +65,6 @@ interface CardEditorProps {
 }
 
 export function CardEditor({ cardData, setCardData, cardPreviewRef, isImageGenerating, setIsImageGenerating }: CardEditorProps) {
-  const { user } = useUser();
   const { updateMissionProgress } = useMissions();
   const [isIdeaPending, startIdeaTransition] = useTransition();
   const [isExporting, setIsExporting] = useState(false);
@@ -84,22 +80,18 @@ export function CardEditor({ cardData, setCardData, cardPreviewRef, isImageGener
   useEffect(() => {
     setIsClient(true);
     const defaultBack = shopItems.backs.find(b => b.id === 'back-default');
-    if (user) {
-        try {
-            const savedFrames = JSON.parse(localStorage.getItem('purchasedCardFrames') || '["frame-default"]');
-            const savedBacks = JSON.parse(localStorage.getItem('purchasedCardBacks') || '["back-default"]');
-            setPurchasedFrames(savedFrames);
-            setPurchasedBacks(savedBacks);
-            const savedBackImage = localStorage.getItem('cardBackImage') || defaultBack?.url;
-            const backId = shopItems.backs.find(b => b.url === savedBackImage)?.id || 'back-default';
-            setCurrentBack(backId);
-        } catch (e) {
-            console.error("Failed to load purchased items", e);
-        }
-    } else {
-       setCurrentBack('back-default');
+    try {
+        const savedFrames = JSON.parse(localStorage.getItem('purchasedCardFrames') || '["frame-default"]');
+        const savedBacks = JSON.parse(localStorage.getItem('purchasedCardBacks') || '["back-default"]');
+        setPurchasedFrames(savedFrames);
+        setPurchasedBacks(savedBacks);
+        const savedBackImage = localStorage.getItem('cardBackImage') || defaultBack?.url;
+        const backId = shopItems.backs.find(b => b.url === savedBackImage)?.id || 'back-default';
+        setCurrentBack(backId);
+    } catch (e) {
+        console.error("Failed to load purchased items", e);
     }
-  }, [user]);
+  }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -111,7 +103,6 @@ export function CardEditor({ cardData, setCardData, cardPreviewRef, isImageGener
   };
 
   const handleThemeChange = (value: string) => {
-    // Check if it's a built-in theme or a custom frame
     const selectedFrame = shopItems.frames.find(frame => frame.id === value);
     if (selectedFrame) {
       setCardData(prev => ({ ...prev, theme: 'custom', frameImageUrl: selectedFrame.url }));
@@ -164,7 +155,7 @@ export function CardEditor({ cardData, setCardData, cardPreviewRef, isImageGener
             setCardData(prev => ({
                 ...prev,
                 imageUrl: imageUrl,
-                imageHint: file.name, // Use file name as a hint
+                imageHint: file.name,
             }));
             toast({
                 title: '画像がアップロードされました',
@@ -175,7 +166,6 @@ export function CardEditor({ cardData, setCardData, cardPreviewRef, isImageGener
   };
   
   const handleCardBackSelect = (cardBackId: string) => {
-    if (!user) return;
     const cardBack = shopItems.backs.find(b => b.id === cardBackId);
     if (!cardBack) return;
 
@@ -264,26 +254,14 @@ export function CardEditor({ cardData, setCardData, cardPreviewRef, isImageGener
 
   const creationCost = useMemo(() => {
     let cost = 0;
-    // Name: 1G per character
     cost += cardData.name.length;
-    // Card Type: 5G for creature, 10G for artifact
     if (cardData.cardType === 'creature') cost += 5;
     if (cardData.cardType === 'artifact') cost += 10;
-    // Abilities: 5G per 3 characters
     cost += Math.ceil(cardData.abilities.length / 3) * 5;
     return cost;
   }, [cardData.name, cardData.cardType, cardData.abilities]);
 
   const handleSaveToCollection = () => {
-    if (!user) {
-        toast({
-            variant: 'destructive',
-            title: 'ログインが必要です',
-            description: `カードを保存するにはマイページからログインしてください。`,
-        });
-        return;
-    }
-
     if (currency < creationCost) {
         toast({
             variant: 'destructive',

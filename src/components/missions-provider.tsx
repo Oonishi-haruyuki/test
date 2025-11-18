@@ -1,8 +1,6 @@
-
 'use client';
 
 import React, { createContext, useState, useEffect, useCallback } from 'react';
-import { useUser } from '@/firebase';
 import { useCurrency } from '@/hooks/use-currency';
 import { useToast } from '@/hooks/use-toast';
 import { allMissions, Mission } from '@/lib/missions';
@@ -16,29 +14,25 @@ interface MissionsContextType {
 export const MissionsContext = createContext<MissionsContextType | null>(null);
 
 export function MissionsProvider({ children }: { children: React.ReactNode }) {
-  const { user } = useUser();
   const { addCurrency } = useCurrency();
   const { toast } = useToast();
   const [missions, setMissions] = useState<Mission[]>([]);
   const [isInitialized, setIsInitialized] = useState(false);
 
-  const getMissionsKey = useCallback(() => user ? `user-${user.uid}-missions` : 'guest-missions', [user]);
+  const getMissionsKey = useCallback(() => 'local-missions', []);
 
-  // Function to get the start of the current day in UTC
   const getStartOfDayUTC = () => {
     const now = new Date();
     return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())).toISOString();
   };
 
-  // Function to get the start of the current week (assuming Monday is the first day) in UTC
   const getStartOfWeekUTC = () => {
     const now = new Date();
-    const dayOfWeek = now.getUTCDay(); // 0 (Sun) - 6 (Sat)
-    const diff = now.getUTCDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1); // Adjust to Monday
+    const dayOfWeek = now.getUTCDay();
+    const diff = now.getUTCDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
     return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), diff)).toISOString();
   };
 
-  // Function to get the start of the current month in UTC
   const getStartOfMonthUTC = () => {
     const now = new Date();
     return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString();
@@ -51,7 +45,6 @@ export function MissionsProvider({ children }: { children: React.ReactNode }) {
     
     let needsUpdate = false;
 
-    // Reset daily missions if the day has changed
     if (savedDate !== today) {
       needsUpdate = true;
       savedMissions.forEach(mission => {
@@ -62,7 +55,6 @@ export function MissionsProvider({ children }: { children: React.ReactNode }) {
       });
     }
 
-    // Reset weekly missions if the week has changed
     if (savedWeek !== thisWeek) {
       needsUpdate = true;
       savedMissions.forEach(mission => {
@@ -73,7 +65,6 @@ export function MissionsProvider({ children }: { children: React.ReactNode }) {
       });
     }
 
-    // Reset monthly missions if the month has changed
     if (savedMonth !== thisMonth) {
         needsUpdate = true;
         savedMissions.forEach(mission => {
@@ -89,14 +80,13 @@ export function MissionsProvider({ children }: { children: React.ReactNode }) {
     const mergedMissions = baseMissions.map((baseMission: Mission) => {
         const savedMission = savedMissions.find(sm => sm.id === baseMission.id);
         if (savedMission) {
-            // If day/week/month has changed, use reset progress, otherwise use saved progress
             baseMission.progress = needsUpdate ? baseMission.progress : savedMission.progress;
             baseMission.claimed = needsUpdate ? baseMission.claimed : savedMission.claimed;
         }
         return baseMission;
     });
 
-    if (needsUpdate && user) {
+    if (needsUpdate) {
         localStorage.setItem(getMissionsKey(), JSON.stringify({
             missions: mergedMissions,
             lastDailyReset: today,
@@ -107,22 +97,15 @@ export function MissionsProvider({ children }: { children: React.ReactNode }) {
 
     return mergedMissions;
 
-  }, [user, getMissionsKey]);
+  }, [getMissionsKey]);
 
   useEffect(() => {
-    if (!user) {
-        if (isInitialized) {
-            setMissions(JSON.parse(JSON.stringify(allMissions)));
-        }
-        return;
-    };
     try {
       const savedData = localStorage.getItem(getMissionsKey());
       if (savedData) {
         const { missions: savedMissions, lastDailyReset, lastWeeklyReset, lastMonthlyReset } = JSON.parse(savedData);
         setMissions(resetMissions(savedMissions, lastDailyReset, lastWeeklyReset, lastMonthlyReset));
       } else {
-        // First time initialization
         const newMissions = JSON.parse(JSON.stringify(allMissions));
         setMissions(newMissions);
         localStorage.setItem(getMissionsKey(), JSON.stringify({
@@ -137,20 +120,18 @@ export function MissionsProvider({ children }: { children: React.ReactNode }) {
       setMissions(JSON.parse(JSON.stringify(allMissions)));
     }
     setIsInitialized(true);
-  }, [user, getMissionsKey, resetMissions, isInitialized]);
+  }, [getMissionsKey, resetMissions]);
   
   const saveMissions = useCallback((updatedMissions: Mission[]) => {
     setMissions(updatedMissions);
-    if(user) {
-      const dataToSave = {
-        missions: updatedMissions,
-        lastDailyReset: getStartOfDayUTC(),
-        lastWeeklyReset: getStartOfWeekUTC(),
-        lastMonthlyReset: getStartOfMonthUTC(),
-      };
-      localStorage.setItem(getMissionsKey(), JSON.stringify(dataToSave));
-    }
-  }, [user, getMissionsKey]);
+    const dataToSave = {
+      missions: updatedMissions,
+      lastDailyReset: getStartOfDayUTC(),
+      lastWeeklyReset: getStartOfWeekUTC(),
+      lastMonthlyReset: getStartOfMonthUTC(),
+    };
+    localStorage.setItem(getMissionsKey(), JSON.stringify(dataToSave));
+  }, [getMissionsKey]);
 
 
   const updateMissionProgress = useCallback((action: Mission['action'], amount: number) => {
@@ -165,21 +146,18 @@ export function MissionsProvider({ children }: { children: React.ReactNode }) {
           return mission;
         });
         
-        // Save to localStorage immediately after state update
-        if(user) {
-          const dataToSave = {
-            missions: updatedMissions,
-            lastDailyReset: getStartOfDayUTC(),
-            lastWeeklyReset: getStartOfWeekUTC(),
-            lastMonthlyReset: getStartOfMonthUTC(),
-          };
-          localStorage.setItem(getMissionsKey(), JSON.stringify(dataToSave));
-        }
+        const dataToSave = {
+          missions: updatedMissions,
+          lastDailyReset: getStartOfDayUTC(),
+          lastWeeklyReset: getStartOfWeekUTC(),
+          lastMonthlyReset: getStartOfMonthUTC(),
+        };
+        localStorage.setItem(getMissionsKey(), JSON.stringify(dataToSave));
         
         return updatedMissions;
     });
 
-  }, [isInitialized, user, getMissionsKey]);
+  }, [isInitialized, getMissionsKey]);
 
   const claimMissionReward = useCallback((missionId: string) => {
     const mission = missions.find(m => m.id === missionId);

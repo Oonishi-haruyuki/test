@@ -1,4 +1,3 @@
-
 'use client';
 
 import Link from 'next/link';
@@ -6,7 +5,6 @@ import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { CurrencyDisplay } from './currency-display';
 import { cn } from '@/lib/utils';
-import { useUser } from '@/firebase';
 import { User, Menu } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import React from 'react';
@@ -18,25 +16,16 @@ const navLinks = [
     { href: '/deck-builder', label: 'デッキ構築' },
     { href: '/gacha', label: 'ガチャ' },
     { href: '/battle', label: 'AI対戦' },
-    { href: '/online-battle', label: 'オンライン対戦' },
     { href: '/story', label: 'ストーリー' },
-    { href: '/tag-battle', label: 'タッグバトル' },
 ];
 
 const secondaryLinks = [
-    { href: '/draft', label: 'ドラフト' },
-    { href: '/trade', label: 'トレード' },
-    { href: '/guild', label: 'ギルド' },
-    { href: '/guild-battle', label: 'ギルドバトル' },
     { href: '/rules', label: 'ルール' },
-    { href: '/ranking', label: 'ランキング' },
     { href: '/minigame', label: 'ミニゲーム' },
-    { href: '/mypage', label: 'マイページ' },
 ]
 
 export function AppHeader() {
   const pathname = usePathname();
-  const { user, profile } = useUser();
   const [isSheetOpen, setSheetOpen] = React.useState(false);
 
 
@@ -47,17 +36,10 @@ export function AppHeader() {
           <Link href="/">カードクラフター</Link>
         </h1>
         <div className="flex items-center gap-2 md:gap-4">
-            {user && profile?.loginId && (
-                 <div className="hidden sm:flex items-center gap-2 text-sm font-medium text-muted-foreground border-b-2 border-transparent hover:border-primary/50 pb-1 transition-colors">
-                    <User className="h-5 w-5"/>
-                    <Link href="/mypage" className="truncate max-w-[100px]">{profile.loginId}</Link>
-                </div>
-            )}
             <CurrencyDisplay />
         </div>
       </div>
       <div className="flex justify-between items-center mt-2 border-b pb-2">
-        {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center space-x-1 overflow-x-auto">
           {navLinks.map((link) => (
             <Button
@@ -74,7 +56,6 @@ export function AppHeader() {
           ))}
         </nav>
 
-        {/* Mobile Navigation */}
          <div className="md:hidden">
             <Sheet open={isSheetOpen} onOpenChange={setSheetOpen}>
                 <SheetTrigger asChild>

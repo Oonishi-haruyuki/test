@@ -1,8 +1,6 @@
-
 'use client';
 
 import React, { createContext, useState, useEffect, useCallback } from 'react';
-import { useUser } from '@/firebase';
 
 interface StatsContextType {
   wins: number;
@@ -14,24 +12,14 @@ interface StatsContextType {
 export const StatsContext = createContext<StatsContextType | null>(null);
 
 export function StatsProvider({ children }: { children: React.ReactNode }) {
-  const { user } = useUser();
   const [wins, setWins] = useState<number>(0);
   const [losses, setLosses] = useState<number>(0);
   const [isInitialized, setIsInitialized] = useState(false);
 
-  const getWinsKey = useCallback(() => user ? `user-${user.uid}-wins` : 'guest-wins', [user]);
-  const getLossesKey = useCallback(() => user ? `user-${user.uid}-losses` : 'guest-losses', [user]);
-
+  const getWinsKey = useCallback(() => 'local-wins', []);
+  const getLossesKey = useCallback(() => 'local-losses', []);
 
   useEffect(() => {
-    if (!user) {
-        if (isInitialized) {
-            setWins(0);
-            setLosses(0);
-        }
-        return;
-    };
-
     try {
       const savedWins = localStorage.getItem(getWinsKey());
       const savedLosses = localStorage.getItem(getLossesKey());
@@ -43,27 +31,27 @@ export function StatsProvider({ children }: { children: React.ReactNode }) {
       console.error("Failed to load stats from localStorage", error);
     }
     if (!isInitialized) setIsInitialized(true);
-  }, [user, getWinsKey, getLossesKey, isInitialized]);
+  }, [getWinsKey, getLossesKey, isInitialized]);
 
   useEffect(() => {
-    if (isInitialized && user) {
+    if (isInitialized) {
         try {
             localStorage.setItem(getWinsKey(), JSON.stringify(wins));
         } catch (error) {
             console.error("Failed to save wins to localStorage", error);
         }
     }
-  }, [wins, isInitialized, user, getWinsKey]);
+  }, [wins, isInitialized, getWinsKey]);
   
   useEffect(() => {
-    if (isInitialized && user) {
+    if (isInitialized) {
         try {
             localStorage.setItem(getLossesKey(), JSON.stringify(losses));
         } catch (error) {
             console.error("Failed to save losses to localStorage", error);
         }
     }
-  }, [losses, isInitialized, user, getLossesKey]);
+  }, [losses, isInitialized, getLossesKey]);
 
   const addWin = useCallback(() => {
       setWins(prev => prev + 1);

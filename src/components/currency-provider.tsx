@@ -1,10 +1,8 @@
-
 'use client';
 
 import React, { createContext, useState, useEffect, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { Coins } from 'lucide-react';
-import { useUser } from '@/firebase';
 
 interface CurrencyContextType {
   currency: number;
@@ -19,28 +17,19 @@ const INITIAL_CURRENCY = 500;
 const LOGIN_BONUS = 200;
 
 export function CurrencyProvider({ children }: { children: React.ReactNode }) {
-  const { user } = useUser();
   const [currency, setCurrency] = useState<number>(INITIAL_CURRENCY);
   const [isInitialized, setIsInitialized] = useState(false);
   const { toast } = useToast();
 
-  const getCurrencyKey = useCallback(() => user ? `user-${user.uid}-currency` : 'guest-currency', [user]);
-  const getLastLoginKey = useCallback(() => user ? `user-${user.uid}-last-login` : 'guest-last-login', [user]);
+  const getCurrencyKey = useCallback(() => 'local-currency', []);
+  const getLastLoginKey = useCallback(() => 'local-last-login', []);
 
   useEffect(() => {
-    if (!user) {
-        if (isInitialized) {
-            setCurrency(INITIAL_CURRENCY);
-        }
-        return;
-    };
-
     try {
       const savedCurrency = localStorage.getItem(getCurrencyKey());
       const initialValue = savedCurrency !== null ? JSON.parse(savedCurrency) : INITIAL_CURRENCY;
       setCurrency(initialValue);
 
-      // --- Login Bonus Logic ---
       const lastLoginDate = localStorage.getItem(getLastLoginKey());
       const today = new Date().toDateString();
 
@@ -49,7 +38,7 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
         setCurrency(newCurrency);
         localStorage.setItem(getCurrencyKey(), JSON.stringify(newCurrency));
         localStorage.setItem(getLastLoginKey(), today);
-        if (isInitialized) { // Avoid toast on initial load for the very first time
+        if (isInitialized) {
             toast({
                 title: 'ログインボーナス！',
                 description: (
@@ -61,13 +50,11 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
             });
         }
       }
-      // --- End Login Bonus Logic ---
-
     } catch (error) {
       console.error("Failed to process currency/login bonus from localStorage", error);
     }
     if (!isInitialized) setIsInitialized(true);
-  }, [user, toast, getCurrencyKey, getLastLoginKey, isInitialized]);
+  }, [toast, getCurrencyKey, getLastLoginKey, isInitialized]);
 
   useEffect(() => {
     if (isInitialized) {
@@ -95,7 +82,6 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
     }
     return false;
   }, [currency]);
-
 
   const value = {
     currency,

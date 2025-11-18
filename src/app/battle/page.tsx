@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useCallback, useMemo, Suspense } from 'react';
@@ -14,8 +13,6 @@ import { generateDeck } from '@/ai/flows/generate-deck';
 import { goblinDeck, elementalDeck, undeadDeck, dragonDeck, ninjaDeck } from '@/lib/decks';
 import { useMissions } from '@/hooks/use-missions';
 import { useStats } from '@/hooks/use-stats';
-import { updateUserRating } from '@/lib/rating-system';
-import { useUser } from '@/firebase';
 import type { BattleProps, Difficulty, GameRules } from '@/lib/types';
 import { emotes, type Emote } from '@/lib/emotes';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -56,14 +53,9 @@ function BattlePageContent() {
     const searchParams = useSearchParams();
     const [difficulty, setDifficulty] = useState<Difficulty>('beginner');
     const [gameState, setGameState] = useState<'selecting' | 'loading' | 'active' | 'finished'>('selecting');
-    const [playerDeck, setPlayerDeck] = useState<CardData[]>([]);
-    const [opponentDeck, setOpponentDeck] = useState<CardData[]>([]);
     const [winner, setWinner] = useState<'player' | 'opponent' | null>(null);
-    const { profile } = useUser();
     const { toast } = useToast();
 
-    // The full battle state will be derived from a single state object
-    // to make it easier to manage and pass to a self-contained component.
     const [battleProps, setBattleProps] = useState<BattleProps | null>(null);
 
     const startGame = (selectedPlayerDeck: CardData[], selectedDifficulty: Difficulty) => {
@@ -71,7 +63,6 @@ function BattlePageContent() {
         const availableDecks = opponentDecks[selectedDifficulty];
         const selectedOpponentDeck = availableDecks[Math.floor(Math.random() * availableDecks.length)];
 
-        // Retrieve custom rules from search params for Story Mode
         const playerHealth = searchParams.get('playerHealth');
         const opponentHealth = searchParams.get('opponentHealth');
         const boardLimit = searchParams.get('boardLimit');
@@ -91,15 +82,9 @@ function BattlePageContent() {
             initialPlayerDeck: selectedPlayerDeck,
             initialOpponentDeck: selectedOpponentDeck,
             forcedDifficulty: selectedDifficulty,
-            onGameEnd: (result, ratingResult) => {
+            onGameEnd: (result) => {
                 setWinner(result === 'win' ? 'player' : 'opponent');
                 setGameState('finished');
-                 if (ratingResult) {
-                    toast({
-                        title: `レーティング変動: ${ratingResult.change > 0 ? '+' : ''}${ratingResult.change}`,
-                        description: `新しいレーティング: ${ratingResult.newRating}`
-                    });
-                }
             },
             gameRules: gameRules,
         });
@@ -142,7 +127,6 @@ export default function BattlePage() {
     );
 }
 
-// Deck Selection Component
 function DeckSelection({ onStartGame }: { onStartGame: (deck: CardData[], difficulty: Difficulty) => void }) {
     const [decks, setDecks] = useState<{id: string, name: string, cards: CardData[]}[]>([]);
     const [selectedDeckId, setSelectedDeckId] = useState<string | null>(null);
@@ -151,7 +135,6 @@ function DeckSelection({ onStartGame }: { onStartGame: (deck: CardData[], diffic
     const { toast } = useToast();
     const searchParams = useSearchParams();
 
-     // This effect handles the direct start for story mode battles
     useEffect(() => {
         const isStoryMode = searchParams.get('story') === 'true';
         if (isStoryMode) {
@@ -185,11 +168,9 @@ function DeckSelection({ onStartGame }: { onStartGame: (deck: CardData[], diffic
         }
     }, [toast]);
     
-    // Hide deck selection if in story mode and transitioning to battle
     if (searchParams.get('story') === 'true') {
         return <div className="flex justify-center items-center h-64"><Loader2 className="animate-spin h-10 w-10" /><p className="ml-4">対戦を開始しています...</p></div>;
     }
-
 
     const handleGenerateDeck = async () => {
         setIsLoading(true);
@@ -289,16 +270,12 @@ function DeckSelection({ onStartGame }: { onStartGame: (deck: CardData[], diffic
     )
 }
 
-
-// Main Battle View Component
-function BattleView({ initialPlayerDeck, initialOpponentDeck, forcedDifficulty, onGameEnd, gameRules }: BattleProps) {
+function BattleView({ initialPlayerDeck, initialOpponentDeck, onGameEnd, gameRules }: BattleProps) {
     const { addWin, addLoss } = useStats();
     const { updateMissionProgress } = useMissions();
-    const { user, profile } = useUser();
     const { addCurrency } = useCurrency();
     const { toast } = useToast();
     
-    // Game State
     const [turn, setTurn] = useState(1);
     const [activePlayer, setActivePlayer] = useState<'player' | 'opponent'>('player');
     const [gameStatus, setGameStatus] = useState<'active' | 'finished'>('active');
@@ -333,37 +310,30 @@ function BattleView({ initialPlayerDeck, initialOpponentDeck, forcedDifficulty, 
     const handleGameEnd = useCallback(async (winner: 'player' | 'opponent') => {
         setGameStatus('finished');
         
-        let ratingResultData;
-
-        if (user && profile) {
-            if (winner === 'player') {
-                addWin();
-                updateMissionProgress('win-game', 1);
-                if (isStoryMode && effectiveGameRules.stageId) {
-                    const stageKey = `story-stage-${effectiveGameRules.stageId}-cleared`;
-                    const alreadyCleared = localStorage.getItem(stageKey) === 'true';
-                    if (!alreadyCleared) {
-                         if (effectiveGameRules.reward) {
-                             addCurrency(effectiveGameRules.reward);
-                             toast({ title: 'ステージクリア！', description: `${effectiveGameRules.reward}Gを獲得しました！` });
-                         }
-                         localStorage.setItem(stageKey, 'true');
-                    }
+        if (winner === 'player') {
+            addWin();
+            updateMissionProgress('win-game', 1);
+            if (isStoryMode && effectiveGameRules.stageId) {
+                const stageKey = `story-stage-${effectiveGameRules.stageId}-cleared`;
+                const alreadyCleared = localStorage.getItem(stageKey) === 'true';
+                if (!alreadyCleared) {
+                     if (effectiveGameRules.reward) {
+                         addCurrency(effectiveGameRules.reward);
+                         toast({ title: 'ステージクリア！', description: `${effectiveGameRules.reward}Gを獲得しました！` });
+                     }
+                     localStorage.setItem(stageKey, 'true');
                 }
-            } else {
-                addLoss();
             }
-            updateMissionProgress('play-game', 1);
-
-            ratingResultData = await updateUserRating(user.uid, forcedDifficulty!, winner === 'player' ? 'win' : 'loss');
+        } else {
+            addLoss();
         }
+        updateMissionProgress('play-game', 1);
         
         if (onGameEnd) {
-            onGameEnd(winner === 'player' ? 'win' : 'loss', ratingResultData);
+            onGameEnd(winner === 'player' ? 'win' : 'loss');
         }
 
-    }, [onGameEnd, addWin, addLoss, updateMissionProgress, user, forcedDifficulty, toast, profile, isStoryMode, initialPlayerDeck, initialOpponentDeck, effectiveGameRules, addCurrency]);
-
+    }, [onGameEnd, addWin, addLoss, updateMissionProgress, toast, isStoryMode, effectiveGameRules, addCurrency]);
 
     useEffect(() => {
         const pDeck = shuffleDeck(initialPlayerDeck || []);
@@ -376,12 +346,10 @@ function BattleView({ initialPlayerDeck, initialOpponentDeck, forcedDifficulty, 
         setOpponentDeck(oDeck);
 
         if (Math.random() < 0.5) {
-             // Player goes first
              setIsPlayerTurn(true);
              setActivePlayer('player');
              setStatusMessage("あなたのターンです。");
         } else {
-            // Opponent goes first
             setIsPlayerTurn(false);
             setActivePlayer('opponent');
             setStatusMessage("相手のターンです。");
@@ -438,9 +406,7 @@ function BattleView({ initialPlayerDeck, initialOpponentDeck, forcedDifficulty, 
         if (card.cardType === 'creature') {
             setPlayerBoard(prev => [...prev, { ...card, canAttack: false }]);
         } else {
-            // Handle spell effects
             setStatusMessage(`「${card.name}」の呪文効果発動！`);
-            // This is a simplified effect handler. A real game would need a complex rule engine.
             if (card.abilities.includes('引く')) {
                 const drawCount = (card.abilities.match(/(\d+)枚引く/) || [])[1] || '1';
                 let newDeck = playerDeck;
@@ -472,26 +438,24 @@ function BattleView({ initialPlayerDeck, initialOpponentDeck, forcedDifficulty, 
         setStatusMessage(`合計 ${totalAttack} のダメージを与えた！`);
 
         if (opponentHealth - totalAttack <= 0) {
-            return; // Game over check will handle it
+            return; 
         }
 
         endTurn();
     }
     
-    // Opponent's turn logic
     useEffect(() => {
         if (!isPlayerTurn && gameStatus === 'active') {
             setIsOpponentThinking(true);
             const thinkTimer = setTimeout(() => {
 
-                // 1. Play cards
                 let mana = opponentMana;
                 let hand = [...opponentHand];
                 let board = [...opponentBoard];
                 const playableCards = hand.filter(c => c.manaCost <= mana && (!effectiveGameRules.disallowedCardTypes?.includes(c.cardType)));
 
                 if (playableCards.length > 0 && board.length < effectiveGameRules.boardLimit!) {
-                    const cardToPlay = playableCards.sort((a,b) => b.manaCost - a.manaCost)[0]; // Play highest mana card
+                    const cardToPlay = playableCards.sort((a,b) => b.manaCost - a.manaCost)[0];
                     mana -= cardToPlay.manaCost;
                     hand = hand.filter(c => c.id !== cardToPlay.id);
                     if (cardToPlay.cardType === 'creature') {
@@ -504,7 +468,6 @@ function BattleView({ initialPlayerDeck, initialOpponentDeck, forcedDifficulty, 
                 setOpponentHand(hand);
                 setOpponentBoard(board);
                 
-                // 2. Attack
                 const attackTimer = setTimeout(() => {
                     const attackingCreatures = board.filter(c => c.canAttack);
                     if (attackingCreatures.length > 0) {
@@ -514,7 +477,6 @@ function BattleView({ initialPlayerDeck, initialOpponentDeck, forcedDifficulty, 
                         setStatusMessage(`相手から合計 ${totalAttack} のダメージを受けた！`);
                     }
 
-                    // 3. End turn
                     const endTimer = setTimeout(() => {
                         setIsOpponentThinking(false);
                         setIsPlayerTurn(true);
@@ -533,11 +495,10 @@ function BattleView({ initialPlayerDeck, initialOpponentDeck, forcedDifficulty, 
                 }, 1000);
                 return () => clearTimeout(attackTimer);
 
-            }, 2000); // Simulate thinking time
+            }, 2000);
             return () => clearTimeout(thinkTimer);
         }
     }, [isPlayerTurn, gameStatus, effectiveGameRules.boardLimit, effectiveGameRules.disallowedCardTypes, opponentHand, opponentMana, opponentBoard, playerDeck, playerHand, playerMaxMana]);
-
 
     useEffect(() => {
         if (playerHealth <= 0) {
@@ -554,7 +515,6 @@ function BattleView({ initialPlayerDeck, initialOpponentDeck, forcedDifficulty, 
 
     const handleEmoteSelect = (emote: Emote) => {
         showEmote(emote, 'player');
-        // AI responds to certain emotes
         if (emote.id === 'hello') {
             setTimeout(() => showEmote(emotes.find(e => e.id === 'hello')!, 'opponent'), 1000);
         }
@@ -563,22 +523,19 @@ function BattleView({ initialPlayerDeck, initialOpponentDeck, forcedDifficulty, 
         }
     };
 
-
     return (
         <div className="flex flex-col h-[calc(100vh-10rem)] w-full max-w-7xl mx-auto bg-gray-800 text-white p-4 rounded-lg shadow-2xl relative">
 
-             {/* Emote Display */}
              {activeEmote && (
                 <div className="absolute inset-0 z-50 flex items-center justify-center pointer-events-none">
                     <div className="bg-black/70 rounded-xl p-6 flex flex-col items-center gap-2 animate-in fade-in zoom-in-50">
                         <activeEmote.emote.icon size={48} className="text-white" />
                         <p className="text-xl font-bold">{activeEmote.emote.label}</p>
-                        <p className="text-sm text-muted-foreground">{activeEmote.sender === 'player' ? profile?.loginId : 'AI'}</p>
+                        <p className="text-sm text-muted-foreground">{activeEmote.sender === 'player' ? 'Player' : 'AI'}</p>
                     </div>
                 </div>
             )}
 
-            {/* Opponent's Area */}
             <PlayerArea
                 isOpponent
                 health={opponentHealth}
@@ -591,13 +548,11 @@ function BattleView({ initialPlayerDeck, initialOpponentDeck, forcedDifficulty, 
                 onEmoteSelect={(emote) => showEmote(emote, 'opponent')}
             />
 
-            {/* Middle Area */}
             <div className="flex items-center justify-center gap-4 my-2 text-center border-y-2 border-yellow-400 py-2">
                  {isOpponentThinking && <div className="flex items-center gap-2"><Bot className="animate-pulse" />相手が考慮中です...</div>}
                  {!isOpponentThinking && <div className="font-semibold text-lg">{statusMessage}</div>}
             </div>
 
-            {/* Player's Area */}
             <PlayerArea
                 health={playerHealth}
                 mana={playerMana}
@@ -611,7 +566,6 @@ function BattleView({ initialPlayerDeck, initialOpponentDeck, forcedDifficulty, 
                 onEmoteSelect={handleEmoteSelect}
             />
 
-            {/* Player Actions */}
             <div className="flex justify-center items-center gap-4 mt-4 h-16">
                 {isPlayerTurn ? (
                     <>
@@ -627,7 +581,6 @@ function BattleView({ initialPlayerDeck, initialOpponentDeck, forcedDifficulty, 
                 )}
             </div>
 
-            {/* Selected Card Modal */}
             {selectedCard && (
                 <AlertDialog open={!!selectedCard} onOpenChange={() => setSelectedCard(null)}>
                     <AlertDialogContent>
@@ -660,7 +613,6 @@ function BattleView({ initialPlayerDeck, initialOpponentDeck, forcedDifficulty, 
     );
 }
 
-// Player Area UI Component
 interface PlayerAreaProps {
   isOpponent?: boolean;
   health: number;
@@ -680,7 +632,6 @@ function PlayerArea({ isOpponent = false, health, mana, maxMana, handCount, deck
 
     return (
         <div className={cn('flex-1 flex flex-col', isOpponent ? 'flex-col-reverse' : '')}>
-            {/* Hand */}
             <div className="flex justify-center items-center h-48">
                  {hand ? (
                      hand.map((card, i) => (
@@ -697,10 +648,8 @@ function PlayerArea({ isOpponent = false, health, mana, maxMana, handCount, deck
                  )}
             </div>
 
-            {/* Board */}
             <div className="flex-1 bg-black/20 rounded-lg p-2 flex items-center">
                  <div className="flex items-center gap-4 w-full">
-                    {/* Stats & Emotes */}
                      <div className="flex flex-col items-center justify-between gap-4 w-32 h-full">
                          <div className="flex items-center gap-2 text-2xl font-bold">
                             <Heart className="text-red-500 fill-red-500"/> 
@@ -734,7 +683,6 @@ function PlayerArea({ isOpponent = false, health, mana, maxMana, handCount, deck
                             <p>{deckCount}</p>
                          </div>
                      </div>
-                    {/* Creatures */}
                     <div className="flex-1 grid grid-cols-5 gap-2">
                         {board.map((card, i) => (
                             <div key={i} className={cn("transition-all", card.canAttack && !isOpponent && "cursor-pointer hover:scale-105 hover:-translate-y-2")}>
