@@ -1,6 +1,6 @@
 
 import type { Metadata } from "next";
-import "./globals.css";
+import "@/app/globals.css";
 import { FirebaseClientProvider } from "@/firebase/client-provider";
 import { ReactNode } from "react";
 import { CurrencyProvider } from "@/components/currency-provider";
