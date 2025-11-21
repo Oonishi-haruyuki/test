@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -14,7 +15,7 @@ const navLinks = [
     { href: '/', label: '作成' },
     { href: '/collection', label: 'マイカード' },
     { href: '/deck-builder', label: 'デッキ構築' },
-    { href: '/gacha', label: 'ガチャ' },
+    { href: '/draft', label: 'ドラフト' },
     { href: '/battle', label: 'AI対戦' },
     { href: '/story', label: 'ストーリー' },
 ];
