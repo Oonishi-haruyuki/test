@@ -6,7 +6,6 @@ import type { CardData, Rarity } from '@/components/card-editor';
 import { CardPreview } from '@/components/card-preview';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { generateGachaPull, type GenerateGachaPullOutput } from '@/ai/flows/generate-gacha-pull';
 import { Loader2, Dices, Save, Gift } from 'lucide-react';
 import { useCurrency } from '@/hooks/use-currency';
 import {
@@ -22,6 +21,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useMissions } from '@/hooks/use-missions';
 import { cn } from '@/lib/utils';
+import type { GenerateGachaPullOutput, GenerateGachaPullInput } from '@/ai/flows/generate-gacha-pull';
 
 
 const PULL_COST = 100;
@@ -75,7 +75,20 @@ export default function GachaPage() {
       setAnimationState({});
 
       try {
-        const result: GenerateGachaPullOutput = await generateGachaPull({ count, allowedRarities });
+        const response = await fetch('/api/generateGachaPull', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ count, allowedRarities } as GenerateGachaPullInput),
+        });
+
+        if (!response.ok) {
+          throw new Error('API request failed');
+        }
+
+        const result: GenerateGachaPullOutput = await response.json();
+
         const newCards = result.cards.map(card => ({
             ...card,
             id: self.crypto.randomUUID(),
