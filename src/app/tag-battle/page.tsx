@@ -6,10 +6,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Loader2, Users, Link as LinkIcon, Swords } from 'lucide-react';
-import { useUser } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 
 type RoomState = 'idle' | 'creating' | 'waiting' | 'joining';
+
+// This is a placeholder hook. In a real app, this would be replaced with actual user data.
+const useUser = () => ({
+    user: { email: 'player@example.com' },
+    profile: { loginId: 'Player1' },
+});
 
 export default function TagBattlePage() {
     const { user, profile } = useUser();
