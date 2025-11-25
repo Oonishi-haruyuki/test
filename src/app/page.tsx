@@ -5,9 +5,6 @@ import { useState, useRef } from "react";
 import type { CardData } from "@/components/card-editor";
 import { CardEditor } from "@/components/card-editor";
 import { CardPreview } from "@/components/card-preview";
-import { placeholderImages } from "@/lib/placeholder-images";
-
-const defaultImage = placeholderImages.find(p => p.id === 'card-art-1');
 
 export default function Home() {
   const [cardData, setCardData] = useState<CardData>({
@@ -20,8 +17,8 @@ export default function Home() {
     rarity: "rare",
     abilities: "飛行\nこのクリーチャーが戦場に出たとき、カードを1枚引く。",
     flavorText: "その鱗は宇宙の秘密を映してきらめく。",
-    imageUrl: defaultImage?.imageUrl || "https://picsum.photos/seed/cardcraft/400/300",
-    imageHint: defaultImage?.imageHint || "fantasy landscape",
+    imageUrl: "https://picsum.photos/seed/cardcraft/400/300",
+    imageHint: "fantasy landscape",
   });
   const cardPreviewRef = useRef<HTMLDivElement>(null);
   const [isImageGenerating, setIsImageGenerating] = useState(false);
