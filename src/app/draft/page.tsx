@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { CardData } from '@/components/card-editor';
 import { CardPreview } from '@/components/card-preview';
 import { Button } from '@/components/ui/button';
@@ -20,14 +20,26 @@ export default function DraftPage() {
     const [pickedCards, setPickedCards] = useState<CardData[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const { toast } = useToast();
+    const [isClient, setIsClient] = useState(false);
 
-    const startDraft = async () => {
+    useEffect(() => {
+        setIsClient(true);
+    }, []);
+
+    const startDraft = useCallback(async () => {
+        if (!isClient) return;
+
         setIsLoading(true);
         setPickedCards([]);
         setRound(1);
+
         try {
             const result = await generateDeck({ theme: 'ランダム', cardCount: DRAFT_PACK_SIZE });
-            const pack = result.deck.map(c => ({...c, id: self.crypto.randomUUID(), imageUrl: `https://picsum.photos/seed/${self.crypto.randomUUID()}/400/300`})) as CardData[];
+            const pack = result.deck.map(c => ({
+                ...c, 
+                id: self.crypto.randomUUID(), 
+                imageUrl: `https://picsum.photos/seed/${self.crypto.randomUUID()}/400/300`
+            })) as CardData[];
             setCurrentPack(pack);
             setDraftState('drafting');
         } catch (error) {
@@ -36,54 +48,58 @@ export default function DraftPage() {
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [isClient, toast]);
 
-    const pickCard = async (card: CardData) => {
-        if (currentPack.length <= 1) { // Last card of the pack
-            const finalPicks = [...pickedCards, card];
-            setPickedCards(finalPicks);
+    const pickCard = useCallback(async (card: CardData) => {
+        if (!isClient) return;
 
-            if (round >= TOTAL_ROUNDS) {
-                setDraftState('finished');
-                toast({ title: 'ドラフト完了！', description: 'デッキ構築ページで確認・保存できます。' });
-                 try {
-                    const savedDecks = JSON.parse(localStorage.getItem('cardDecks') || '[]');
-                    const newDeck = {
-                        id: `draft-${Date.now()}`,
-                        name: `ドラフトデッキ (${new Date().toLocaleDateString()})`,
-                        cards: finalPicks,
-                    };
-                    localStorage.setItem('cardDecks', JSON.stringify([...savedDecks, newDeck]));
-                } catch (e) {
-                    toast({ variant: 'destructive', title: 'デッキの自動保存に失敗しました。'});
-                }
+        const finalPicks = [...pickedCards, card];
+        setPickedCards(finalPicks);
 
-                return;
-            }
-            // Start next round
-            setIsLoading(true);
-            setRound(r => r + 1);
+        if (currentPack.length <= 1 || round >= TOTAL_ROUNDS) {
+            setDraftState('finished');
+            toast({ title: 'ドラフト完了！', description: 'デッキ構築ページで確認・保存できます。' });
             try {
-                const result = await generateDeck({ theme: 'ランダム', cardCount: DRAFT_PACK_SIZE });
-                 const pack = result.deck.map(c => ({...c, id: self.crypto.randomUUID(), imageUrl: `https://picsum.photos/seed/${self.crypto.randomUUID()}/400/300`})) as CardData[];
-                setCurrentPack(pack);
-            } catch (error) {
-                 toast({ variant: 'destructive', title: `ラウンド ${round + 1} の開始に失敗しました。`});
-            } finally {
-                setIsLoading(false);
+                const savedDecks = JSON.parse(localStorage.getItem('cardDecks') || '[]');
+                const newDeck = {
+                    id: `draft-${Date.now()}`,
+                    name: `ドラフトデッキ (${new Date().toLocaleDateString()})`,
+                    cards: finalPicks,
+                };
+                localStorage.setItem('cardDecks', JSON.stringify([...savedDecks, newDeck]));
+            } catch (e) {
+                toast({ variant: 'destructive', title: 'デッキの自動保存に失敗しました。'});
             }
+            return;
+        }
 
+        const newPack = currentPack.filter(c => c.id !== card.id);
+        newPack.splice(Math.floor(Math.random() * newPack.length), 1);
+
+        if (newPack.length === 0) { // End of round
+             const nextRound = round + 1;
+             if (nextRound > TOTAL_ROUNDS) {
+                 setDraftState('finished');
+                 return;
+             }
+             setRound(nextRound);
+             setIsLoading(true);
+             try {
+                const result = await generateDeck({ theme: 'ランダム', cardCount: DRAFT_PACK_SIZE });
+                const pack = result.deck.map(c => ({...c, id: self.crypto.randomUUID(), imageUrl: `https://picsum.photos/seed/${self.crypto.randomUUID()}/400/300`})) as CardData[];
+                setCurrentPack(pack);
+             } catch (error) {
+                 toast({ variant: 'destructive', title: `ラウンド ${nextRound} の開始に失敗しました。`});
+             } finally {
+                 setIsLoading(false);
+             }
         } else {
-            const newPack = currentPack.filter(c => c.id !== card.id);
-            // Simulate AI picking a card
-            newPack.splice(Math.floor(Math.random() * newPack.length), 1);
-            
-            setPickedCards(prev => [...prev, card]);
             setCurrentPack(newPack);
         }
-    };
+    }, [isClient, pickedCards, currentPack, round, toast]);
 
-    if (isLoading) {
+
+    if (!isClient || isLoading) {
         return <div className="flex justify-center items-center h-64"><Loader2 className="animate-spin h-10 w-10" /></div>;
     }
 
