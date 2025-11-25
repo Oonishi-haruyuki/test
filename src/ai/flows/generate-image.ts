@@ -35,7 +35,7 @@ const generateImageFlow = ai.defineFlow(
   },
   async ({ prompt }) => {
     const { media } = await ai.generate({
-        model: googleAI.model('imagen-4.0-fast-generate-001'),
+        model: googleAI.model('imagen-3'),
         prompt: `Generate a card game artwork with the following theme: ${prompt}. Fantasy art style.`,
     });
     

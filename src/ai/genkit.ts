@@ -13,5 +13,5 @@ configureGenkit({
 export { googleAI };
 
 export const ai = genkit({
-  model: 'googleai/gemini-pro',
+  model: 'googleai/gemini-1.5-flash-latest',
 });
