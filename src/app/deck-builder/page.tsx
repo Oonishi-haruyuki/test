@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Droppable, Draggable, DragDropContext, DropResult } from '@hello-pangea/dnd';
 import { analyzeDeck } from '@/ai/flows/analyze-deck';
-import { generateDeck } from '@/ai/flows/generate-deck';
+import { generateDeckClient } from '@/lib/generate-deck-client';
 import { Loader2, Wand2 } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
@@ -176,7 +176,7 @@ export default function DeckBuilderPage() {
     }
     setIsGenerating(true);
     try {
-      const result = await generateDeck({ theme: newDeckTheme, cardCount: DECK_SIZE });
+            const result = await generateDeckClient({ theme: newDeckTheme, cardCount: DECK_SIZE });
       
       // Add IDs to the generated cards
       const newCards = result.deck.map(card => ({

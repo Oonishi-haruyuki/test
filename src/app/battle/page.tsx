@@ -9,7 +9,7 @@ import { Swords, Shield, Heart, Sparkles, Bot, Clock, Play, SkipForward, Loader2
 import { cn } from '@/lib/utils';
 import { Progress } from '@/components/ui/progress';
 import { useSearchParams } from 'next/navigation';
-import { generateDeck } from '@/ai/flows/generate-deck';
+import { generateDeckClient } from '@/lib/generate-deck-client';
 import { goblinDeck, elementalDeck, undeadDeck, dragonDeck, ninjaDeck } from '@/lib/decks';
 import { useMissions } from '@/hooks/use-missions';
 import { useStats } from '@/hooks/use-stats';
@@ -175,7 +175,7 @@ function DeckSelection({ onStartGame }: { onStartGame: (deck: CardData[], diffic
     const handleGenerateDeck = async () => {
         setIsLoading(true);
         try {
-            const result = await generateDeck({ theme: 'ファンタジー', cardCount: 20 });
+            const result = await generateDeckClient({ theme: 'ファンタジー', cardCount: 20 });
             const newDeck = {
                 id: `generated-${Date.now()}`,
                 name: 'AI生成デッキ (ファンタジー)',

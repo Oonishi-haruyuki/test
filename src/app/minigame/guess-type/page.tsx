@@ -6,7 +6,7 @@ import type { CardData, CardType } from '@/components/card-editor';
 import { CardPreview } from '@/components/card-preview';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { generateDeck } from '@/ai/flows/generate-deck';
+import { generateDeckClient } from '@/lib/generate-deck-client';
 import { Loader2 } from 'lucide-react';
 import { useCurrency } from '@/hooks/use-currency';
 
@@ -30,7 +30,7 @@ export default function GuessTypePage() {
         setIsLoading(true);
         setIsRevealed(false);
         try {
-            const result = await generateDeck({ theme: 'なんでも', cardCount: 1 });
+            const result = await generateDeckClient({ theme: 'なんでも', cardCount: 1 });
             const newCard = {
                 ...result.deck[0], 
                 id: self.crypto.randomUUID(), 

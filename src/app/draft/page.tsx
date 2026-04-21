@@ -6,7 +6,7 @@ import type { CardData } from '@/components/card-editor';
 import { CardPreview } from '@/components/card-preview';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { generateDeck } from '@/ai/flows/generate-deck';
+import { generateDeckClient } from '@/lib/generate-deck-client';
 import { Loader2 } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
@@ -34,7 +34,7 @@ export default function DraftPage() {
         setRound(1);
 
         try {
-            const result = await generateDeck({ theme: 'ランダム', cardCount: DRAFT_PACK_SIZE });
+            const result = await generateDeckClient({ theme: 'ランダム', cardCount: DRAFT_PACK_SIZE });
             const pack = result.deck.map(c => ({
                 ...c, 
                 id: self.crypto.randomUUID(), 
@@ -85,7 +85,7 @@ export default function DraftPage() {
              setRound(nextRound);
              setIsLoading(true);
              try {
-                const result = await generateDeck({ theme: 'ランダム', cardCount: DRAFT_PACK_SIZE });
+                const result = await generateDeckClient({ theme: 'ランダム', cardCount: DRAFT_PACK_SIZE });
                 const pack = result.deck.map(c => ({...c, id: self.crypto.randomUUID(), imageUrl: `https://picsum.photos/seed/${self.crypto.randomUUID()}/400/300`})) as CardData[];
                 setCurrentPack(pack);
              } catch (error) {

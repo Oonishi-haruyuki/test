@@ -8,7 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Swords, Loader2 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { generateDeck } from '@/ai/flows/generate-deck';
+import { generateDeckClient } from '@/lib/generate-deck-client';
 
 function StoryBattlePreparationPageContent() {
     const [decks, setDecks] = useState<{id: string, name: string, cards: CardData[]}[]>([]);
@@ -34,7 +34,7 @@ function StoryBattlePreparationPageContent() {
     const handleGenerateDeck = async () => {
         setIsLoading(true);
         try {
-            const result = await generateDeck({ theme: 'ファンタジー', cardCount: 20 });
+            const result = await generateDeckClient({ theme: 'ファンタジー', cardCount: 20 });
             const newDeck = {
                 id: `generated-${Date.now()}`,
                 name: 'AI生成デッキ (ファンタジー)',

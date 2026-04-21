@@ -6,7 +6,7 @@ import type { CardData } from '@/components/card-editor';
 import { CardPreview } from '@/components/card-preview';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { generateDeck } from '@/ai/flows/generate-deck';
+import { generateDeckClient } from '@/lib/generate-deck-client';
 import { Loader2, ArrowUp, ArrowDown, Repeat } from 'lucide-react';
 import { useCurrency } from '@/hooks/use-currency';
 
@@ -25,7 +25,7 @@ export default function HighLowPage() {
     const fetchNewDeck = async () => {
         setIsLoading(true);
         try {
-            const result = await generateDeck({ theme: 'なんでも', cardCount: 30 });
+            const result = await generateDeckClient({ theme: 'なんでも', cardCount: 30 });
             const newDeck = result.deck.map(c => ({...c, id: self.crypto.randomUUID(), imageUrl: `https://picsum.photos/seed/${self.crypto.randomUUID()}/400/300`})) as CardData[];
             setDeck(newDeck);
             setCurrentCard(newDeck[0]);
