@@ -38,9 +38,7 @@ export type CardType = 'creature' | 'spell' | 'artifact' | 'land';
 export type CreatureType = 'none' | 'human' | 'elf' | 'dwarf' | 'goblin' | 'orc' | 'undead' | 'dragon' | 'beast' | 'elemental' | 'soldier' | 'wizard' | 'spirit' | 'angel' | 'demon' | 'machine';
 export type Rarity = 'common' | 'uncommon' | 'rare' | 'mythic';
 
-export interface CardData {
-  id?: string;
-  theme: Theme;
+export type CardSchema = {
   name: string;
   manaCost: number;
   attack: number;
@@ -50,8 +48,13 @@ export interface CardData {
   rarity: Rarity;
   abilities: string;
   flavorText: string;
-  imageUrl: string;
   imageHint: string;
+};
+
+export interface CardData extends CardSchema {
+  id?: string;
+  theme: Theme;
+  imageUrl: string;
   frameImageUrl?: string;
   canAttack?: boolean;
 }

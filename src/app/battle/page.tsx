@@ -179,7 +179,7 @@ function DeckSelection({ onStartGame }: { onStartGame: (deck: CardData[], diffic
             const newDeck = {
                 id: `generated-${Date.now()}`,
                 name: 'AI生成デッキ (ファンタジー)',
-                cards: result.deck.map(c => ({...c, id: self.crypto.randomUUID(), imageUrl: `https://picsum.photos/seed/${self.crypto.randomUUID()}/400/300`})) as CardData[]
+                cards: result.deck.map(c => ({...c, id: self.crypto.randomUUID(), imageUrl: `https://picsum.photos/seed/${self.crypto.randomUUID()}/400/300`}))
             };
             setDecks(prev => [...prev, newDeck]);
             setSelectedDeckId(newDeck.id);

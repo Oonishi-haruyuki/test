@@ -12,6 +12,7 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
+import type { CardSchema } from '@/components/card-editor';
 
 const CardSchemaForGeneration = z.object({
     name: z.string().describe('カードの名前。'),
@@ -35,7 +36,9 @@ export type GenerateDeckInput = z.infer<typeof GenerateDeckInputSchema>;
 const GenerateDeckOutputSchema = z.object({
     deck: z.array(CardSchemaForGeneration),
 });
-export type GenerateDeckOutput = z.infer<typeof GenerateDeckOutputSchema>;
+export type GenerateDeckOutput = {
+    deck: CardSchema[];
+};
 
 export async function generateDeck(input: GenerateDeckInput): Promise<GenerateDeckOutput> {
   return generateDeckFlow(input);

@@ -1,6 +1,7 @@
-import type { CardData } from '@/components/card-editor';
+import type { CardData, CardSchema } from '@/components/card-editor';
 
 export type Difficulty = 'beginner' | 'advanced' | 'super';
+
 
 export interface GameRules {
     playerHealth?: number;
