@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Droppable, Draggable, DragDropContext, DropResult } from '@hello-pangea/dnd';
 import { analyzeDeck } from '@/ai/flows/analyze-deck';
+import { generateDeck } from '@/ai/flows/generate-deck';
 import { Loader2, Wand2 } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
@@ -30,6 +31,8 @@ export default function DeckBuilderPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [analysisResult, setAnalysisResult] = useState<any>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [newDeckTheme, setNewDeckTheme] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -166,6 +169,48 @@ export default function DeckBuilderPage() {
     }
   };
 
+  const handleGenerateDeck = async () => {
+    if (!newDeckTheme.trim()) {
+      toast({ variant: 'destructive', title: 'デッキのテーマを入力してください' });
+      return;
+    }
+    setIsGenerating(true);
+    try {
+      const result = await generateDeck({ theme: newDeckTheme, cardCount: DECK_SIZE });
+      
+      // Add IDs to the generated cards
+      const newCards = result.deck.map(card => ({
+        ...card,
+        id: `card-${Date.now()}-${Math.random()}` 
+      }));
+
+      // Add new cards to the collection
+      const updatedCollection = [...collection, ...newCards];
+      setCollection(updatedCollection);
+      localStorage.setItem('cardCollection', JSON.stringify(updatedCollection));
+
+      // Add new cards to the current deck
+      if (selectedDeck) {
+        const combinedCards = [...selectedDeck.cards, ...newCards];
+        const newDeckCards = combinedCards.slice(0, DECK_SIZE);
+        
+        const updatedDeck = { ...selectedDeck, cards: newDeckCards };
+        const newDecks = decks.map(d => d.id === selectedDeck.id ? updatedDeck : d);
+        saveDecks(newDecks);
+        setSelectedDeck(updatedDeck);
+      }
+
+      toast({ title: '新しいデッキが生成されました！', description: `${newCards.length}枚のカードがコレクションと現在のデッキに追加されました。` });
+      setNewDeckTheme('');
+
+    } catch (error) {
+      console.error(error);
+      toast({ variant: 'destructive', title: 'デッキの生成に失敗しました' });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
 
   return (
     <DragDropContext onDragEnd={onDragEnd}>
@@ -198,6 +243,24 @@ export default function DeckBuilderPage() {
                     </Button>
                  )}
             </div>
+
+            <Card className="mb-6">
+                <CardHeader>
+                    <CardTitle>AIデッキ自動生成</CardTitle>
+                </CardHeader>
+                <CardContent className="flex flex-col md:flex-row gap-2">
+                    <Input 
+                        placeholder="デッキのテーマ（例：ドラゴン, 忍者, 宇宙海賊）" 
+                        value={newDeckTheme}
+                        onChange={(e) => setNewDeckTheme(e.target.value)}
+                        disabled={isGenerating}
+                    />
+                    <Button onClick={handleGenerateDeck} disabled={isGenerating} className="w-full md:w-auto">
+                        {isGenerating ? <Loader2 className="animate-spin"/> : <Wand2/>}
+                        {DECK_SIZE}枚のカードを生成
+                    </Button>
+                </CardContent>
+            </Card>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 {/* Collection */}
