@@ -11,17 +11,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Droppable, Draggable, DragDropContext, DropResult } from '@hello-pangea/dnd';
 import { analyzeDeck } from '@/ai/flows/analyze-deck';
-import { generateDeckClient } from '@/lib/generate-deck-client';
+import { ApiClientError, generateDeckClient } from '@/lib/generate-deck-client';
 import { Loader2, Wand2 } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { useAuth } from '@/components/auth-provider';
+import { loadDeckBuilderData, MAX_USER_DECKS, saveDeckBuilderData, type UserDeck } from '@/lib/user-data-store';
 
 const DECK_SIZE = 20;
 
-type Deck = {
-  id: string;
-  name: string;
-  cards: CardData[];
-};
+type Deck = UserDeck;
 
 export default function DeckBuilderPage() {
   const [collection, setCollection] = useState<CardData[]>([]);
@@ -34,37 +32,100 @@ export default function DeckBuilderPage() {
   const [newDeckTheme, setNewDeckTheme] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const { toast } = useToast();
+    const { user, loading: authLoading } = useAuth();
 
   useEffect(() => {
-    try {
-      const savedCollection = JSON.parse(localStorage.getItem('cardCollection') || '[]');
-      const savedDecks = JSON.parse(localStorage.getItem('cardDecks') || '[]');
-      setCollection(savedCollection);
-      setDecks(savedDecks);
-      if (savedDecks.length > 0) {
-        setSelectedDeck(savedDecks[0]);
-      } else {
-        // If no decks, create a new empty one to start
-        const newDeck = { id: `deck-${Date.now()}`, name: '新しいデッキ', cards: [] };
-        setDecks([newDeck]);
-        setSelectedDeck(newDeck);
-      }
-    } catch (e) {
-      console.error("Failed to load data from localStorage", e);
-      toast({ variant: "destructive", title: "データの読み込みに失敗しました" });
-    }
-  }, [toast]);
+        if (authLoading) {
+            return;
+        }
 
-  const saveDecks = (newDecks: Deck[]) => {
+        if (!user) {
+            setCollection([]);
+            setDecks([]);
+            setSelectedDeck(null);
+            return;
+        }
+
+        let cancelled = false;
+
+        const load = async () => {
+            try {
+                const data = await loadDeckBuilderData(user.uid);
+                if (cancelled) {
+                    return;
+                }
+
+                const loadedCollection = data.collection ?? [];
+                const loadedDecks = data.decks ?? [];
+                setCollection(loadedCollection);
+
+                if (loadedDecks.length > 0) {
+                    setDecks(loadedDecks);
+                    setSelectedDeck(loadedDecks[0]);
+                    return;
+                }
+
+                // If no decks exist in Firestore, create an initial empty deck.
+                const newDeck: Deck = { id: `deck-${Date.now()}`, name: '新しいデッキ', cards: [] };
+                const initialDecks = [newDeck];
+                setDecks(initialDecks);
+                setSelectedDeck(newDeck);
+                await saveDeckBuilderData(user.uid, {
+                    collection: loadedCollection,
+                    decks: initialDecks,
+                });
+            } catch (e) {
+                console.error('Failed to load deck builder data from Firestore', e);
+                toast({ variant: 'destructive', title: 'Firestoreからのデータ読み込みに失敗しました' });
+            }
+        };
+
+        void load();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [authLoading, user, toast]);
+
+    const persistDeckBuilderState = useCallback(
+        async (nextCollection: CardData[], nextDecks: Deck[]) => {
+            if (!user) {
+                return;
+            }
+
+            try {
+                await saveDeckBuilderData(user.uid, {
+                    collection: nextCollection,
+                    decks: nextDecks,
+                });
+            } catch (error) {
+                console.error('Failed to save deck builder data to Firestore', error);
+                toast({ variant: 'destructive', title: 'Firestoreへの保存に失敗しました' });
+            }
+        },
+        [user, toast]
+    );
+
+    const saveDecks = useCallback((newDecks: Deck[], nextCollection: CardData[] = collection) => {
     setDecks(newDecks);
-    localStorage.setItem('cardDecks', JSON.stringify(newDecks));
-  };
+        void persistDeckBuilderState(nextCollection, newDecks);
+    }, [collection, persistDeckBuilderState]);
   
   const handleCreateDeck = () => {
     if (!newDeckName.trim()) {
       toast({ variant: 'destructive', title: 'デッキ名を入力してください' });
       return;
     }
+
+        if (decks.length >= MAX_USER_DECKS) {
+            toast({
+                variant: 'destructive',
+                title: 'デッキ上限に達しました',
+                description: `デッキは最大${MAX_USER_DECKS}個まで作成できます。`,
+            });
+            return;
+        }
+
     const newDeck: Deck = { id: `deck-${Date.now()}`, name: newDeckName, cards: [] };
     const updatedDecks = [...decks, newDeck];
     saveDecks(updatedDecks);
@@ -181,13 +242,14 @@ export default function DeckBuilderPage() {
       // Add IDs to the generated cards
       const newCards = result.deck.map(card => ({
         ...card,
-        id: `card-${Date.now()}-${Math.random()}` 
+                id: `card-${Date.now()}-${Math.random()}`,
+                theme: 'custom' as const,
+                imageUrl: '',
       }));
 
       // Add new cards to the collection
-      const updatedCollection = [...collection, ...newCards];
-      setCollection(updatedCollection);
-      localStorage.setItem('cardCollection', JSON.stringify(updatedCollection));
+            const updatedCollection = [...collection, ...newCards];
+            setCollection(updatedCollection);
 
       // Add new cards to the current deck
       if (selectedDeck) {
@@ -196,30 +258,59 @@ export default function DeckBuilderPage() {
         
         const updatedDeck = { ...selectedDeck, cards: newDeckCards };
         const newDecks = decks.map(d => d.id === selectedDeck.id ? updatedDeck : d);
-        saveDecks(newDecks);
+                saveDecks(newDecks, updatedCollection);
         setSelectedDeck(updatedDeck);
+            } else {
+                void persistDeckBuilderState(updatedCollection, decks);
       }
 
-      toast({ title: '新しいデッキが生成されました！', description: `${newCards.length}枚のカードがコレクションと現在のデッキに追加されました。` });
+            toast({
+                title: result.usedMockFallback ? 'モックデッキを生成しました' : '新しいデッキが生成されました！',
+                description: result.usedMockFallback
+                    ? `${newCards.length}枚のモックカードを追加しました（AI利用制限中のため）。`
+                    : `${newCards.length}枚のカードがコレクションと現在のデッキに追加されました。`,
+            });
       setNewDeckTheme('');
 
     } catch (error) {
       console.error(error);
-      toast({ variant: 'destructive', title: 'デッキの生成に失敗しました' });
+            if (error instanceof ApiClientError && error.status === 429) {
+                toast({
+                    variant: 'destructive',
+                    title: 'AIの利用上限に達しました',
+                    description: 'しばらく待ってから再試行するか、管理者にクォータ設定をご確認ください。',
+                });
+            } else {
+                toast({ variant: 'destructive', title: 'デッキの生成に失敗しました' });
+            }
     } finally {
       setIsGenerating(false);
     }
   };
 
 
-  return (
+    if (authLoading) {
+        return <div className="flex justify-center items-center h-64"><Loader2 className="animate-spin h-10 w-10" /></div>;
+    }
+
+    if (!user) {
+        return (
+            <div className="text-center py-16">
+                <h1 className="text-2xl font-bold mb-2">デッキ構築</h1>
+                <p className="text-muted-foreground">右上の「Google でサインイン」または「ゲストで開始」で利用できます。</p>
+            </div>
+        );
+    }
+
+    return (
     <DragDropContext onDragEnd={onDragEnd}>
         <div>
             <h1 className="text-3xl font-bold mb-2">デッキ構築</h1>
-            <p className="text-muted-foreground mb-6">ドラッグ＆ドロップでデッキを構築・編集します。</p>
+            <p className="text-muted-foreground mb-1">ドラッグ＆ドロップでデッキを構築・編集します。</p>
+            <p className="text-sm text-muted-foreground mb-6">デッキ数: {decks.length} / {MAX_USER_DECKS}</p>
             
             <div className="flex flex-col md:flex-row gap-4 mb-6">
-                <Select value={selectedDeck?.id || ''} onValueChange={(deckId) => setSelectedDeck(decks.find(d => d.id === deckId) || null)}>
+                <Select value={selectedDeck?.id || ''} onValueChange={(deckId: string) => setSelectedDeck(decks.find(d => d.id === deckId) || null)}>
                     <SelectTrigger className="w-full md:w-[250px]">
                         <SelectValue placeholder="デッキを選択" />
                     </SelectTrigger>
@@ -235,7 +326,7 @@ export default function DeckBuilderPage() {
                         value={newDeckName}
                         onChange={(e) => setNewDeckName(e.target.value)}
                     />
-                    <Button onClick={handleCreateDeck}>新規作成</Button>
+                    <Button onClick={handleCreateDeck} disabled={!newDeckName.trim() || decks.length >= MAX_USER_DECKS}>新規作成</Button>
                 </div>
                  {selectedDeck && (
                      <Button variant="destructive" onClick={() => handleDeleteDeck(selectedDeck.id)}>

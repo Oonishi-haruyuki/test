@@ -9,6 +9,8 @@ import { Swords, Loader2 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { generateDeckClient } from '@/lib/generate-deck-client';
+import { useAuth } from '@/components/auth-provider';
+import { appendUserDeck, loadUserDecks, MAX_USER_DECKS, saveStoryModeDeck, UserDataStoreError } from '@/lib/user-data-store';
 
 function StoryBattlePreparationPageContent() {
     const [decks, setDecks] = useState<{id: string, name: string, cards: CardData[]}[]>([]);
@@ -17,48 +19,89 @@ function StoryBattlePreparationPageContent() {
     const { toast } = useToast();
     const router = useRouter();
     const searchParams = useSearchParams();
+    const { user, loading: authLoading } = useAuth();
 
     useEffect(() => {
-        try {
-            const savedDecks = JSON.parse(localStorage.getItem('cardDecks') || '[]');
-            setDecks(savedDecks);
-            if (savedDecks.length > 0) {
-                setSelectedDeckId(savedDecks[0].id);
-            }
-        } catch(e) {
-            console.error(e);
-            toast({ variant: 'destructive', title: 'デッキの読み込みに失敗しました' });
+        if (authLoading || !user) {
+            return;
         }
-    }, [toast]);
+
+        const load = async () => {
+            try {
+                const savedDecks = await loadUserDecks(user.uid);
+                setDecks(savedDecks);
+                if (savedDecks.length > 0) {
+                    setSelectedDeckId(savedDecks[0].id);
+                }
+            } catch(e) {
+                console.error(e);
+                toast({ variant: 'destructive', title: 'デッキの読み込みに失敗しました' });
+            }
+        };
+
+        void load();
+    }, [toast, authLoading, user]);
 
     const handleGenerateDeck = async () => {
+        if (!user) {
+            toast({ variant: 'destructive', title: 'サインインが必要です' });
+            return;
+        }
+
+        if (decks.length >= MAX_USER_DECKS) {
+            toast({
+                variant: 'destructive',
+                title: 'デッキ上限に達しました',
+                description: `デッキは最大${MAX_USER_DECKS}個までです。`,
+            });
+            return;
+        }
+
         setIsLoading(true);
         try {
             const result = await generateDeckClient({ theme: 'ファンタジー', cardCount: 20 });
             const newDeck = {
                 id: `generated-${Date.now()}`,
                 name: 'AI生成デッキ (ファンタジー)',
-                cards: result.deck.map(c => ({...c, id: self.crypto.randomUUID(), imageUrl: `https://picsum.photos/seed/${self.crypto.randomUUID()}/400/300`})) as CardData[]
+                cards: result.deck.map(c => ({
+                    ...c,
+                    id: self.crypto.randomUUID(),
+                    imageUrl: `https://picsum.photos/seed/${self.crypto.randomUUID()}/400/300`,
+                    theme: 'custom' as const,
+                })) as CardData[]
             };
-            setDecks(prev => [...prev, newDeck]);
+            const nextDecks = await appendUserDeck(user.uid, newDeck);
+            setDecks(nextDecks);
             setSelectedDeckId(newDeck.id);
             toast({ title: 'AIが新しいデッキを生成しました！'});
         } catch (error) {
             console.error(error);
-            toast({ variant: 'destructive', title: 'デッキ生成に失敗しました' });
+            if (error instanceof UserDataStoreError && error.code === 'DECK_LIMIT_REACHED') {
+                toast({
+                    variant: 'destructive',
+                    title: 'デッキ上限に達しました',
+                    description: error.message,
+                });
+            } else {
+                toast({ variant: 'destructive', title: 'デッキ生成に失敗しました' });
+            }
         }
         setIsLoading(false);
     };
 
-    const handleStart = () => {
+    const handleStart = async () => {
         const selectedDeck = decks.find(d => d.id === selectedDeckId);
         if (!selectedDeck || selectedDeck.cards.length < 20) {
             toast({ variant: 'destructive', title: 'デッキが不完全です', description: '20枚のカードで構成されたデッキを選択してください。' });
             return;
         }
 
-        // Store selected deck in localStorage to be picked up by the battle page.
-        localStorage.setItem('storyModeDeck', JSON.stringify(selectedDeck.cards));
+        if (!user) {
+            toast({ variant: 'destructive', title: 'サインインが必要です' });
+            return;
+        }
+
+        await saveStoryModeDeck(user.uid, selectedDeck.cards);
         
         const params = new URLSearchParams(searchParams);
         params.set('story', 'true'); // Add story flag for battle page
@@ -108,7 +151,7 @@ function StoryBattlePreparationPageContent() {
             </div>
 
             <div className="mt-8 text-center">
-                <Button size="lg" onClick={handleStart} disabled={!selectedDeckId}>
+                <Button size="lg" onClick={handleStart} disabled={!selectedDeckId || authLoading}>
                     <Swords className="mr-2"/>
                     対戦開始！
                 </Button>

@@ -21,6 +21,9 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CollectionCardEditor } from '@/components/collection-card-editor';
 import { useCurrency } from '@/hooks/use-currency';
+import { useAuth } from '@/components/auth-provider';
+import { loadUserCollection, saveUserCollection } from '@/lib/user-data-store';
+import { Loader2 } from 'lucide-react';
 
 const levenshtein = (s1: string, s2: string): number => {
     if (s1.length < s2.length) {
@@ -50,22 +53,35 @@ export default function CollectionPage() {
   const [sortOrder, setSortOrder] = useState('name-asc');
   const { toast } = useToast();
   const { currency, spendCurrency } = useCurrency();
+  const { user, loading: authLoading } = useAuth();
 
   useEffect(() => {
-    try {
-      const savedCollection = JSON.parse(localStorage.getItem('cardCollection') || '[]');
-      setCollection(savedCollection);
-    } catch (e) {
-      console.error("Failed to load collection from localStorage", e);
-      toast({
-        variant: "destructive",
-        title: "コレクションの読み込みに失敗しました",
-      });
+    if (authLoading || !user) {
+      return;
     }
-  }, [toast]);
 
-  const handleSaveEdit = (updatedCard: CardData) => {
+    const load = async () => {
+      try {
+        const savedCollection = await loadUserCollection(user.uid);
+        setCollection(savedCollection);
+      } catch (e) {
+        console.error('Failed to load collection from Firestore', e);
+        toast({
+          variant: 'destructive',
+          title: 'コレクションの読み込みに失敗しました',
+        });
+      }
+    };
+
+    void load();
+  }, [toast, authLoading, user]);
+
+  const handleSaveEdit = async (updatedCard: CardData) => {
     if (!editingCard) return;
+    if (!user) {
+      toast({ variant: 'destructive', title: 'サインインが必要です' });
+      return;
+    }
 
     const EDIT_COST_PER_CHAR = 3;
     const nameDiff = levenshtein(editingCard.name, updatedCard.name);
@@ -93,7 +109,7 @@ export default function CollectionPage() {
 
     const newCollection = collection.map(c => (c.id === updatedCard.id ? updatedCard : c));
     setCollection(newCollection);
-    localStorage.setItem('cardCollection', JSON.stringify(newCollection));
+    void saveUserCollection(user.uid, newCollection);
     setEditingCard(null);
     toast({
       title: 'カードを更新しました',
@@ -102,9 +118,14 @@ export default function CollectionPage() {
   };
 
   const deleteCard = (cardId: string) => {
+    if (!user) {
+      toast({ variant: 'destructive', title: 'サインインが必要です' });
+      return;
+    }
+
     const newCollection = collection.filter(c => c.id !== cardId);
     setCollection(newCollection);
-    localStorage.setItem('cardCollection', JSON.stringify(newCollection));
+    void saveUserCollection(user.uid, newCollection);
     toast({
       title: 'カードを削除しました',
     });
@@ -134,6 +155,19 @@ export default function CollectionPage() {
         }
       });
   }, [collection, searchTerm, sortOrder]);
+
+  if (authLoading) {
+    return <div className="flex justify-center items-center h-64"><Loader2 className="animate-spin h-10 w-10" /></div>;
+  }
+
+  if (!user) {
+    return (
+      <div className="text-center py-20">
+        <h1 className="text-3xl font-bold mb-2">マイカードコレクション</h1>
+        <p className="text-muted-foreground">右上の「Google でサインイン」または「ゲストで開始」で利用できます。</p>
+      </div>
+    );
+  }
   
   if (editingCard) {
     return (

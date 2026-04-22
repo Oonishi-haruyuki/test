@@ -5,8 +5,9 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { CurrencyDisplay } from './currency-display';
+import { SignInButton } from './sign-in-button';
 import { cn } from '@/lib/utils';
-import { User, Menu } from 'lucide-react';
+import { Menu } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import React from 'react';
 
@@ -21,6 +22,8 @@ const navLinks = [
 ];
 
 const secondaryLinks = [
+  { href: '/mypage', label: 'マイページ' },
+  { href: '/settings', label: '設定' },
     { href: '/rules', label: 'ルール' },
     { href: '/minigame', label: 'ミニゲーム' },
 ]
@@ -36,8 +39,9 @@ export function AppHeader() {
         <h1 className="text-3xl md:text-4xl font-bold text-primary">
           <Link href="/">カードクラフター</Link>
         </h1>
-        <div className="flex items-center gap-2 md:gap-4">
+        <div className="flex items-center gap-4">
             <CurrencyDisplay />
+            <SignInButton />
         </div>
       </div>
       <div className="flex justify-between items-center mt-2 border-b pb-2">

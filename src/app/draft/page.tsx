@@ -9,6 +9,8 @@ import { useToast } from '@/hooks/use-toast';
 import { generateDeckClient } from '@/lib/generate-deck-client';
 import { Loader2 } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { useAuth } from '@/components/auth-provider';
+import { appendUserDeck, UserDataStoreError } from '@/lib/user-data-store';
 
 const DRAFT_PACK_SIZE = 10;
 const TOTAL_ROUNDS = 3;
@@ -21,6 +23,7 @@ export default function DraftPage() {
     const [isLoading, setIsLoading] = useState(false);
     const { toast } = useToast();
     const [isClient, setIsClient] = useState(false);
+    const { user } = useAuth();
 
     useEffect(() => {
         setIsClient(true);
@@ -60,15 +63,22 @@ export default function DraftPage() {
             setDraftState('finished');
             toast({ title: 'ドラフト完了！', description: 'デッキ構築ページで確認・保存できます。' });
             try {
-                const savedDecks = JSON.parse(localStorage.getItem('cardDecks') || '[]');
+                if (!user) {
+                    throw new Error('not-authenticated');
+                }
+
                 const newDeck = {
                     id: `draft-${Date.now()}`,
                     name: `ドラフトデッキ (${new Date().toLocaleDateString()})`,
                     cards: finalPicks,
                 };
-                localStorage.setItem('cardDecks', JSON.stringify([...savedDecks, newDeck]));
+                await appendUserDeck(user.uid, newDeck);
             } catch (e) {
-                toast({ variant: 'destructive', title: 'デッキの自動保存に失敗しました。'});
+                if (e instanceof UserDataStoreError && e.code === 'DECK_LIMIT_REACHED') {
+                    toast({ variant: 'destructive', title: 'デッキ上限に達しました', description: e.message });
+                } else {
+                    toast({ variant: 'destructive', title: 'デッキの自動保存に失敗しました。'});
+                }
             }
             return;
         }
@@ -96,7 +106,7 @@ export default function DraftPage() {
         } else {
             setCurrentPack(newPack);
         }
-    }, [isClient, pickedCards, currentPack, round, toast]);
+    }, [isClient, pickedCards, currentPack, round, toast, user]);
 
 
     if (!isClient || isLoading) {

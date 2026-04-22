@@ -1,6 +1,7 @@
 
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
+import { getAuth, connectAuthEmulator } from 'firebase/auth';
 
 // Your web app's Firebase configuration
 // Replace with your actual Firebase project configuration
@@ -16,9 +17,10 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 const db = getFirestore(app);
+const auth = getAuth(app);
 
-// Connect to Firestore emulator in development
-// This check ensures that the emulator is only used in the development environment
+// Connect to emulators in development
+// This check ensures that emulators are only used in the development environment
 if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
     try {
         connectFirestoreEmulator(db, 'localhost', 8080);
@@ -26,6 +28,14 @@ if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
     } catch (error) {
         console.error("Error connecting to Firestore emulator: ", error);
     }
+    
+    // Connect to Auth emulator
+    try {
+        connectAuthEmulator(auth, 'http://localhost:9099');
+        console.log("Auth emulator connected successfully.");
+    } catch (error) {
+        console.error("Error connecting to Auth emulator: ", error);
+    }
 }
 
-export { db };
+export { db, auth };

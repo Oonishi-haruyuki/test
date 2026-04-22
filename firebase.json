@@ -1,4 +1,18 @@
 {
+  "auth": {
+    "providers": {
+      "googleSignIn": {
+        "oAuthBrandDisplayName": "Card Game Studio",
+        "supportEmail": "support@example.com",
+        "authorizedRedirectUris": [
+          "http://localhost:3000",
+          "http://localhost:3001",
+          "https://zany-goggles-x5p5vg95pxj6hv4xj-3001.app.github.dev",
+          "https://example.com"
+        ]
+      }
+    }
+  },
   "firestore": {
     "database": "(default)",
     "location": "us-central1",

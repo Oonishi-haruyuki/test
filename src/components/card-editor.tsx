@@ -31,6 +31,8 @@ import { shopItems } from '@/lib/shop-items';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { useMissions } from '@/hooks/use-missions';
+import { useAuth } from '@/components/auth-provider';
+import { appendUserCard } from '@/lib/user-data-store';
 
 
 export type Theme = 'fantasy' | 'sci-fi' | 'modern' | 'custom';
@@ -69,6 +71,7 @@ interface CardEditorProps {
 
 export function CardEditor({ cardData, setCardData, cardPreviewRef, isImageGenerating, setIsImageGenerating }: CardEditorProps) {
   const { updateMissionProgress } = useMissions();
+  const { user } = useAuth();
   const [isIdeaPending, startIdeaTransition] = useTransition();
   const [isExporting, setIsExporting] = useState(false);
   const [aiTheme, setAiTheme] = useState('パワフルな神秘のドラゴン');
@@ -264,7 +267,16 @@ export function CardEditor({ cardData, setCardData, cardPreviewRef, isImageGener
     return cost;
   }, [cardData.name, cardData.cardType, cardData.abilities]);
 
-  const handleSaveToCollection = () => {
+  const handleSaveToCollection = async () => {
+    if (!user) {
+      toast({
+        variant: 'destructive',
+        title: 'サインインが必要です',
+        description: 'カード保存にはサインインが必要です。',
+      });
+      return;
+    }
+
     if (currency < creationCost) {
         toast({
             variant: 'destructive',
@@ -283,10 +295,8 @@ export function CardEditor({ cardData, setCardData, cardPreviewRef, isImageGener
     }
 
     try {
-      const collection = JSON.parse(localStorage.getItem('cardCollection') || '[]');
       const newCard = { ...cardData, id: self.crypto.randomUUID() };
-      const newCollection = [...collection, newCard];
-      localStorage.setItem('cardCollection', JSON.stringify(newCollection));
+      await appendUserCard(user.uid, newCard);
       updateMissionProgress('create-cards', 1);
       toast({
         title: 'コレクションに保存しました',

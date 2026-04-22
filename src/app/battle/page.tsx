@@ -9,7 +9,7 @@ import { Swords, Shield, Heart, Sparkles, Bot, Clock, Play, SkipForward, Loader2
 import { cn } from '@/lib/utils';
 import { Progress } from '@/components/ui/progress';
 import { useSearchParams } from 'next/navigation';
-import { generateDeckClient } from '@/lib/generate-deck-client';
+import { ApiClientError, generateDeckClient } from '@/lib/generate-deck-client';
 import { goblinDeck, elementalDeck, undeadDeck, dragonDeck, ninjaDeck } from '@/lib/decks';
 import { useMissions } from '@/hooks/use-missions';
 import { useStats } from '@/hooks/use-stats';
@@ -28,6 +28,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useCurrency } from '@/hooks/use-currency';
+import { useAuth } from '@/components/auth-provider';
+import { appendUserDeck, loadStoryModeDeck, loadUserDecks, MAX_USER_DECKS, UserDataStoreError } from '@/lib/user-data-store';
 
 const MAX_MANA = 10;
 const INITIAL_HEALTH = 20;
@@ -134,59 +136,109 @@ function DeckSelection({ onStartGame }: { onStartGame: (deck: CardData[], diffic
     const [isLoading, setIsLoading] = useState(false);
     const { toast } = useToast();
     const searchParams = useSearchParams();
+    const { user, loading: authLoading } = useAuth();
 
     useEffect(() => {
         const isStoryMode = searchParams.get('story') === 'true';
-        if (isStoryMode) {
+        if (!isStoryMode || authLoading || !user) {
+            return;
+        }
+
+        const load = async () => {
             try {
-                const storyDeckJSON = localStorage.getItem('storyModeDeck');
-                if (storyDeckJSON) {
-                    const storyDeck = JSON.parse(storyDeckJSON) as CardData[];
-                    const storyDifficulty = searchParams.get('difficulty') as Difficulty || 'beginner';
-                    if (storyDeck.length >= 20) {
-                        onStartGame(storyDeck, storyDifficulty);
-                    } else {
-                         toast({ variant: 'destructive', title: 'ストーリーデッキの読み込みに失敗しました' });
-                    }
+                const storyDeck = await loadStoryModeDeck(user.uid);
+                const storyDifficulty = searchParams.get('difficulty') as Difficulty || 'beginner';
+                if (storyDeck && storyDeck.length >= 20) {
+                    onStartGame(storyDeck, storyDifficulty);
+                } else {
+                    toast({ variant: 'destructive', title: 'ストーリーデッキの読み込みに失敗しました' });
                 }
             } catch (e) {
-                 toast({ variant: 'destructive', title: 'ストーリーデッキの読み込み中にエラーが発生しました' });
+                console.error(e);
+                toast({ variant: 'destructive', title: 'ストーリーデッキの読み込み中にエラーが発生しました' });
             }
-        }
-    }, [searchParams, onStartGame, toast]);
+        };
+
+        void load();
+    }, [searchParams, onStartGame, toast, authLoading, user]);
 
     useEffect(() => {
-        try {
-            const savedDecks = JSON.parse(localStorage.getItem('cardDecks') || '[]');
-            setDecks(savedDecks);
-            if (savedDecks.length > 0) {
-                setSelectedDeckId(savedDecks[0].id);
-            }
-        } catch(e) {
-            console.error(e);
-            toast({ variant: 'destructive', title: 'デッキの読み込みに失敗しました' });
+        if (authLoading || !user) {
+            return;
         }
-    }, [toast]);
+
+        const load = async () => {
+            try {
+                const savedDecks = await loadUserDecks(user.uid);
+                setDecks(savedDecks);
+                if (savedDecks.length > 0) {
+                    setSelectedDeckId(savedDecks[0].id);
+                }
+            } catch(e) {
+                console.error(e);
+                toast({ variant: 'destructive', title: 'デッキの読み込みに失敗しました' });
+            }
+        };
+
+        void load();
+    }, [toast, authLoading, user]);
     
     if (searchParams.get('story') === 'true') {
         return <div className="flex justify-center items-center h-64"><Loader2 className="animate-spin h-10 w-10" /><p className="ml-4">対戦を開始しています...</p></div>;
     }
 
     const handleGenerateDeck = async () => {
+        if (!user) {
+            toast({ variant: 'destructive', title: 'サインインが必要です' });
+            return;
+        }
+
+        if (decks.length >= MAX_USER_DECKS) {
+            toast({
+                variant: 'destructive',
+                title: 'デッキ上限に達しました',
+                description: `デッキは最大${MAX_USER_DECKS}個までです。`,
+            });
+            return;
+        }
+
         setIsLoading(true);
         try {
             const result = await generateDeckClient({ theme: 'ファンタジー', cardCount: 20 });
             const newDeck = {
                 id: `generated-${Date.now()}`,
                 name: 'AI生成デッキ (ファンタジー)',
-                cards: result.deck.map(c => ({...c, id: self.crypto.randomUUID(), imageUrl: `https://picsum.photos/seed/${self.crypto.randomUUID()}/400/300`}))
+                cards: result.deck.map(c => ({
+                    ...c,
+                    id: self.crypto.randomUUID(),
+                    imageUrl: `https://picsum.photos/seed/${self.crypto.randomUUID()}/400/300`,
+                    theme: 'custom' as const,
+                }))
             };
-            setDecks(prev => [...prev, newDeck]);
+            const nextDecks = await appendUserDeck(user.uid, newDeck);
+            setDecks(nextDecks);
             setSelectedDeckId(newDeck.id);
-            toast({ title: 'AIが新しいデッキを生成しました！'});
+            toast({
+                title: result.usedMockFallback ? 'モックデッキを生成しました' : 'AIが新しいデッキを生成しました！',
+                description: result.usedMockFallback ? 'AI利用制限のため、開発用モックデッキを返しました。' : undefined,
+            });
         } catch (error) {
             console.error(error);
-            toast({ variant: 'destructive', title: 'デッキ生成に失敗しました' });
+            if (error instanceof UserDataStoreError && error.code === 'DECK_LIMIT_REACHED') {
+                toast({
+                    variant: 'destructive',
+                    title: 'デッキ上限に達しました',
+                    description: error.message,
+                });
+            } else if (error instanceof ApiClientError && error.status === 429) {
+                toast({
+                    variant: 'destructive',
+                    title: 'AIの利用上限に達しました',
+                    description: '時間をおいて再試行してください。',
+                });
+            } else {
+                toast({ variant: 'destructive', title: 'デッキ生成に失敗しました' });
+            }
         }
         setIsLoading(false);
     };

@@ -24,6 +24,14 @@ Optional model override:
 GENKIT_MODEL=googleai/gemini-2.0-flash
 ```
 
+Optional development fallback when Gemini quota/auth fails:
+
+```env
+ENABLE_DECK_MOCK_FALLBACK=true
+```
+
+When this is enabled, `/api/generate-deck` returns a mock deck instead of an error for upstream rate-limit/auth failures.
+
 Run Genkit:
 
 ```bash

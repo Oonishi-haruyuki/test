@@ -4,6 +4,7 @@ import { ReactNode } from "react";
 import { CurrencyProvider } from "@/components/currency-provider";
 import { StatsProvider } from "@/components/stats-provider";
 import { MissionsProvider } from "@/components/missions-provider";
+import { AuthProvider } from "@/components/auth-provider";
 import { Toaster } from "@/components/ui/toaster";
 import { AppHeader } from "@/components/header";
 
@@ -22,19 +23,21 @@ export default function RootLayout({
       <head>
       </head>
       <body className="antialiased">
-        <CurrencyProvider>
-          <StatsProvider>
-            <MissionsProvider>
-              <div className="min-h-screen bg-background text-foreground">
-                <div className="container mx-auto px-4 py-8">
-                  <AppHeader />
-                  <main>{children}</main>
+        <AuthProvider>
+          <CurrencyProvider>
+            <StatsProvider>
+              <MissionsProvider>
+                <div className="min-h-screen bg-background text-foreground">
+                  <div className="container mx-auto px-4 py-8">
+                    <AppHeader />
+                    <main>{children}</main>
+                  </div>
+                  <Toaster />
                 </div>
-                <Toaster />
-              </div>
-            </MissionsProvider>
-          </StatsProvider>
-        </CurrencyProvider>
+              </MissionsProvider>
+            </StatsProvider>
+          </CurrencyProvider>
+        </AuthProvider>
       </body>
     </html>
   );
