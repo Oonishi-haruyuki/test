@@ -6,6 +6,8 @@
     "dev": "next dev",
     "genkit:dev": "genkit start -- tsx src/ai/dev.ts",
     "genkit:watch": "genkit start -- tsx --watch src/ai/dev.ts",
+    "firebase:emulators": "npx -y firebase-tools@latest emulators:start --only firestore,auth",
+    "firebase:deploy:firestore": "npx -y firebase-tools@latest deploy --only firestore",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
