@@ -238,9 +238,13 @@ export default function DeckBuilderPage() {
     setIsGenerating(true);
     try {
             const result = await generateDeckClient({ theme: newDeckTheme, cardCount: DECK_SIZE });
+      const deckCards = result?.deck ?? [];
+      if (deckCards.length === 0) {
+        throw new Error('No cards returned in deck');
+      }
       
       // Add IDs to the generated cards
-      const newCards = result.deck.map(card => ({
+      const newCards = deckCards.map(card => ({
         ...card,
                 id: `card-${Date.now()}-${Math.random()}`,
                 theme: 'custom' as const,

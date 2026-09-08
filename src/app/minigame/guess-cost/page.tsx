@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { CardData } from '@/components/card-editor';
 import { CardPreview } from '@/components/card-preview';
 import { Button } from '@/components/ui/button';
@@ -21,13 +21,17 @@ export default function GuessCostPage() {
     const { toast } = useToast();
     const { addCurrency } = useCurrency();
 
-    const generateNewQuestion = async () => {
+    const generateNewQuestion = useCallback(async () => {
         setIsLoading(true);
         setIsRevealed(false);
         try {
             const result = await generateDeckClient({ theme: 'なんでも', cardCount: 1 });
+            const deckCards = result?.deck ?? [];
+            if (deckCards.length === 0) {
+                throw new Error('No cards generated');
+            }
             const newCard = {
-                ...result.deck[0], 
+                ...deckCards[0], 
                 id: self.crypto.randomUUID(), 
                 imageUrl: `https://picsum.photos/seed/${self.crypto.randomUUID()}/400/300`
             } as CardData;
@@ -49,11 +53,11 @@ export default function GuessCostPage() {
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [toast]);
 
     useEffect(() => {
         generateNewQuestion();
-    }, []);
+    }, [generateNewQuestion]);
 
     const handleGuess = (guess: number) => {
         if (!card) return;

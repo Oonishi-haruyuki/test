@@ -205,10 +205,14 @@ function DeckSelection({ onStartGame }: { onStartGame: (deck: CardData[], diffic
         setIsLoading(true);
         try {
             const result = await generateDeckClient({ theme: 'ファンタジー', cardCount: 20 });
+            const deckCards = result?.deck ?? [];
+            if (deckCards.length === 0) {
+                throw new Error('No cards returned in deck');
+            }
             const newDeck = {
                 id: `generated-${Date.now()}`,
                 name: 'AI生成デッキ (ファンタジー)',
-                cards: result.deck.map(c => ({
+                cards: deckCards.map(c => ({
                     ...c,
                     id: self.crypto.randomUUID(),
                     imageUrl: `https://picsum.photos/seed/${self.crypto.randomUUID()}/400/300`,

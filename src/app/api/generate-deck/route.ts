@@ -18,7 +18,7 @@ function isProviderAuthOrPermissionError(message: string): boolean {
 }
 
 function shouldUseMockFallback(): boolean {
-  return process.env.ENABLE_DECK_MOCK_FALLBACK === 'true';
+  return process.env.ENABLE_DECK_MOCK_FALLBACK !== 'false';
 }
 
 export async function POST(request: Request) {
@@ -28,6 +28,9 @@ export async function POST(request: Request) {
     const body = await request.json();
     parsedInput = requestSchema.parse(body);
     const result = await generateDeck(parsedInput);
+    if (!result || !Array.isArray(result.deck) || result.deck.length === 0) {
+      throw new Error('AI generated an empty or invalid deck structure');
+    }
     return NextResponse.json(apiSuccess(result));
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -38,18 +41,19 @@ export async function POST(request: Request) {
     }
 
     const message = error instanceof Error ? error.message : 'Failed to generate deck';
+    console.warn('POST /api/generate-deck error, applying fallback if enabled:', message);
+
+    if (parsedInput && shouldUseMockFallback()) {
+      const deck = createMockDeck(parsedInput.theme, parsedInput.cardCount);
+      return NextResponse.json(apiSuccess({ deck }, { fallback: 'mock' }), {
+        status: 200,
+        headers: {
+          'x-deck-fallback': 'mock',
+        },
+      });
+    }
 
     if (isProviderRateLimit(message)) {
-      if (parsedInput && shouldUseMockFallback()) {
-        const deck = createMockDeck(parsedInput.theme, parsedInput.cardCount);
-        return NextResponse.json(apiSuccess({ deck }, { fallback: 'mock' }), {
-          status: 200,
-          headers: {
-            'x-deck-fallback': 'mock',
-          },
-        });
-      }
-
       return NextResponse.json(
         apiFailure('RATE_LIMITED', 'Deck generation is rate-limited by the AI provider. Please retry later.'),
         { status: 429 }
@@ -57,16 +61,6 @@ export async function POST(request: Request) {
     }
 
     if (isProviderAuthOrPermissionError(message)) {
-      if (parsedInput && shouldUseMockFallback()) {
-        const deck = createMockDeck(parsedInput.theme, parsedInput.cardCount);
-        return NextResponse.json(apiSuccess({ deck }, { fallback: 'mock' }), {
-          status: 200,
-          headers: {
-            'x-deck-fallback': 'mock',
-          },
-        });
-      }
-
       return NextResponse.json(
         apiFailure('UPSTREAM_AUTH_FAILED', 'AI provider authentication/permission failed. Check server API key configuration.'),
         { status: 503 }

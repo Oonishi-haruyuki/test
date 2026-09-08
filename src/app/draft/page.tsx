@@ -38,7 +38,11 @@ export default function DraftPage() {
 
         try {
             const result = await generateDeckClient({ theme: 'ランダム', cardCount: DRAFT_PACK_SIZE });
-            const pack = result.deck.map(c => ({
+            const deckCards = result?.deck ?? [];
+            if (deckCards.length === 0) {
+                throw new Error('No cards returned in pack');
+            }
+            const pack = deckCards.map(c => ({
                 ...c, 
                 id: self.crypto.randomUUID(), 
                 imageUrl: `https://picsum.photos/seed/${self.crypto.randomUUID()}/400/300`
@@ -96,7 +100,11 @@ export default function DraftPage() {
              setIsLoading(true);
              try {
                 const result = await generateDeckClient({ theme: 'ランダム', cardCount: DRAFT_PACK_SIZE });
-                const pack = result.deck.map(c => ({...c, id: self.crypto.randomUUID(), imageUrl: `https://picsum.photos/seed/${self.crypto.randomUUID()}/400/300`})) as CardData[];
+                const deckCards = result?.deck ?? [];
+                if (deckCards.length === 0) {
+                    throw new Error('No cards returned in pack');
+                }
+                const pack = deckCards.map(c => ({...c, id: self.crypto.randomUUID(), imageUrl: `https://picsum.photos/seed/${self.crypto.randomUUID()}/400/300`})) as CardData[];
                 setCurrentPack(pack);
              } catch (error) {
                  toast({ variant: 'destructive', title: `ラウンド ${nextRound} の開始に失敗しました。`});

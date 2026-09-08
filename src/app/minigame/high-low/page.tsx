@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { CardData } from '@/components/card-editor';
 import { CardPreview } from '@/components/card-preview';
 import { Button } from '@/components/ui/button';
@@ -22,11 +22,15 @@ export default function HighLowPage() {
     const { toast } = useToast();
     const { addCurrency } = useCurrency();
 
-    const fetchNewDeck = async () => {
+    const fetchNewDeck = useCallback(async () => {
         setIsLoading(true);
         try {
             const result = await generateDeckClient({ theme: 'なんでも', cardCount: 30 });
-            const newDeck = result.deck.map(c => ({...c, id: self.crypto.randomUUID(), imageUrl: `https://picsum.photos/seed/${self.crypto.randomUUID()}/400/300`})) as CardData[];
+            const deckCards = result?.deck ?? [];
+            if (deckCards.length < 2) {
+                throw new Error('Not enough cards generated');
+            }
+            const newDeck = deckCards.map(c => ({...c, id: self.crypto.randomUUID(), imageUrl: `https://picsum.photos/seed/${self.crypto.randomUUID()}/400/300`})) as CardData[];
             setDeck(newDeck);
             setCurrentCard(newDeck[0]);
             setNextCard(newDeck[1]);
@@ -35,11 +39,11 @@ export default function HighLowPage() {
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [toast]);
 
     useEffect(() => {
         fetchNewDeck();
-    }, []);
+    }, [fetchNewDeck]);
 
     const handleGuess = (guess: 'high' | 'low') => {
         if (!currentCard || !nextCard) return;

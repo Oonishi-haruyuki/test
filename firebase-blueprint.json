@@ -1,0 +1,79 @@
+{
+  "entities": {
+    "user": {
+      "title": "User",
+      "description": "User account and profile data",
+      "type": "object",
+      "properties": {
+        "displayName": { "type": "string" },
+        "email": { "type": "string" },
+        "createdAt": { "type": "number" }
+      }
+    },
+    "deckBuilder": {
+      "title": "DeckBuilderData",
+      "description": "User custom collection and created decks",
+      "type": "object",
+      "properties": {
+        "collection": { "type": "array" },
+        "decks": { "type": "array" },
+        "updatedAt": { "type": "number" }
+      }
+    },
+    "session": {
+      "title": "SessionData",
+      "description": "User story session data",
+      "type": "object",
+      "properties": {
+        "storyModeDeck": { "type": "array" },
+        "updatedAt": { "type": "number" }
+      }
+    },
+    "card": {
+      "title": "Card",
+      "description": "Custom created card",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "manaCost": { "type": "number" },
+        "attack": { "type": "number" },
+        "defense": { "type": "number" },
+        "cardType": { "type": "string" },
+        "abilities": { "type": "string" }
+      }
+    },
+    "deck": {
+      "title": "Deck",
+      "description": "User saved deck",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "cards": { "type": "array" }
+      }
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "user",
+      "description": "User account document"
+    },
+    "/users/{userId}/appData/deckBuilder": {
+      "schema": "deckBuilder",
+      "description": "Deck builder collection and user decks"
+    },
+    "/users/{userId}/appData/session": {
+      "schema": "session",
+      "description": "Story mode deck data"
+    },
+    "/cards/{cardId}": {
+      "schema": "card",
+      "description": "Global custom cards"
+    },
+    "/decks/{deckId}": {
+      "schema": "deck",
+      "description": "Saved user decks"
+    }
+  }
+}

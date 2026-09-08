@@ -11,5 +11,5 @@ export { googleAI };
 
 export const ai = genkit({
   plugins: [apiKey ? googleAI({apiKey}) : googleAI()],
-  model: process.env.GENKIT_MODEL || 'googleai/gemini-2.0-flash',
+  model: process.env.GENKIT_MODEL || 'googleai/gemini-2.5-flash',
 });
