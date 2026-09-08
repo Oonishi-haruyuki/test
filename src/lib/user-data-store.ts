@@ -65,29 +65,61 @@ function createStarterDeckBuilderData(): DeckBuilderData {
 }
 
 export async function loadDeckBuilderData(userId: string): Promise<DeckBuilderData> {
-  const snap = await getDoc(deckBuilderDocRef(userId));
-  if (!snap.exists()) {
-    const starterData = createStarterDeckBuilderData();
-    await saveDeckBuilderData(userId, starterData);
-    return starterData;
-  }
+  try {
+    const snap = await getDoc(deckBuilderDocRef(userId));
+    if (!snap.exists()) {
+      const starterData = createStarterDeckBuilderData();
+      try {
+        await saveDeckBuilderData(userId, starterData);
+      } catch (saveErr) {
+        console.warn('Failed to save initial starter deck to Firestore, using local fallback:', saveErr);
+      }
+      return starterData;
+    }
 
-  const data = snap.data() as Partial<DeckBuilderData>;
-  return {
-    collection: (data.collection ?? []) as CardData[],
-    decks: (data.decks ?? []) as UserDeck[],
-  };
+    const data = snap.data() as Partial<DeckBuilderData>;
+    const loadedData: DeckBuilderData = {
+      collection: (data.collection ?? []) as CardData[],
+      decks: (data.decks ?? []) as UserDeck[],
+    };
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(`deckbuilder_${userId}`, JSON.stringify(loadedData));
+      } catch {}
+    }
+    return loadedData;
+  } catch (err) {
+    console.warn('Firestore loadDeckBuilderData failed, attempting localStorage fallback:', err);
+    if (typeof window !== 'undefined') {
+      try {
+        const local = localStorage.getItem(`deckbuilder_${userId}`);
+        if (local) {
+          return JSON.parse(local) as DeckBuilderData;
+        }
+      } catch {}
+    }
+    return createStarterDeckBuilderData();
+  }
 }
 
 export async function saveDeckBuilderData(userId: string, data: DeckBuilderData): Promise<void> {
-  await setDoc(
-    deckBuilderDocRef(userId),
-    {
-      ...sanitizeForFirestore(data),
-      updatedAt: Date.now(),
-    },
-    { merge: true }
-  );
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.setItem(`deckbuilder_${userId}`, JSON.stringify(data));
+    } catch {}
+  }
+  try {
+    await setDoc(
+      deckBuilderDocRef(userId),
+      {
+        ...sanitizeForFirestore(data),
+        updatedAt: Date.now(),
+      },
+      { merge: true }
+    );
+  } catch (err) {
+    console.warn('Firestore saveDeckBuilderData failed (local fallback persisted):', err);
+  }
 }
 
 export async function loadUserDecks(userId: string): Promise<UserDeck[]> {
@@ -135,21 +167,45 @@ export async function appendUserDeck(userId: string, deck: UserDeck): Promise<Us
 
 export async function saveStoryModeDeck(userId: string, deck: CardData[]): Promise<void> {
   const safeData: SessionData = { storyModeDeck: sanitizeForFirestore(deck) };
-  await setDoc(
-    sessionDocRef(userId),
-    {
-      ...safeData,
-      updatedAt: Date.now(),
-    },
-    { merge: true }
-  );
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.setItem(`storyModeDeck_${userId}`, JSON.stringify(deck));
+    } catch {}
+  }
+  try {
+    await setDoc(
+      sessionDocRef(userId),
+      {
+        ...safeData,
+        updatedAt: Date.now(),
+      },
+      { merge: true }
+    );
+  } catch (err) {
+    console.warn('Firestore saveStoryModeDeck failed (local fallback persisted):', err);
+  }
 }
 
 export async function loadStoryModeDeck(userId: string): Promise<CardData[] | null> {
-  const snap = await getDoc(sessionDocRef(userId));
-  if (!snap.exists()) {
+  try {
+    const snap = await getDoc(sessionDocRef(userId));
+    if (!snap.exists()) {
+      if (typeof window !== 'undefined') {
+        const local = localStorage.getItem(`storyModeDeck_${userId}`);
+        if (local) return JSON.parse(local);
+      }
+      return null;
+    }
+    const data = snap.data() as SessionData;
+    return data.storyModeDeck ?? null;
+  } catch (err) {
+    console.warn('Firestore loadStoryModeDeck failed, attempting localStorage fallback:', err);
+    if (typeof window !== 'undefined') {
+      try {
+        const local = localStorage.getItem(`storyModeDeck_${userId}`);
+        if (local) return JSON.parse(local);
+      } catch {}
+    }
     return null;
   }
-  const data = snap.data() as SessionData;
-  return data.storyModeDeck ?? null;
 }

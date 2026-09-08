@@ -9,8 +9,12 @@ import { Toaster } from "@/components/ui/toaster";
 import { AppHeader } from "@/components/header";
 
 export const metadata: Metadata = {
-  title: "カードクラフター",
-  description: "AIの力で、あなたのカードゲームのアイデアを形に",
+  title: "Card Crafter",
+  description: "AI-powered card game creation, deck building, and battle arena",
+  openGraph: {
+    title: "Card Crafter",
+    description: "AI-powered card game creation, deck building, and battle arena",
+  },
 };
 
 export default function RootLayout({
